@@ -37,5 +37,6 @@ Thumbs.db
 !.vscode/extensions.json
 
 # Credentials
+.env
 *.pem
 *.pub
