@@ -85,7 +85,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 
 		let user_token: UsersTokens | null = null;
 		try {
-			user_token = await this.tokensRepository.findOne({ where: { id } });
+			user_token = await this.tokensRepository.findOneByOrFail({ id });
 		} catch (e) {
 			console.error(e);
 			throw new UnauthorizedException();

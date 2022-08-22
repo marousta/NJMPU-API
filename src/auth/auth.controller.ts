@@ -31,7 +31,7 @@ export class AuthController {
 	@HttpCode(200)
 	@Post('signin')
 	async function(@Request() req: Req, @Headers() headers: Headers, @Response({ passthrough: true }) res: Res) {
-		const ip = req.ips.length ? req.ips[0] : req.ip; //TODO: check value of ips
+		const ip = req.clientIp;
 
 		const platform = this.getPlatform(headers);
 		const { access_token, refresh_token } = await this.authService.login(
