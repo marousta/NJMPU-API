@@ -3,9 +3,9 @@ import { Crud, CrudController } from '@nestjsx/crud';
 
 import { UsersInfos } from './users.entity';
 import { UsersService } from './users.service';
-import { AccessGuard } from '../auth/guards/access.guard';
+import { AuthGuard } from '@nestjs/passport';
 
-@UseGuards(AccessGuard)
+@UseGuards(AuthGuard('access'))
 @Crud({
 	model: {
 		type: UsersInfos

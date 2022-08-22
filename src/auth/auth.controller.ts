@@ -2,12 +2,11 @@ import { Body, Controller, Headers, HttpCode, Post, Request, Response, UseGuards
 import { ApiBody } from '@nestjs/swagger';
 import { Response as Res, Request as Req } from 'express';
 
-import { LocalAuthGuard } from './guards/local.guard';
 import { AuthService } from './auth.service';
+import { TokensService } from './tokens/tokens.service';
 import { SigninProperty } from './properties/signin.property';
 import { SignupProperty } from './properties/signup.property';
-import { RefreshGuard } from './guards/refresh.guard';
-import { TokensService } from './tokens/tokens.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -26,7 +25,7 @@ export class AuthController {
 		return `${browser} ${os}`.trim();
 	}
 
-	@UseGuards(LocalAuthGuard)
+	@UseGuards(AuthGuard('local'))
 	@ApiBody({ type: SigninProperty })
 	@HttpCode(200)
 	@Post('signin')
@@ -52,7 +51,7 @@ export class AuthController {
 		await this.authService.user.create(params);
 	}
 
-	@UseGuards(RefreshGuard)
+	@UseGuards(AuthGuard('refresh'))
 	@HttpCode(200)
 	@Post('logout')
 	async logoutLocal(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
@@ -61,7 +60,7 @@ export class AuthController {
 		this.authService.cookie.delete(res, 'refresh_token');
 	}
 
-	@UseGuards(RefreshGuard)
+	@UseGuards(AuthGuard('refresh'))
 	@Post('refresh')
 	async refresh(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
 		const { access_token, refresh_token } = await this.tokensService.update((req.user as any).id);
