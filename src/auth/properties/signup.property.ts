@@ -5,6 +5,9 @@ export class SignupProperty {
 	username: string;
 
 	@ApiProperty()
+	email: string;
+
+	@ApiProperty()
 	password: string;
 
 	@ApiProperty()

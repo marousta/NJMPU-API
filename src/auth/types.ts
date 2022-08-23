@@ -2,6 +2,7 @@ export interface PartialUsersInfos {
 	uuid?: string;
 	identifier?: number;
 	username?: string;
+	email?: string;
 	password?: string;
 	profile_picture?: string;
 	is_online?: string;

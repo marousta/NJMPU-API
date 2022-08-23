@@ -38,14 +38,11 @@ export class UsersService extends TypeOrmCrudService<UsersInfos> {
 
 	async getIdentfier(username: string) {
 		while (true) {
-			// FIXME
 			const users = await this.repo.find({
 				select: { identifier: true },
 				where: { username }
 			});
 			const ids = users.map((u) => u.identifier);
-			console.log(users);
-			console.log(ids);
 
 			const id = this.genIdentifier(ids);
 			if (id === null) {

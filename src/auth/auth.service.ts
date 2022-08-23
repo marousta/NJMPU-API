@@ -25,9 +25,13 @@ export class AuthService {
 		private readonly pictureService: PictureService
 	) {}
 
-	async validateUser(username: string, password: string): Promise<UsersInfos> {
+	async validateUser(email: string, password: string): Promise<UsersInfos> {
 		try {
-			const user = await this.usersRepository.findOneByOrFail({ username });
+			const user = await this.usersRepository.findOneByOrFail({ email });
+
+			if (user.account_type === LoginMethod.intra42) {
+				throw new Error('Invalid login method try login with 42');
+			}
 
 			if (user.account_type !== LoginMethod.password) {
 				throw new Error("Login method doesn't match");
@@ -35,31 +39,30 @@ export class AuthService {
 
 			const verif = await argon2.verify(user.password, password);
 			if (!verif) {
-				throw new Error("Password doesn't match");
+				throw new UnauthorizedException();
 			}
 			return user;
 		} catch (e) {
-			console.error(e);
 			throw new UnauthorizedException();
 		}
 	}
 
 	public readonly login = {
 		byPassword: async (user: JwtPayload, fingerprint: UserFingerprint) => {
-			const payload = {
+			return await this.tokensService.create({
 				uuid: user.uuid,
-				username: user.username,
 				fingerprint
-			};
-
-			return await this.tokensService.create(payload);
+			});
 		},
 		byAPI: async (user: Intra42User, fingerprint: UserFingerprint): Promise<GeneratedTokens | null> => {
 			try {
-				const exist = await this.usersRepository.findOneByOrFail({ identifier: 42, username: user.username });
+				const exist = await this.usersRepository.findOneByOrFail({
+					identifier: 42,
+					username: user.username,
+					email: user.emails[0].value
+				});
 				return await this.tokensService.create({
 					uuid: exist.uuid,
-					username: exist.username,
 					fingerprint
 				});
 			} catch (e) {
@@ -104,6 +107,7 @@ export class AuthService {
 				account_type: LoginMethod.password,
 				identifier: await this.usersService.getIdentfier(params.username),
 				username: params.username,
+				email: params.email,
 				password: await argon2.hash(params.password, {
 					timeCost: 11,
 					saltLength: 128
@@ -113,8 +117,8 @@ export class AuthService {
 			try {
 				await this.usersRepository.save(newUser);
 			} catch (e) {
-				if (/username|exists/.test(e.detail)) {
-					throw new BadRequestException('Username already taken');
+				if (/email|exists/.test(e.detail)) {
+					throw new BadRequestException('Email address already in use');
 				} else {
 					console.error(e);
 					throw new BadRequestException();
@@ -132,6 +136,7 @@ export class AuthService {
 				const newUser = this.usersRepository.create({
 					account_type: LoginMethod.intra42,
 					identifier: 42,
+					email: user.emails[0].value,
 					username: user.username,
 					profile_picture: pp
 				});

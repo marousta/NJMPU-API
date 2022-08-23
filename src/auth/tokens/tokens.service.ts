@@ -147,6 +147,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 			uuid: user.uuid,
 			identifier: user.identifier,
 			username: user.username,
+			email: user.email,
 			profile_picture: user.profile_picture
 		};
 	}

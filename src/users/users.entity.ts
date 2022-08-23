@@ -19,6 +19,10 @@ export class UsersInfos {
 	username: string;
 
 	@ApiProperty()
+	@Column({ unique: true, nullable: true })
+	email: string;
+
+	@ApiProperty()
 	@Column({ nullable: true })
 	password: string;
 
