@@ -1,5 +1,6 @@
 export interface PartialUsersInfos {
 	uuid?: string;
+	identifier?: number;
 	username?: string;
 	password?: string;
 	profile_picture?: string;

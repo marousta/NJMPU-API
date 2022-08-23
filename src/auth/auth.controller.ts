@@ -61,6 +61,13 @@ export class AuthController {
 	}
 
 	@UseGuards(AuthGuard('refresh'))
+	@HttpCode(200)
+	@Get('whoami')
+	async whoami(@Request() req: Req) {
+		return await this.tokensService.user((req.user as any).id);
+	}
+
+	@UseGuards(AuthGuard('refresh'))
 	@Post('refresh')
 	async refresh(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
 		const { access_token, refresh_token } = await this.tokensService.update((req.user as any).id);

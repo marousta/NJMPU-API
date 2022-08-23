@@ -10,7 +10,7 @@ import { readFileSync } from 'fs';
 import { UsersTokens } from './tokens.entity';
 import { UsersInfos } from '../../users/users.entity';
 
-import { GeneratedTokens, JwtPayload } from '../types';
+import { GeneratedTokens, JwtPayload, PartialUsersInfos } from '../types';
 
 @Injectable()
 export class TokensService extends TypeOrmCrudService<UsersTokens> {
@@ -42,20 +42,25 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		);
 	}
 
+	private async getUser(id: number): Promise<UsersInfos> {
+		const token = await this.tokensRepository
+			.createQueryBuilder('token')
+			.leftJoinAndSelect('token.player', 'users_infos')
+			.whereInIds(id)
+			.getOneOrFail();
+		const user = token.player as unknown as UsersInfos;
+		return user;
+	}
+
 	async update(id: number): Promise<GeneratedTokens> {
 		try {
-			const token = await this.tokensRepository
-				.createQueryBuilder('token')
-				.leftJoinAndSelect('token.player', 'users_infos')
-				.whereInIds(id)
-				.getOneOrFail();
-			const user = token.player as unknown as UsersInfos;
+			const user = await this.getUser(id);
 
 			const access_token = this.accessToken({ id, uuid: user.uuid });
 			const refresh_token = this.refreshToken(id);
 
 			await this.tokensRepository.save({
-				id: token.id,
+				id,
 				access_token_hash: await this.hash(access_token),
 				refresh_token_hash: await this.hash(refresh_token)
 			});
@@ -134,5 +139,15 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		}
 
 		return { access_token, refresh_token };
+	}
+
+	async user(id: number): Promise<PartialUsersInfos> {
+		const user = await this.getUser(id);
+		return {
+			uuid: user.uuid,
+			identifier: user.identifier,
+			username: user.username,
+			profile_picture: user.profile_picture
+		};
 	}
 }
