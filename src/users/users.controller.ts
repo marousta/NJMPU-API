@@ -1,9 +1,10 @@
-import { Controller, UseGuards } from '@nestjs/common';
-import { Crud, CrudController } from '@nestjsx/crud';
+import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import { Crud, CrudController, CrudRequest, Override } from '@nestjsx/crud';
+import { AuthGuard } from '@nestjs/passport';
+
+import { UsersService } from './users.service';
 
 import { UsersInfos } from './users.entity';
-import { UsersService } from './users.service';
-import { AuthGuard } from '@nestjs/passport';
 
 @UseGuards(AuthGuard('access'))
 @Crud({

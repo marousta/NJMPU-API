@@ -1,35 +1,39 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { Response } from 'express';
 
 import { UsersService } from '../users/users.service';
-import { SignupProperty } from './properties/signup.property';
-import { UsersInfos } from '../users/users.entity';
-import { InjectRepository } from '@nestjs/typeorm';
 import { TokensService } from './tokens/tokens.service';
-import { JwtPayload } from './types';
+
+import { SignupProperty } from './properties/signup.property';
+
+import { UsersInfos } from '../users/users.entity';
+
+import { GeneratedTokens, Intra42User, JwtPayload, UserFingerprint } from './types';
+import { LoginMethod } from '../types';
 
 @Injectable()
 export class AuthService {
 	constructor(
 		@InjectRepository(UsersInfos)
-		private usersRepository: Repository<UsersInfos>,
-		private usersService: UsersService,
-		private TokensService: TokensService
+		private readonly usersRepository: Repository<UsersInfos>,
+		private readonly usersService: UsersService,
+		private readonly tokensService: TokensService
 	) {}
 
-	async validateUser(username: string, password: string): Promise<any> {
+	async validateUser(username: string, password: string): Promise<UsersInfos> {
 		try {
-			const user = await this.usersService.findOne({
-				where: {
-					username: username
-				}
-			});
+			const user = await this.usersRepository.findOneByOrFail({ username });
+
+			if (user.account_type !== LoginMethod.password) {
+				throw new Error("Login method doesn't match");
+			}
 
 			const verif = await argon2.verify(user.password, password);
 			if (!verif) {
-				throw new Error();
+				throw new Error("Password doesn't match");
 			}
 			return user;
 		} catch (e) {
@@ -38,17 +42,29 @@ export class AuthService {
 		}
 	}
 
-	async login(user: JwtPayload, platform: string, ua: string, ip: string) {
-		const payload = {
-			uuid: user.uuid,
-			username: user.username,
-			platform,
-			ua,
-			ip
-		};
+	public readonly login = {
+		byPassword: async (user: JwtPayload, fingerprint: UserFingerprint) => {
+			const payload = {
+				uuid: user.uuid,
+				username: user.username,
+				fingerprint
+			};
 
-		return await this.TokensService.create(payload);
-	}
+			return await this.tokensService.create(payload);
+		},
+		byAPI: async (user: Intra42User, fingerprint: UserFingerprint): Promise<GeneratedTokens | null> => {
+			try {
+				const exist = await this.usersRepository.findOneByOrFail({ identifier: 42, username: user.username });
+				return await this.tokensService.create({
+					uuid: exist.uuid,
+					username: exist.username,
+					fingerprint
+				});
+			} catch (e) {
+				return null;
+			}
+		}
+	};
 
 	public readonly cookie = {
 		create: (res: Response, obj: { access_token: string } | { refresh_token: string }) => {
@@ -83,6 +99,8 @@ export class AuthService {
 			}
 
 			const newUser = this.usersRepository.create({
+				account_type: LoginMethod.password,
+				identifier: await this.usersService.getIdentfier(params.username),
 				username: params.username,
 				password: await argon2.hash(params.password, {
 					timeCost: 11,
@@ -91,9 +109,9 @@ export class AuthService {
 			});
 
 			try {
-				console.log(await this.usersRepository.save(newUser));
+				await this.usersRepository.save(newUser);
 			} catch (e) {
-				if (/username|exist/.test(e.detail)) {
+				if (/username|exists/.test(e.detail)) {
 					throw new BadRequestException('Username already taken');
 				} else {
 					console.error(e);
@@ -102,8 +120,29 @@ export class AuthService {
 			}
 			return true;
 		},
+		createFromAPI: {
+			intra42: async (user: Intra42User) => {
+				const newUser = this.usersRepository.create({
+					account_type: LoginMethod.intra42,
+					identifier: 42,
+					username: user.username,
+					profile_picture: null // TODO
+				});
+
+				try {
+					await this.usersRepository.save(newUser);
+				} catch (e) {
+					if (/Key|exists/.test(e.detail)) {
+						throw new InternalServerErrorException();
+					} else {
+						console.error(e);
+						throw new BadRequestException();
+					}
+				}
+			}
+		},
 		disconnect: async (user: any) => {
-			await this.TokensService.delete(user.id);
+			await this.tokensService.delete(user.id);
 		}
 	};
 }

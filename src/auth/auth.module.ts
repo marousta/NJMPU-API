@@ -1,19 +1,24 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
 import { UsersModule } from '../users/users.module';
+import { TokensModule } from './tokens/tokens.module';
+
+import { AuthController } from './auth.controller';
+
+import { AuthService } from './auth.service';
+import { TokensService } from './tokens/tokens.service';
+
 import { LocalStrategy } from './strategies/local.strategy';
 import { accessStrategy } from './strategies/access.strategy';
 import { refreshStrategy } from './strategies/refresh.strategy';
+import { intra42Strategy } from './strategies/42.strategy';
+
 import { UsersInfos } from '../users/users.entity';
-import { TokensService } from './tokens/tokens.service';
-import { TokensModule } from './tokens/tokens.module';
 import { UsersTokens } from './tokens/tokens.entity';
-import { ConfigModule } from '@nestjs/config';
 
 @Module({
 	imports: [
@@ -24,7 +29,15 @@ import { ConfigModule } from '@nestjs/config';
 		JwtModule,
 		TypeOrmModule.forFeature([UsersInfos, UsersTokens])
 	],
-	providers: [AuthService, JwtService, TokensService, LocalStrategy, accessStrategy, refreshStrategy],
+	providers: [
+		AuthService,
+		JwtService,
+		TokensService,
+		LocalStrategy,
+		accessStrategy,
+		refreshStrategy,
+		intra42Strategy
+	],
 	controllers: [AuthController],
 	exports: [AuthService]
 })

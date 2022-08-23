@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TypeOrmCrudService } from '@nestjsx/crud-typeorm';
 import { Repository } from 'typeorm';
@@ -8,8 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import { readFileSync } from 'fs';
 
 import { UsersTokens } from './tokens.entity';
-import { JwtPayload } from '../types';
 import { UsersInfos } from '../../users/users.entity';
+
+import { GeneratedTokens, JwtPayload } from '../types';
 
 @Injectable()
 export class TokensService extends TypeOrmCrudService<UsersTokens> {
@@ -41,7 +42,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		);
 	}
 
-	async update(id: number): Promise<{ access_token: string; refresh_token: string }> {
+	async update(id: number): Promise<GeneratedTokens> {
 		try {
 			const token = await this.tokensRepository
 				.createQueryBuilder('token')
@@ -107,7 +108,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		});
 	}
 
-	async create(payload: JwtPayload): Promise<{ access_token: string; refresh_token: string }> {
+	async create(payload: JwtPayload): Promise<GeneratedTokens> {
 		const tokens = await this.tokensRepository.find({ order: { id: 'ASC' } });
 		const id = tokens.length ? tokens[tokens.length - 1].id + 1 : 1;
 
@@ -115,19 +116,21 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		const refresh_token = this.refreshToken(id);
 
 		const newTokens = this.tokensRepository.create({
+			id: id,
 			player: payload.uuid,
 			creation_date: new Date(),
-			platform: payload.platform,
+			platform: payload.fingerprint.platform,
 			access_token_hash: await this.hash(access_token),
 			refresh_token_hash: await this.hash(refresh_token),
-			ua_hash: await this.hash(payload.ua),
-			ip_hash: await this.hash(payload.ip)
+			ua_hash: await this.hash(payload.fingerprint.ua),
+			ip_hash: await this.hash(payload.fingerprint.ip)
 		});
 
 		try {
 			await this.tokensRepository.save(newTokens);
 		} catch (e) {
 			console.error(e);
+			throw new InternalServerErrorException();
 		}
 
 		return { access_token, refresh_token };

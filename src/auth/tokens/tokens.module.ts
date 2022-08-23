@@ -1,9 +1,10 @@
-import { ConfigurableModuleBuilder, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 
 import { TokensService } from './tokens.service';
+
 import { UsersTokens } from './tokens.entity';
-import { JwtModule, JwtService } from '@nestjs/jwt';
 import { UsersInfos } from '../../users/users.entity';
 
 @Module({

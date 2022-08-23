@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { Strategy, ExtractJwt } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
 import { readFileSync } from 'fs';
+
 import { TokensService } from '../tokens/tokens.service';
 
 @Injectable()

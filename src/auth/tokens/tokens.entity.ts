@@ -1,13 +1,15 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 
 import { UsersInfos } from '../../users/users.entity';
 
 @Entity()
 export class UsersTokens {
-	@PrimaryGeneratedColumn('increment')
+	@PrimaryColumn()
 	id: number;
 
-	@ManyToOne((type) => UsersInfos, (user) => user.uuid)
+	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
+		onDelete: 'CASCADE'
+	})
 	@JoinColumn()
 	player: string;
 
