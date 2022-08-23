@@ -40,3 +40,6 @@ Thumbs.db
 .env
 *.pem
 *.pub
+
+# Created by code
+shared

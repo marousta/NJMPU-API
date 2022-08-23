@@ -19,6 +19,9 @@ import { intra42Strategy } from './strategies/42.strategy';
 
 import { UsersInfos } from '../users/users.entity';
 import { UsersTokens } from './tokens/tokens.entity';
+import { PictureModule } from '../picture/picture.module';
+import { PictureService } from '../picture/picture.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
 	imports: [
@@ -27,12 +30,15 @@ import { UsersTokens } from './tokens/tokens.entity';
 		PassportModule,
 		TokensModule,
 		JwtModule,
+		HttpModule,
+		PictureModule,
 		TypeOrmModule.forFeature([UsersInfos, UsersTokens])
 	],
 	providers: [
 		AuthService,
 		JwtService,
 		TokensService,
+		PictureService,
 		LocalStrategy,
 		accessStrategy,
 		refreshStrategy,

@@ -13,6 +13,7 @@ import { UsersInfos } from '../users/users.entity';
 
 import { GeneratedTokens, Intra42User, JwtPayload, UserFingerprint } from './types';
 import { LoginMethod } from '../types';
+import { PictureService } from '../picture/picture.service';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +21,8 @@ export class AuthService {
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly usersService: UsersService,
-		private readonly tokensService: TokensService
+		private readonly tokensService: TokensService,
+		private readonly pictureService: PictureService
 	) {}
 
 	async validateUser(username: string, password: string): Promise<UsersInfos> {
@@ -122,11 +124,16 @@ export class AuthService {
 		},
 		createFromAPI: {
 			intra42: async (user: Intra42User) => {
+				let pp: string | null = null;
+				try {
+					pp = await this.pictureService.download(user.username, 42, user.photos[0].value);
+				} catch (e) {}
+
 				const newUser = this.usersRepository.create({
 					account_type: LoginMethod.intra42,
 					identifier: 42,
 					username: user.username,
-					profile_picture: null // TODO
+					profile_picture: pp
 				});
 
 				try {

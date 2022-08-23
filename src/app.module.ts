@@ -5,11 +5,17 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { PictureModule } from './picture/picture.module';
 
 import { AppController } from './app.controller';
 
+import { PictureService } from './picture/picture.service';
+import { HttpModule } from '@nestjs/axios';
+
 @Module({
 	imports: [
+		PictureModule,
+		HttpModule,
 		ConfigModule.forRoot({
 			isGlobal: true
 		}),
@@ -31,6 +37,8 @@ import { AppController } from './app.controller';
 		}),
 		UsersModule,
 		AuthModule
-	]
+	],
+	controllers: [AppController],
+	providers: [PictureService]
 })
 export class AppModule {}
