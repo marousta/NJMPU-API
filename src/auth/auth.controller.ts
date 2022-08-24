@@ -2,6 +2,7 @@ import { Body, Controller, Get, Headers, HttpCode, Post, Request, Response, UseG
 import { ApiBody, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { Response as Res, Request as Req } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { UAParser } from 'ua-parser-js';
 
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens/tokens.service';
@@ -15,17 +16,11 @@ import { Intra42User, UserFingerprint } from './types';
 export class AuthController {
 	constructor(private readonly authService: AuthService, private tokensService: TokensService) {}
 
-	//TODO: shitty code here
 	private getPlatform(headers: Headers) {
-		const browser_str = headers['sec-ch-ua'];
-		const os_str = headers['sec-ch-ua-platform'];
-
-		let str = browser_str.split(';');
-		str.pop();
-		const browser = str[str.length - 1].split(',')[1].split('"').join('');
-		const os = os_str.split('"').join('');
-
-		return `${browser} ${os}`.trim();
+		const ua = new UAParser(headers['user-agent']);
+		const browser = ua.getBrowser().name;
+		const os = ua.getOS().name;
+		return `${browser} ${os}`;
 	}
 
 	private getFingerprint(req: Req, headers: Headers): UserFingerprint {
