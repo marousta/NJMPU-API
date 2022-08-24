@@ -10,7 +10,7 @@ import { TokensService } from './tokens/tokens.service';
 import { SigninProperty } from './properties/signin.property';
 import { SignupProperty } from './properties/signup.property';
 
-import { Intra42User, UserFingerprint } from './types';
+import { Intra42User, DiscordUser, UserFingerprint } from './types';
 
 @Controller('auth')
 export class AuthController {
@@ -75,6 +75,18 @@ export class AuthController {
 		this.authService.cookie.create(res, { refresh_token });
 	}
 
+	async APIHandler(user: Intra42User | DiscordUser, api: string, http: { req: Req; headers: Headers; res: Res }) {
+		const fingerprint = this.getFingerprint(http.req, http.headers);
+		let tokens = await this.authService.login.byAPI(user, fingerprint);
+		if (!tokens) {
+			await this.authService.user.createFromAPI[api](user);
+			tokens = await this.authService.login.byAPI(user, fingerprint);
+		}
+		const { access_token, refresh_token } = tokens;
+		this.authService.cookie.create(http.res, { access_token });
+		this.authService.cookie.create(http.res, { refresh_token });
+	}
+
 	@UseGuards(AuthGuard('42'))
 	@Get('/oauth2/42')
 	intra42Auth() {}
@@ -88,16 +100,33 @@ export class AuthController {
 		@Response({ passthrough: true }) res: Res
 	) {
 		const user: Intra42User = req.user as any;
-		const fingerprint = this.getFingerprint(req, headers);
+		await this.APIHandler(user, 'intra42', {
+			req,
+			headers,
+			res
+		});
+		res.redirect('/api');
+	}
 
-		let tokens = await this.authService.login.byAPI(user, fingerprint);
-		if (!tokens) {
-			await this.authService.user.createFromAPI.intra42(user);
-			tokens = await this.authService.login.byAPI(user, fingerprint);
-		}
-		const { access_token, refresh_token } = tokens;
-		this.authService.cookie.create(res, { access_token });
-		this.authService.cookie.create(res, { refresh_token });
+	@UseGuards(AuthGuard('discord'))
+	@Get('/oauth2/discord')
+	discordAuth() {}
+
+	@ApiExcludeEndpoint()
+	@UseGuards(AuthGuard('discord'))
+	@Get('/oauth2/discord/callback')
+	async discordAuthCallback(
+		@Request() req: Req,
+		@Headers() headers: Headers,
+		@Response({ passthrough: true }) res: Res
+	) {
+		const user: DiscordUser = req.user as any;
+		await this.APIHandler(user, 'discord', {
+			req,
+			headers,
+			res
+		});
+
 		res.redirect('/api');
 	}
 }

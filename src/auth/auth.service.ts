@@ -11,7 +11,7 @@ import { SignupProperty } from './properties/signup.property';
 
 import { UsersInfos } from '../users/users.entity';
 
-import { GeneratedTokens, Intra42User, JwtPayload, UserFingerprint } from './types';
+import { DiscordUser, GeneratedTokens, Intra42User, JwtPayload, UserFingerprint } from './types';
 import { LoginMethod } from '../types';
 import { PictureService } from '../picture/picture.service';
 import { ConfigService } from '@nestjs/config';
@@ -56,12 +56,29 @@ export class AuthService {
 				fingerprint
 			});
 		},
-		byAPI: async (user: Intra42User, fingerprint: UserFingerprint): Promise<GeneratedTokens | null> => {
+		byAPI: async (
+			user: Intra42User | DiscordUser,
+			fingerprint: UserFingerprint
+		): Promise<GeneratedTokens | null> => {
+			let email: string;
+			let identifier: number;
+
+			switch (user.interface) {
+				case 'intra42':
+					email = user.emails[0].value;
+					identifier = 42;
+					break;
+				case 'discord':
+					email = user.email;
+					identifier = 69;
+					break;
+			}
+
 			try {
 				const exist = await this.usersRepository.findOneByOrFail({
-					identifier: 42,
+					identifier,
 					username: user.username,
-					email: user.emails[0].value
+					email
 				});
 				return await this.tokensService.create({
 					uuid: exist.uuid,
@@ -141,6 +158,35 @@ export class AuthService {
 					account_type: LoginMethod.intra42,
 					identifier: 42,
 					email: user.emails[0].value,
+					username: user.username,
+					profile_picture: pp
+				});
+
+				try {
+					await this.usersRepository.save(newUser);
+				} catch (e) {
+					if (/Key|exists/.test(e.detail)) {
+						throw new InternalServerErrorException();
+					} else {
+						console.error(e);
+						throw new BadRequestException();
+					}
+				}
+			},
+			discord: async (user: DiscordUser) => {
+				let pp: string | null = null;
+				try {
+					pp = await this.pictureService.download(
+						user.username,
+						69,
+						'https://cdn.discordapp.com/avatars/' + user.id + '/' + user.avatar
+					);
+				} catch (e) {}
+
+				const newUser = this.usersRepository.create({
+					account_type: LoginMethod.discord,
+					identifier: 69,
+					email: user.email,
 					username: user.username,
 					profile_picture: pp
 				});

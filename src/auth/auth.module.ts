@@ -13,15 +13,16 @@ import { AuthService } from './auth.service';
 import { TokensService } from './tokens/tokens.service';
 
 import { LocalStrategy } from './strategies/local.strategy';
-import { accessStrategy } from './strategies/access.strategy';
-import { refreshStrategy } from './strategies/refresh.strategy';
-import { intra42Strategy } from './strategies/42.strategy';
+import { AccessStrategy } from './strategies/access.strategy';
+import { RefreshStrategy } from './strategies/refresh.strategy';
+import { Intra42Strategy } from './strategies/42.strategy';
 
 import { UsersInfos } from '../users/users.entity';
 import { UsersTokens } from './tokens/tokens.entity';
 import { PictureModule } from '../picture/picture.module';
 import { PictureService } from '../picture/picture.service';
 import { HttpModule } from '@nestjs/axios';
+import { DiscordStrategy } from './strategies/discord.strategy';
 
 @Module({
 	imports: [
@@ -40,9 +41,10 @@ import { HttpModule } from '@nestjs/axios';
 		TokensService,
 		PictureService,
 		LocalStrategy,
-		accessStrategy,
-		refreshStrategy,
-		intra42Strategy
+		AccessStrategy,
+		RefreshStrategy,
+		Intra42Strategy,
+		DiscordStrategy
 	],
 	controllers: [AuthController],
 	exports: [AuthService]

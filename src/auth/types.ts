@@ -26,6 +26,7 @@ export interface GeneratedTokens {
 }
 
 export interface Intra42User {
+	interface: 'intra42';
 	id: string;
 	username: string;
 	displayName: string;
@@ -38,4 +39,25 @@ export interface Intra42User {
 	phoneNumbers: Array<{ value: string }>;
 	photos: Array<{ value: string }>;
 	provider: string;
+}
+
+export interface DiscordUser {
+	interface: 'discord';
+	id: string;
+	username: string;
+	avatar: string;
+	avatar_decoration: string;
+	discriminator: string;
+	public_flags: number;
+	flags: number;
+	banner: string;
+	banner_color: string;
+	accent_color: string;
+	locale: string;
+	mfa_enabled: boolean;
+	email: string;
+	verified: boolean;
+	provider: string;
+	accessToken: string;
+	fetchedAt: Date;
 }

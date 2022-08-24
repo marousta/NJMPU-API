@@ -15,10 +15,10 @@ export class PictureService {
 		}
 		const arr = type.split('/');
 		switch (arr[1]) {
-			case 'jpg':
-			case 'jfif':
-				return 'jpeg';
 			case 'jpeg':
+			case 'jfif':
+				return 'jpg';
+			case 'jpg':
 			case 'png':
 			case 'apng':
 			case 'gif':

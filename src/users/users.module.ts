@@ -8,7 +8,7 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { TokensService } from '../auth/tokens/tokens.service';
 
-import { accessStrategy } from '../auth/strategies/access.strategy';
+import { AccessStrategy } from '../auth/strategies/access.strategy';
 
 import { UsersInfos } from './users.entity';
 import { UsersTokens } from '../auth/tokens/tokens.entity';
@@ -16,7 +16,7 @@ import { UsersTokens } from '../auth/tokens/tokens.entity';
 @Module({
 	imports: [TypeOrmModule.forFeature([UsersInfos, UsersTokens])],
 	controllers: [UsersController],
-	providers: [UsersService, ConfigService, accessStrategy, TokensService, JwtService],
+	providers: [UsersService, ConfigService, AccessStrategy, TokensService, JwtService],
 	exports: [UsersService]
 })
 export class UsersModule {}

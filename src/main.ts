@@ -73,6 +73,9 @@ async function bootstrap() {
 	env.check('INTRA42_ID', 'string');
 	env.check('INTRA42_SECRET', 'string');
 	env.check('INTRA42_CALLBACK', 'string');
+	env.check('DISCORD_ID', 'string');
+	env.check('DISCORD_SECRET', 'string');
+	env.check('DISCORD_CALLBACK', 'string');
 	env.result();
 
 	const app = await NestFactory.create(AppModule);

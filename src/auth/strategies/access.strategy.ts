@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 import { TokensService } from '../tokens/tokens.service';
 
 @Injectable()
-export class accessStrategy extends PassportStrategy(Strategy, 'access') {
+export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 	constructor(private configService: ConfigService, private tokenService: TokensService) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([

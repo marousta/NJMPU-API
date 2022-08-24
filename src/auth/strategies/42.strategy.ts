@@ -6,7 +6,7 @@ import { Strategy } from 'passport-42';
 import { Intra42User } from '../types';
 
 @Injectable()
-export class intra42Strategy extends PassportStrategy(Strategy, '42') {
+export class Intra42Strategy extends PassportStrategy(Strategy, '42') {
 	constructor(private configService: ConfigService) {
 		super({
 			clientID: configService.get<string>('INTRA42_ID'),
