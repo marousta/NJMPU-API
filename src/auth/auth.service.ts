@@ -14,10 +14,12 @@ import { UsersInfos } from '../users/users.entity';
 import { GeneratedTokens, Intra42User, JwtPayload, UserFingerprint } from './types';
 import { LoginMethod } from '../types';
 import { PictureService } from '../picture/picture.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
 	constructor(
+		private configService: ConfigService,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly usersService: UsersService,
@@ -84,14 +86,16 @@ export class AuthService {
 			}
 
 			res.cookie(name, Object.values(obj)[0], {
-				domain: 'localhost', //TODO
+				domain: this.configService.get<string>('DOMAIN'),
+				sameSite: 'strict',
 				httpOnly: true,
 				expires
 			});
 		},
 		delete: (res: Response, name: string) => {
 			res.cookie(name, null, {
-				domain: 'localhost', //TODO
+				domain: this.configService.get<string>('DOMAIN'),
+				sameSite: 'strict',
 				httpOnly: true
 			});
 		}
