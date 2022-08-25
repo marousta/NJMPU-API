@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { existsSync, mkdirSync, readdirSync, writeFileSync, readFileSync, rmSync } from 'fs';
 import { basename, extname, resolve } from 'path';
@@ -7,7 +6,7 @@ import { createHash } from 'crypto';
 
 @Injectable()
 export class PictureService {
-	constructor(private configService: ConfigService, private httpService: HttpService) {}
+	constructor(private httpService: HttpService) {}
 
 	private parseContentType(type: string) {
 		if (!type || !type.includes('image')) {
@@ -56,7 +55,7 @@ export class PictureService {
 	}
 
 	async download(username: string, identifier: number, url: string): Promise<string> {
-		const shared = resolve(this.configService.get<string>('PIC_STORE'));
+		const shared = resolve('shared');
 		if (!existsSync(shared)) {
 			mkdirSync(shared);
 		}

@@ -63,7 +63,6 @@ async function bootstrap() {
 	const env = new ValidateEnv();
 	env.check('DOMAIN', 'string');
 	env.check('JWT_PRIVATE', 'string');
-	env.check('PIC_STORE', 'string');
 	env.check('PSQL_HOST', 'string');
 	env.check('PSQL_PORT', 0);
 	env.check('PSQL_USERNAME', 'string');
