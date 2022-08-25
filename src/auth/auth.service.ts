@@ -27,6 +27,10 @@ export class AuthService {
 		private readonly pictureService: PictureService
 	) {}
 
+	private isEmpty(str: string) {
+		return !str || !str.trim().length;
+	}
+
 	async validateUser(email: string, password: string): Promise<UsersInfos> {
 		try {
 			const user = await this.usersRepository.findOneByOrFail({ email });
@@ -120,6 +124,15 @@ export class AuthService {
 
 	public readonly user = {
 		create: async (params: SignupProperty) => {
+			if (
+				this.isEmpty(params.username) ||
+				this.isEmpty(params.password) ||
+				this.isEmpty(params.confirm) ||
+				this.isEmpty(params.email)
+			) {
+				throw new BadRequestException('Empty field');
+			}
+
 			if (params.password !== params.confirm) {
 				throw new BadRequestException('Password missmatch');
 			}

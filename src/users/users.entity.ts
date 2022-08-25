@@ -19,7 +19,7 @@ export class UsersInfos {
 	username: string;
 
 	@ApiProperty()
-	@Column({ unique: true, nullable: true })
+	@Column({ unique: true })
 	email: string;
 
 	@ApiProperty()
