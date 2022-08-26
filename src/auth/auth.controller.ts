@@ -1,49 +1,74 @@
-import { Body, Controller, Get, Headers, HttpCode, Post, Request, Response, UseGuards } from '@nestjs/common';
-import { ApiBody, ApiExcludeEndpoint } from '@nestjs/swagger';
+import {
+	Body,
+	Controller,
+	Get,
+	Headers,
+	HttpCode,
+	Post,
+	Request,
+	Response,
+	UseGuards,
+	UnauthorizedException,
+	HttpException
+} from '@nestjs/common';
+import { ApiBody, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { Response as Res, Request as Req } from 'express';
 import { AuthGuard } from '@nestjs/passport';
-import { UAParser } from 'ua-parser-js';
 
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens/tokens.service';
+import { TwoFactorService } from './2fa/2fa.service';
+
+import { Intra42AuthGuard } from './guards/42.guard';
+import { DiscordAuthGuard } from './guards/discord.guard';
+import { TwoFactorAuthGuard } from './guards/2fa.guard';
 
 import { SigninProperty } from './properties/signin.property';
 import { SignupProperty } from './properties/signup.property';
+import { TwoFactorProperty } from './properties/2fa.property';
 
-import { Intra42User, DiscordUser, UserFingerprint } from './types';
+import { Intra42User, DiscordUser, JwtPayload } from './types';
+import { getFingerprint } from '../utils';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-	constructor(private readonly authService: AuthService, private tokensService: TokensService) {}
+	constructor(
+		private readonly authService: AuthService,
+		private readonly tokensService: TokensService,
+		private readonly twoFactorService: TwoFactorService
+	) {}
 
-	private getPlatform(headers: Headers) {
-		const ua = new UAParser(headers['user-agent']);
-		const browser = ua.getBrowser().name;
-		const os = ua.getOS().name;
-		return `${browser} ${os}`;
-	}
-
-	private getFingerprint(req: Req, headers: Headers): UserFingerprint {
-		return {
-			platform: this.getPlatform(headers),
-			ua: headers['user-agent'],
-			ip: req.clientIp
-		};
-	}
-
+	/**
+	 * Sign in
+	 */
 	@UseGuards(AuthGuard('local'))
 	@ApiBody({ type: SigninProperty })
 	@HttpCode(200)
 	@Post('signin')
-	async function(@Request() req: Req, @Headers() headers: Headers, @Response({ passthrough: true }) res: Res) {
-		const fingerprint = this.getFingerprint(req, headers);
+	async function(
+		@Request() req: Req,
+		@Headers() headers: Headers,
+		@Response({ passthrough: true }) res: Res
+	) {
+		const user = req.user as JwtPayload;
+		const fingerprint = getFingerprint(req, headers);
 
-		const { access_token, refresh_token } = await this.authService.login.byPassword(req.user as any, fingerprint);
+		const ret = await this.authService.login.byPassword(user, fingerprint);
 
-		this.authService.cookie.create(res, { access_token });
-		this.authService.cookie.create(res, { refresh_token });
+		if (ret.interface === 'GeneratedTokens') {
+			const { access_token, refresh_token } = ret;
+			this.authService.cookie.create(res, { access_token });
+			this.authService.cookie.create(res, { refresh_token });
+		} else if (ret.interface === 'TwoFactorRequest') {
+			this.authService.cookie.create(res, { twofactor_token: ret.token });
+			res.sendStatus(202);
+		}
 	}
 
+	/**
+	 * Sign up
+	 */
 	@ApiBody({ type: SignupProperty })
 	@HttpCode(201)
 	@Post('signup')
@@ -51,6 +76,9 @@ export class AuthController {
 		await this.authService.user.create(params);
 	}
 
+	/**
+	 * Logout
+	 */
 	@UseGuards(AuthGuard('refresh'))
 	@HttpCode(200)
 	@Post('logout')
@@ -60,39 +88,29 @@ export class AuthController {
 		this.authService.cookie.delete(res, 'refresh_token');
 	}
 
-	@UseGuards(AuthGuard('refresh'))
-	@HttpCode(200)
-	@Get('whoami')
-	async whoami(@Request() req: Req) {
-		return await this.tokensService.user((req.user as any).id);
-	}
-
+	/**
+	 * Refresh tokens
+	 */
 	@UseGuards(AuthGuard('refresh'))
 	@Post('refresh')
 	async refresh(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
-		const { access_token, refresh_token } = await this.tokensService.update((req.user as any).id);
+		const { access_token, refresh_token } = await this.tokensService.update(
+			(req.user as any).id
+		);
 		this.authService.cookie.create(res, { access_token });
 		this.authService.cookie.create(res, { refresh_token });
 	}
 
-	async APIHandler(user: Intra42User | DiscordUser, api: string, http: { req: Req; headers: Headers; res: Res }) {
-		const fingerprint = this.getFingerprint(http.req, http.headers);
-		let tokens = await this.authService.login.byAPI(user, fingerprint);
-		if (!tokens) {
-			await this.authService.user.createFromAPI[api](user);
-			tokens = await this.authService.login.byAPI(user, fingerprint);
-		}
-		const { access_token, refresh_token } = tokens;
-		this.authService.cookie.create(http.res, { access_token });
-		this.authService.cookie.create(http.res, { refresh_token });
-	}
-
-	@UseGuards(AuthGuard('42'))
+	/**
+	 * API
+	 * 42
+	 */
+	@UseGuards(Intra42AuthGuard)
 	@Get('/oauth2/42')
 	intra42Auth() {}
 
 	@ApiExcludeEndpoint()
-	@UseGuards(AuthGuard('42'))
+	@UseGuards(Intra42AuthGuard)
 	@Get('/oauth2/42/callback')
 	async intra42AuthCallback(
 		@Request() req: Req,
@@ -100,20 +118,19 @@ export class AuthController {
 		@Response({ passthrough: true }) res: Res
 	) {
 		const user: Intra42User = req.user as any;
-		await this.APIHandler(user, 'intra42', {
-			req,
-			headers,
-			res
-		});
-		res.redirect('/api');
+		await this.authService.APIHandler(user, { req, headers, res });
 	}
 
-	@UseGuards(AuthGuard('discord'))
+	/**
+	 * API
+	 * Discord
+	 */
+	@UseGuards(DiscordAuthGuard)
 	@Get('/oauth2/discord')
 	discordAuth() {}
 
 	@ApiExcludeEndpoint()
-	@UseGuards(AuthGuard('discord'))
+	@UseGuards(DiscordAuthGuard)
 	@Get('/oauth2/discord/callback')
 	async discordAuthCallback(
 		@Request() req: Req,
@@ -121,12 +138,58 @@ export class AuthController {
 		@Response({ passthrough: true }) res: Res
 	) {
 		const user: DiscordUser = req.user as any;
-		await this.APIHandler(user, 'discord', {
-			req,
-			headers,
-			res
-		});
+		await this.authService.APIHandler(user, { req, headers, res });
+	}
 
-		res.redirect('/api');
+	/**
+	 * 2FA
+	 */
+	@UseGuards(AuthGuard('refresh'))
+	@HttpCode(202)
+	@Get('/2fa')
+	async twoFactorCreator(
+		@Request() req: Req,
+		@Headers() headers: Headers,
+		@Response({ passthrough: true }) res: Res
+	) {
+		const payload = req.user as JwtPayload;
+		const request = await this.authService.twoFactor.demand(payload);
+		this.authService.cookie.create(res, { twofactor_token: request.token });
+		return request.image;
+	}
+
+	@UseGuards(TwoFactorAuthGuard)
+	@ApiBody({ type: TwoFactorProperty })
+	@HttpCode(200)
+	@Post('/2fa')
+	async twoFactorAuth(
+		@Request() req: Req,
+		@Headers() headers: Headers,
+		@Response({ passthrough: true }) res: Res
+	) {
+		const uuid = (req.user as any).uuid;
+		const body = req.body as any;
+		const code = body.code ? body.code : '';
+		if (await this.twoFactorService.verify.code(uuid, code)) {
+			const fingerprint = getFingerprint(req, headers);
+			const tokens = await this.authService.twoFactor.login(uuid, fingerprint);
+			const { access_token, refresh_token } = tokens;
+			this.authService.cookie.delete(res, 'twofactor_token');
+			this.authService.cookie.create(res, { access_token });
+			this.authService.cookie.create(res, { refresh_token });
+		} else {
+			throw new HttpException('Code is invalid', 417);
+		}
+	}
+
+	/**
+	 * Front helper
+	 */
+	@UseGuards(AuthGuard('access'))
+	@HttpCode(200)
+	@Get('whoami')
+	async whoami(@Request() req: Req) {
+		const user = req.user as any;
+		return await this.tokensService.user(user.id);
 	}
 }

@@ -1,15 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-import { LoginMethod } from '../types';
-
 @Entity()
 export class UsersInfos {
 	@PrimaryGeneratedColumn('uuid')
 	uuid: string;
-
-	@Column()
-	account_type: LoginMethod;
 
 	@Column()
 	identifier: number;
@@ -25,6 +20,9 @@ export class UsersInfos {
 	@ApiProperty()
 	@Column({ nullable: true })
 	password: string;
+
+	@Column({ nullable: true })
+	twofactor: string;
 
 	@ApiProperty()
 	@Column({ nullable: true })

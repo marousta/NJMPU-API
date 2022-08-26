@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Request } from 'express';
 import { Strategy, ExtractJwt } from 'passport-jwt';
+import { Request } from 'express';
 import { readFileSync } from 'fs';
 
 import { TokensService } from '../tokens/tokens.service';
@@ -17,7 +17,9 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
 				}
 			]),
 			ignoreExpiration: false,
-			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), { encoding: 'ascii' }),
+			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
+				encoding: 'ascii'
+			}),
 			algorithms: 'RS256',
 			passReqToCallback: true
 		});

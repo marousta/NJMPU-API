@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 
-import { PictureService } from './picture.service';
+import { PicturesService } from './pictures.service';
 
 @Module({
 	imports: [
@@ -9,6 +9,6 @@ import { PictureService } from './picture.service';
 			timeout: 3000
 		})
 	],
-	providers: [PictureService]
+	providers: [PicturesService]
 })
-export class PictureModule {}
+export class PicturesModule {}

@@ -11,8 +11,6 @@ export class UsersService extends TypeOrmCrudService<UsersInfos> {
 		super(repo);
 	}
 
-	private reservedIdentifier = [42, 69];
-
 	private genIdentifier(exclude: number[]): number | null {
 		const randomEntry = (array: number[]): number => {
 			const randomIndex = Math.floor(Math.random() * array.length);
@@ -27,9 +25,7 @@ export class UsersService extends TypeOrmCrudService<UsersInfos> {
 			return arr;
 		};
 
-		const excludedIdentifier = [...this.reservedIdentifier, ...exclude];
-
-		const filtered = genArray().filter((i) => !excludedIdentifier.includes(i));
+		const filtered = genArray().filter((i) => !exclude.includes(i));
 		if (filtered.length) {
 			return randomEntry(filtered);
 		}

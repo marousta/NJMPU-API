@@ -4,6 +4,7 @@ import * as cookieParser from 'cookie-parser';
 import * as requestIp from 'request-ip';
 
 import { AppModule } from './app.module';
+
 import { colors } from './types';
 
 class ValidateEnv {
@@ -87,7 +88,7 @@ async function bootstrap() {
 	const config = new DocumentBuilder()
 		.setTitle('NEW SHINJI MEGA PONG ULTIMATE API')
 		.setDescription('API reference sheet')
-		.setVersion('0.1')
+		.setVersion('0.2.3')
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('/api', app, document);

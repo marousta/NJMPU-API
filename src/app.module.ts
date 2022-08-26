@@ -2,19 +2,19 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
+import { HttpModule } from '@nestjs/axios';
 
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { PictureModule } from './picture/picture.module';
+import { PicturesModule } from './pictures/pictures.module';
 
 import { AppController } from './app.controller';
 
-import { PictureService } from './picture/picture.service';
-import { HttpModule } from '@nestjs/axios';
+import { PicturesService } from './pictures/pictures.service';
 
 @Module({
 	imports: [
-		PictureModule,
+		PicturesModule,
 		HttpModule,
 		ConfigModule.forRoot({
 			isGlobal: true
@@ -39,6 +39,6 @@ import { HttpModule } from '@nestjs/axios';
 		AuthModule
 	],
 	controllers: [AppController],
-	providers: [PictureService]
+	providers: [PicturesService]
 })
 export class AppModule {}

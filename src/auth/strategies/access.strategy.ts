@@ -17,7 +17,9 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 				}
 			]),
 			ignoreExpiration: false,
-			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), { encoding: 'ascii' }),
+			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
+				encoding: 'ascii'
+			}),
 			algorithms: 'RS256',
 			passReqToCallback: true
 		});

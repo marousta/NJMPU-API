@@ -21,12 +21,13 @@ export interface JwtPayload extends PartialUsersInfos {
 }
 
 export interface GeneratedTokens {
+	interface: 'GeneratedTokens';
 	access_token: string;
 	refresh_token: string;
 }
 
 export interface Intra42User {
-	interface: 'intra42';
+	interface: 'Intra42User';
 	id: string;
 	username: string;
 	displayName: string;
@@ -42,7 +43,7 @@ export interface Intra42User {
 }
 
 export interface DiscordUser {
-	interface: 'discord';
+	interface: 'DiscordUser';
 	id: string;
 	username: string;
 	avatar: string;
@@ -60,4 +61,11 @@ export interface DiscordUser {
 	provider: string;
 	accessToken: string;
 	fetchedAt: Date;
+}
+
+export interface TwoFactorRequest {
+	interface: 'TwoFactorRequest';
+	uuid: string;
+	token: string;
+	image?: string;
 }

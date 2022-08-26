@@ -1,10 +1,16 @@
-import { Injectable, UnauthorizedException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+	Injectable,
+	UnauthorizedException,
+	BadRequestException,
+	InternalServerErrorException,
+	NotFoundException
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TypeOrmCrudService } from '@nestjsx/crud-typeorm';
 import { Repository } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { ConfigService } from '@nestjs/config';
 import { readFileSync } from 'fs';
 
 import { UsersTokens } from './tokens.entity';
@@ -26,7 +32,9 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 	private accessToken(payload: { id: number; uuid: string }): string {
 		return this.jwtService.sign(payload, {
 			algorithm: 'RS256',
-			privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), { encoding: 'ascii' }),
+			privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
+				encoding: 'ascii'
+			}),
 			expiresIn: '10m'
 		});
 	}
@@ -36,7 +44,9 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 			{ id },
 			{
 				algorithm: 'RS256',
-				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), { encoding: 'ascii' }),
+				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
+					encoding: 'ascii'
+				}),
 				expiresIn: '3d'
 			}
 		);
@@ -47,7 +57,11 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 			.createQueryBuilder('token')
 			.leftJoinAndSelect('token.player', 'users_infos')
 			.whereInIds(id)
-			.getOneOrFail();
+			.getOneOrFail()
+			.catch((e) => {
+				console.error(e);
+				throw new NotFoundException();
+			});
 		const user = token.player as unknown as UsersInfos;
 		return user;
 	}
@@ -64,7 +78,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 				access_token_hash: await this.hash(access_token),
 				refresh_token_hash: await this.hash(refresh_token)
 			});
-			return { access_token, refresh_token };
+			return { interface: 'GeneratedTokens', access_token, refresh_token };
 		} catch (e) {
 			console.error(e);
 			throw new UnauthorizedException();
@@ -72,32 +86,37 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 	}
 
 	async delete(id: number) {
-		try {
-			await this.tokensRepository.save({
+		await this.tokensRepository
+			.save({
 				id,
 				access_token_hash: null,
 				refresh_token_hash: null,
 				ua_hash: null,
 				ip_hash: null
+			})
+			.catch((e) => {
+				console.error(e);
+				throw new BadRequestException();
 			});
-		} catch (e) {
-			console.error(e);
-			throw new BadRequestException();
-		}
 	}
 
-	async validate(id: number, token: { access_token: string } | { refresh_token: string }, ua: string, ip: string) {
+	async validate(
+		id: number,
+		token: { access_token: string } | { refresh_token: string },
+		ua: string,
+		ip: string
+	) {
 		const token_type = Object.keys(token)[0];
 
-		let user_token: UsersTokens | null = null;
-		try {
-			user_token = await this.tokensRepository.findOneByOrFail({ id });
-		} catch (e) {
+		const user_token = await this.tokensRepository.findOneByOrFail({ id }).catch((e) => {
 			console.error(e);
 			throw new UnauthorizedException();
-		}
+		});
 
-		const token_verif = await argon2.verify(user_token[token_type + '_hash'], Object.values(token)[0]);
+		const token_verif = await argon2.verify(
+			user_token[token_type + '_hash'],
+			Object.values(token)[0]
+		);
 		const ua_verif = await argon2.verify(user_token.ua_hash, ua);
 		const ip_verif = await argon2.verify(user_token.ip_hash, ip);
 
@@ -131,14 +150,12 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 			ip_hash: await this.hash(payload.fingerprint.ip)
 		});
 
-		try {
-			await this.tokensRepository.save(newTokens);
-		} catch (e) {
+		await this.tokensRepository.save(newTokens).catch((e) => {
 			console.error(e);
 			throw new InternalServerErrorException();
-		}
+		});
 
-		return { access_token, refresh_token };
+		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
 
 	async user(id: number): Promise<PartialUsersInfos> {

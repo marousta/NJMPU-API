@@ -7,9 +7,3 @@ export const colors = {
 	pink: '\x1b[35m',
 	end: '\x1b[0m'
 };
-
-export enum LoginMethod {
-	password,
-	intra42,
-	discord
-}

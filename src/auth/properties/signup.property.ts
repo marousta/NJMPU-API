@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 
 export class SignupProperty {
 	@ApiProperty()
@@ -12,4 +12,7 @@ export class SignupProperty {
 
 	@ApiProperty()
 	confirm: string;
+
+	@ApiHideProperty()
+	profile_picture: string;
 }

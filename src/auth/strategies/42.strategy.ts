@@ -16,6 +16,6 @@ export class Intra42Strategy extends PassportStrategy(Strategy, '42') {
 	}
 
 	async validate(access_token: string, refresh_token: string, user: Intra42User) {
-		return user;
+		return { interface: 'intra42', ...user };
 	}
 }
