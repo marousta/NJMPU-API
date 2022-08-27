@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
@@ -9,7 +9,11 @@ import { TwoFactorService } from '../2fa/2fa.service';
 
 @Injectable()
 export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
-	constructor(private configService: ConfigService, private twoFactorService: TwoFactorService) {
+	private readonly logger = new Logger(TwoFactorStrategy.name);
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly twoFactorService: TwoFactorService
+	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				(req: Request) => {
@@ -35,6 +39,7 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
 		) {
 			return payload;
 		} else {
+			this.logger.verbose('Invalid 2FA JWT');
 			throw new ForbiddenException();
 		}
 	}

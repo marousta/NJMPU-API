@@ -1,4 +1,4 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import { InternalServerErrorException, Logger } from '@nestjs/common';
 import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
 
@@ -34,7 +34,7 @@ export function getPartialUser(user: Intra42User | DiscordUser): PartialUsersInf
 				profile_picture: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}?size=256`
 			};
 		default:
-			console.error('unknow user type');
+			new Logger('getPartialUser').error('unknown user type ', user);
 			throw new InternalServerErrorException();
 	}
 }

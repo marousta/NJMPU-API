@@ -6,7 +6,7 @@ import { createHash } from 'crypto';
 
 @Injectable()
 export class PicturesService {
-	constructor(private httpService: HttpService) {}
+	constructor(private readonly httpService: HttpService) {}
 
 	private parseContentType(type: string) {
 		if (!type || !type.includes('image')) {

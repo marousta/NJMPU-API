@@ -29,6 +29,9 @@ import { TwoFactorProperty } from './properties/2fa.property';
 
 import { Intra42User, DiscordUser, JwtPayload } from './types';
 import { getFingerprint } from '../utils';
+import { AccessAuthGuard } from './guards/access.guard';
+import { RefreshAuthGuard } from './guards/refresh.guard';
+import { LocalAuthGuard } from './guards/local.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -42,7 +45,7 @@ export class AuthController {
 	/**
 	 * Sign in
 	 */
-	@UseGuards(AuthGuard('local'))
+	@UseGuards(LocalAuthGuard)
 	@ApiBody({ type: SigninProperty })
 	@HttpCode(200)
 	@Post('signin')
@@ -79,7 +82,7 @@ export class AuthController {
 	/**
 	 * Logout
 	 */
-	@UseGuards(AuthGuard('refresh'))
+	@UseGuards(RefreshAuthGuard)
 	@HttpCode(200)
 	@Post('logout')
 	async logoutLocal(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
@@ -91,7 +94,7 @@ export class AuthController {
 	/**
 	 * Refresh tokens
 	 */
-	@UseGuards(AuthGuard('refresh'))
+	@UseGuards(RefreshAuthGuard)
 	@Post('refresh')
 	async refresh(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
 		const { access_token, refresh_token } = await this.tokensService.update(
@@ -144,7 +147,7 @@ export class AuthController {
 	/**
 	 * 2FA
 	 */
-	@UseGuards(AuthGuard('refresh'))
+	@UseGuards(RefreshAuthGuard)
 	@HttpCode(202)
 	@Get('/2fa')
 	async twoFactorCreator(
@@ -158,7 +161,7 @@ export class AuthController {
 		return request.image;
 	}
 
-	@UseGuards(TwoFactorAuthGuard)
+	@UseGuards(AccessAuthGuard, TwoFactorAuthGuard)
 	@ApiBody({ type: TwoFactorProperty })
 	@HttpCode(200)
 	@Post('/2fa')

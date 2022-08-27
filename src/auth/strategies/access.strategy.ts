@@ -9,7 +9,10 @@ import { TokensService } from '../tokens/tokens.service';
 
 @Injectable()
 export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
-	constructor(private configService: ConfigService, private tokenService: TokensService) {
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly tokenService: TokensService
+	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				(req: Request) => {

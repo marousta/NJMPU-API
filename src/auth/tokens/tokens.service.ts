@@ -3,7 +3,8 @@ import {
 	UnauthorizedException,
 	BadRequestException,
 	InternalServerErrorException,
-	NotFoundException
+	NotFoundException,
+	Logger
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -20,11 +21,12 @@ import { GeneratedTokens, JwtPayload, PartialUsersInfos } from '../types';
 
 @Injectable()
 export class TokensService extends TypeOrmCrudService<UsersTokens> {
+	private readonly logger = new Logger(TokensService.name);
 	constructor(
-		private configService: ConfigService,
+		private readonly configService: ConfigService,
 		@InjectRepository(UsersTokens)
-		private tokensRepository: Repository<UsersTokens>,
-		private jwtService: JwtService
+		private readonly tokensRepository: Repository<UsersTokens>,
+		private readonly jwtService: JwtService
 	) {
 		super(tokensRepository);
 	}
@@ -59,30 +61,31 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 			.whereInIds(id)
 			.getOneOrFail()
 			.catch((e) => {
-				console.error(e);
-				throw new NotFoundException();
+				this.logger.error('Failed to fetch token', e);
+				throw new UnauthorizedException();
 			});
 		const user = token.player as unknown as UsersInfos;
 		return user;
 	}
 
 	async update(id: number): Promise<GeneratedTokens> {
-		try {
-			const user = await this.getUser(id);
+		const user = await this.getUser(id);
 
-			const access_token = this.accessToken({ id, uuid: user.uuid });
-			const refresh_token = this.refreshToken(id);
+		const access_token = this.accessToken({ id, uuid: user.uuid });
+		const refresh_token = this.refreshToken(id);
 
-			await this.tokensRepository.save({
+		await this.tokensRepository
+			.save({
 				id,
 				access_token_hash: await this.hash(access_token),
 				refresh_token_hash: await this.hash(refresh_token)
+			})
+			.catch((e) => {
+				this.logger.error('Unable to update token', e);
+				throw new UnauthorizedException();
 			});
-			return { interface: 'GeneratedTokens', access_token, refresh_token };
-		} catch (e) {
-			console.error(e);
-			throw new UnauthorizedException();
-		}
+		this.logger.debug('Token refreshed for user ' + user.uuid);
+		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
 
 	async delete(id: number) {
@@ -95,9 +98,10 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 				ip_hash: null
 			})
 			.catch((e) => {
-				console.error(e);
+				this.logger.error('Failed to delete token', e);
 				throw new BadRequestException();
 			});
+		this.logger.debug('Token destroyed ' + id);
 	}
 
 	async validate(
@@ -109,7 +113,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		const token_type = Object.keys(token)[0];
 
 		const user_token = await this.tokensRepository.findOneByOrFail({ id }).catch((e) => {
-			console.error(e);
+			this.logger.verbose('Token not found', e);
 			throw new UnauthorizedException();
 		});
 
@@ -121,6 +125,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		const ip_verif = await argon2.verify(user_token.ip_hash, ip);
 
 		if (!token_verif || !ua_verif || !ip_verif) {
+			this.logger.verbose('Token is not trusted');
 			throw new UnauthorizedException();
 		}
 	}
@@ -151,10 +156,11 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		});
 
 		await this.tokensRepository.save(newTokens).catch((e) => {
-			console.error(e);
+			this.logger.error('Failed to insert token', e);
 			throw new InternalServerErrorException();
 		});
 
+		this.logger.debug('User as sign in ' + payload.uuid);
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
 

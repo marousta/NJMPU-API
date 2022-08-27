@@ -7,7 +7,7 @@ import { DiscordUser } from '../types';
 
 @Injectable()
 export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
-	constructor(private configService: ConfigService) {
+	constructor(private readonly configService: ConfigService) {
 		super({
 			clientID: configService.get<string>('DISCORD_ID'),
 			clientSecret: configService.get<string>('DISCORD_SECRET'),
@@ -17,6 +17,6 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
 	}
 
 	async validate(access_token: string, refresh_token: string, user: DiscordUser) {
-		return { interface: 'discord', ...user };
+		return { interface: 'DiscordUser', ...user };
 	}
 }

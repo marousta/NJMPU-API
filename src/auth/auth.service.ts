@@ -3,7 +3,7 @@ import {
 	Injectable,
 	InternalServerErrorException,
 	UnauthorizedException,
-	NotFoundException
+	Logger
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
@@ -33,8 +33,9 @@ import { getPartialUser, isEmpty, getFingerprint } from '../utils';
 
 @Injectable()
 export class AuthService {
+	private readonly logger = new Logger(AuthService.name);
 	constructor(
-		private configService: ConfigService,
+		private readonly configService: ConfigService,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly usersService: UsersService,
@@ -45,11 +46,13 @@ export class AuthService {
 
 	async validateUser(email: string, password: string): Promise<UsersInfos> {
 		const user = await this.usersRepository.findOneByOrFail({ email }).catch((e) => {
+			this.logger.verbose('No user with email ' + email);
 			throw new UnauthorizedException();
 		});
 
 		const verif = await argon2.verify(user.password, password);
 		if (!verif) {
+			this.logger.verbose('Failed to verify password');
 			throw new UnauthorizedException();
 		}
 		return user;
@@ -63,7 +66,7 @@ export class AuthService {
 			const user = await this.usersRepository
 				.findOneByOrFail({ uuid: payload.uuid })
 				.catch((e) => {
-					console.error(e);
+					this.logger.error('Failed to fetch user for password compare', e);
 					throw new InternalServerErrorException();
 				});
 
@@ -82,23 +85,27 @@ export class AuthService {
 		): Promise<GeneratedTokens | TwoFactorRequest> => {
 			const parital_user = getPartialUser(user);
 
-			try {
-				const exist = await this.usersRepository.findOneByOrFail({
+			const exist = await this.usersRepository
+				.findOneByOrFail({
 					email: parital_user.email
+				})
+				.catch((e) => {
+					this.logger.verbose('No user with email ' + parital_user.email);
+					return null;
 				});
 
-				if (exist.twofactor) {
-					return await this.twoFactorService.demand(exist);
-				}
-
-				return await this.tokensService.create({
-					uuid: exist.uuid,
-					fingerprint
-				});
-			} catch (e) {
-				console.error(e);
+			if (!exist) {
 				return null;
 			}
+
+			if (exist.twofactor) {
+				return await this.twoFactorService.demand(exist);
+			}
+
+			return await this.tokensService.create({
+				uuid: exist.uuid,
+				fingerprint
+			});
 		}
 	};
 
@@ -127,10 +134,11 @@ export class AuthService {
 			});
 		},
 		delete: (res: Response, name: string) => {
-			res.cookie(name, null, {
+			res.cookie(name, '', {
 				domain: this.configService.get<string>('DOMAIN'),
 				sameSite: 'strict',
-				httpOnly: true
+				httpOnly: true,
+				expires: new Date()
 			});
 		}
 	};
@@ -161,24 +169,26 @@ export class AuthService {
 				if (/email|exists/.test(e.detail)) {
 					throw new BadRequestException('Email address already in use');
 				} else {
-					console.error(e);
+					this.logger.error('Failed to insert user', e);
 					throw new BadRequestException();
 				}
 			});
+			this.logger.debug('User created ' + new_user.uuid);
 
 			if (params.profile_picture) {
 				const hash = createHash('sha1').update(created_user.uuid).digest('hex');
 				const profile_picture: string | null = await this.pictureService
 					.download(hash, params.profile_picture)
 					.catch((e) => {
-						console.error(e);
+						this.logger.error('Profile picture download failed', e);
 						return null;
 					});
 
 				await this.usersRepository.save({ ...new_user, profile_picture }).catch((e) => {
-					console.error(e);
+					this.logger.error('Failed to update user profile picture', e);
 					throw new BadRequestException();
 				});
+				this.logger.debug('User profile picture set for ' + new_user.uuid);
 			}
 		},
 		disconnect: async (user: any) => {
@@ -196,10 +206,10 @@ export class AuthService {
 
 		if (!ret) {
 			const partial_user = getPartialUser(user);
+
 			http.res.redirect(
-				`/#/postsignup/with/${partial_user.username}/${partial_user.email}/${partial_user.profile_picture}`
+				`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&profile_picture=${partial_user.profile_picture}`
 			);
-			return;
 		} else if (ret.interface === 'TwoFactorRequest') {
 			this.cookie.create(http.res, { twofactor_token: ret.token });
 
@@ -218,17 +228,20 @@ export class AuthService {
 			const user = await this.usersRepository
 				.findOneByOrFail({ uuid: payload.uuid })
 				.catch((e) => {
-					console.error(e);
-					throw new NotFoundException();
+					this.logger.verbose('User not found ' + payload.uuid);
+					throw new UnauthorizedException();
 				});
 
 			if (user.twofactor) {
-				throw new BadRequestException();
+				this.logger.verbose('User already have 2FA enabled ' + payload.uuid);
+				throw new BadRequestException('2FA already set');
 			}
 
 			return await this.twoFactorService.demand(user);
 		},
 		login: async (request_uuid: string, fingerprint: UserFingerprint) => {
+			this.logger.debug('2FA request is valid ' + request_uuid);
+
 			let user = await this.twoFactorService.user(request_uuid);
 			await this.twoFactorService.delete(request_uuid);
 			return await this.tokensService.create({

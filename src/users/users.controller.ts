@@ -32,12 +32,13 @@ import { UsersInfos } from './users.entity';
 	}
 })
 @UseInterceptors(
+	// TODO
 	class temp {
 		constructor() {}
 		intercept(ctx: ExecutionContext, next: CallHandler) {
 			return next.handle().pipe(
 				map((data) => {
-					return data.map((json) => {
+					return data?.map((json) => {
 						const { account_type, password, twofactor, ...rest } = json;
 						return { ...rest, twofactor: json.twofactor ? true : false };
 					});
@@ -48,5 +49,5 @@ import { UsersInfos } from './users.entity';
 )
 @Controller('users')
 export class UsersController implements CrudController<UsersInfos> {
-	constructor(public service: UsersService) {}
+	constructor(public readonly service: UsersService) {}
 }

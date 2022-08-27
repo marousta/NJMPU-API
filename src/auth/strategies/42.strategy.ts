@@ -7,7 +7,7 @@ import { Intra42User } from '../types';
 
 @Injectable()
 export class Intra42Strategy extends PassportStrategy(Strategy, '42') {
-	constructor(private configService: ConfigService) {
+	constructor(private readonly configService: ConfigService) {
 		super({
 			clientID: configService.get<string>('INTRA42_ID'),
 			clientSecret: configService.get<string>('INTRA42_SECRET'),
@@ -16,6 +16,6 @@ export class Intra42Strategy extends PassportStrategy(Strategy, '42') {
 	}
 
 	async validate(access_token: string, refresh_token: string, user: Intra42User) {
-		return { interface: 'intra42', ...user };
+		return { interface: 'Intra42User', ...user };
 	}
 }

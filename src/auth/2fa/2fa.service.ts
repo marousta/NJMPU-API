@@ -1,6 +1,7 @@
 import {
 	Injectable,
 	InternalServerErrorException,
+	Logger,
 	NotFoundException,
 	UnauthorizedException
 } from '@nestjs/common';
@@ -21,31 +22,15 @@ import { TwoFactorRequest } from '../types';
 
 @Injectable()
 export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
+	private readonly logger = new Logger(TwoFactorService.name);
 	constructor(
 		@InjectRepository(UsersTwofactorReq) repo: Repository<UsersTwofactorReq>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
-		private configService: ConfigService,
-		private jwtService: JwtService
+		private readonly configService: ConfigService,
+		private readonly jwtService: JwtService
 	) {
 		super(repo);
-	}
-
-	private async request(uuid: string) {
-		return await this.repo
-			.createQueryBuilder('request')
-			.leftJoinAndSelect('request.player', 'users_infos')
-			.whereInIds(uuid)
-			.getOneOrFail()
-			.catch((e) => {
-				console.error(e);
-				throw new NotFoundException();
-			});
-	}
-
-	async user(uuid: string) {
-		const request = await this.request(uuid);
-		return request.player as unknown as UsersInfos;
 	}
 
 	twoFactorToken(uuid: string): string {
@@ -61,28 +46,66 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 		);
 	}
 
-	private async requestCreator(uuid: string, secret?: string): Promise<TwoFactorRequest> {
-		const new_request = this.repo.create({
-			player: uuid,
-			secret
-		});
-		const request = await this.repo.save(new_request).catch((e) => {
-			console.error(e);
-			throw new InternalServerErrorException();
-		});
+	private async request(uuid: string) {
+		return await this.repo
+			.createQueryBuilder('request')
+			.leftJoinAndSelect('request.player', 'users_infos')
+			.where({ uuid })
+			.getOneOrFail()
+			.catch((e) => {
+				this.logger.verbose("2FA request doesn't exist " + uuid);
+				throw new NotFoundException();
+			});
+	}
+
+	async user(uuid: string) {
+		const request = await this.request(uuid);
+		return request.player as unknown as UsersInfos;
+	}
+
+	private async saveToken(request: UsersTwofactorReq): Promise<string> {
 		const token = this.twoFactorToken(request.uuid);
 		await this.repo
 			.save({
 				...request,
-				token: await argon2.hash(token, {
+				token_hash: await argon2.hash(token, {
 					timeCost: 11,
 					saltLength: 128
 				})
 			})
 			.catch((e) => {
-				console.error(e);
+				this.logger.error('Could not insert token', e.detail);
 				throw new InternalServerErrorException();
 			});
+		return token;
+	}
+
+	private async requestCreator(uuid: string, secret?: string): Promise<TwoFactorRequest> {
+		const exist = await this.repo
+			.createQueryBuilder('request')
+			.leftJoinAndSelect('request.player', 'users_infos')
+			.where({ player: uuid })
+			.getMany()
+			.catch((e) => {
+				this.logger.error('Could not fetch existing request ' + uuid, e.detail);
+				throw new InternalServerErrorException();
+			});
+
+		if (exist) {
+			for (const request of exist) {
+				await this.repo.delete(request);
+				this.logger.debug('Deleted 2FA request ' + request.uuid);
+			}
+		}
+		const new_request = this.repo.create({
+			player: uuid,
+			secret
+		});
+		const request = await this.repo.save(new_request).catch((e) => {
+			this.logger.error('Could not insert request', e.detail);
+			throw new InternalServerErrorException();
+		});
+		const token = await this.saveToken(request);
 		return { interface: 'TwoFactorRequest', uuid: request.uuid, token };
 	}
 
@@ -95,12 +118,13 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 		const qr = await QRCode.toDataURL(token.uri);
 
 		const request = await this.requestCreator(user.uuid, token.secret);
+		this.logger.debug('Created 2FA request ' + request.uuid);
 		return { ...request, image: qr };
 	}
 
 	async delete(uuid: string) {
 		await this.repo.delete({ uuid }).catch((e) => {
-			console.error(e);
+			this.logger.error('Could not delete request  ' + uuid, e.detail);
 			throw new InternalServerErrorException();
 		});
 	}
@@ -117,7 +141,7 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 	public readonly verify = {
 		token: async (payload: { uuid: string; token: string }) => {
 			const request = await this.repo.findOneByOrFail({ uuid: payload.uuid }).catch((e) => {
-				console.error(e);
+				this.logger.verbose('Request not found ' + payload.uuid);
 				throw new UnauthorizedException();
 			});
 
@@ -134,9 +158,13 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 						twofactor: request.secret
 					});
 					await this.usersRepository.save(update).catch((e) => {
-						console.error(e);
+						this.logger.error(
+							'Could not update secret token for user ' + update.uuid,
+							e
+						);
 						throw new InternalServerErrorException();
 					});
+					this.logger.debug('2FA set for user ' + user.uuid);
 					return true;
 				} else {
 					return false;
