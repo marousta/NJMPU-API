@@ -11,7 +11,7 @@ import {
 	UnauthorizedException,
 	HttpException
 } from '@nestjs/common';
-import { ApiBody, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExcludeEndpoint, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response as Res, Request as Req } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -47,6 +47,10 @@ export class AuthController {
 	 */
 	@UseGuards(LocalAuthGuard)
 	@ApiBody({ type: SigninProperty })
+	@ApiResponse({ status: 200, description: 'User logged in' })
+	@ApiResponse({ status: 202, description: 'User as 2FA' })
+	@ApiResponse({ status: 400, description: 'Missing credentials' })
+	@ApiResponse({ status: 401, description: 'Invalid credentials' })
 	@HttpCode(200)
 	@Post('signin')
 	async function(
@@ -73,6 +77,9 @@ export class AuthController {
 	 * Sign up
 	 */
 	@ApiBody({ type: SignupProperty })
+	@ApiResponse({ status: 201, description: 'User created' })
+	@ApiResponse({ status: 400, description: 'Missing fields' })
+	@ApiResponse({ status: 400, description: 'Email already taken' })
 	@HttpCode(201)
 	@Post('signup')
 	async registerLocal(@Body() params: SignupProperty) {
@@ -83,6 +90,7 @@ export class AuthController {
 	 * Logout
 	 */
 	@UseGuards(RefreshAuthGuard)
+	@ApiResponse({ status: 200, description: 'Tokens destroyed' })
 	@HttpCode(200)
 	@Post('logout')
 	async logoutLocal(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
@@ -95,6 +103,9 @@ export class AuthController {
 	 * Refresh tokens
 	 */
 	@UseGuards(RefreshAuthGuard)
+	@ApiResponse({ status: 200, description: 'Tokens refreshed' })
+	@ApiResponse({ status: 401, description: 'Tokens expired or invalid' })
+	@HttpCode(200)
 	@Post('refresh')
 	async refresh(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
 		const { access_token, refresh_token } = await this.tokensService.update(
@@ -109,6 +120,7 @@ export class AuthController {
 	 * 42
 	 */
 	@UseGuards(Intra42AuthGuard)
+	@ApiResponse({ status: 308, description: 'Redirect to 42 login page' })
 	@Get('/oauth2/42')
 	intra42Auth() {}
 
@@ -129,6 +141,7 @@ export class AuthController {
 	 * Discord
 	 */
 	@UseGuards(DiscordAuthGuard)
+	@ApiResponse({ status: 308, description: 'Redirect to Discord login page' })
 	@Get('/oauth2/discord')
 	discordAuth() {}
 
@@ -148,6 +161,12 @@ export class AuthController {
 	 * 2FA
 	 */
 	@UseGuards(RefreshAuthGuard)
+	@ApiResponse({
+		status: 202,
+		description: 'Create a 2FA request and return QRCode image in base64'
+	})
+	@ApiResponse({ status: 401, description: 'User not logged in' })
+	@ApiResponse({ status: 403, description: '2FA already set' })
 	@HttpCode(202)
 	@Get('/2fa')
 	async twoFactorCreator(
@@ -163,6 +182,9 @@ export class AuthController {
 
 	@UseGuards(TwoFactorAuthGuard)
 	@ApiBody({ type: TwoFactorProperty })
+	@ApiResponse({ status: 200, description: '2FA code is valid' })
+	@ApiResponse({ status: 403, description: 'No ongoing 2FA request' })
+	@ApiResponse({ status: 417, description: '2FA code is invalid' })
 	@HttpCode(200)
 	@Post('/2fa')
 	async twoFactorAuth(
@@ -189,6 +211,8 @@ export class AuthController {
 	 * Front helper
 	 */
 	@UseGuards(AuthGuard('access'))
+	@ApiResponse({ status: 200, description: 'User filtered infos' })
+	@ApiResponse({ status: 401, description: 'User not logged in' })
 	@HttpCode(200)
 	@Get('whoami')
 	async whoami(@Request() req: Req) {

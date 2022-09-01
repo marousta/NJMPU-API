@@ -88,7 +88,7 @@ async function bootstrap() {
 	const config = new DocumentBuilder()
 		.setTitle('NEW SHINJI MEGA PONG ULTIMATE API')
 		.setDescription('API reference sheet')
-		.setVersion('0.2.3')
+		.setVersion('0.2.5')
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('/api', app, document);
