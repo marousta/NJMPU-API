@@ -1,8 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { HttpModule } from '@nestjs/axios';
+import { HelmetMiddleware } from '@nest-middleware-collection/helmet';
+
+import { ResponseTimeMiddleware } from './time.middleware';
 
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -41,4 +44,9 @@ import { PicturesService } from './pictures/pictures.service';
 	controllers: [AppController],
 	providers: [PicturesService]
 })
-export class AppModule {}
+export class AppModule {
+	configure(consumer: MiddlewareConsumer) {
+		consumer.apply(HelmetMiddleware).forRoutes('*');
+		consumer.apply(ResponseTimeMiddleware).forRoutes('*');
+	}
+}

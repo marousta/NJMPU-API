@@ -1,6 +1,11 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Get, Request } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller()
 export class AppController {
-	constructor() {}
+	@ApiTags('stats')
+	@Get('stats')
+	stats(@Request() req) {
+		return req.times;
+	}
 }

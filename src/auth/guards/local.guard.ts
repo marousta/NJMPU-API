@@ -4,7 +4,6 @@ import { AuthGuard } from '@nestjs/passport';
 @Injectable()
 export class LocalAuthGuard extends AuthGuard('local') {
 	handleRequest(err: any, user: any, info: any, context: any, status: any) {
-		console.log(err, user, info, context, status);
 		if (err || !user) {
 			switch (status) {
 				case 400:
