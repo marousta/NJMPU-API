@@ -8,9 +8,9 @@ export class UsersTokens {
 	id: number;
 
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
-		onDelete: 'CASCADE'
+		onDelete: 'CASCADE',
+		nullable: false
 	})
-	@JoinColumn()
 	player: string;
 
 	@Column()

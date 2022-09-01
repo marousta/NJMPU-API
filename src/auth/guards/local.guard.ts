@@ -1,14 +1,17 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
 export class LocalAuthGuard extends AuthGuard('local') {
-	private readonly logger = new Logger(LocalAuthGuard.name);
-
 	handleRequest(err: any, user: any, info: any, context: any, status: any) {
+		console.log(err, user, info, context, status);
 		if (err || !user) {
-			this.logger.verbose('Missing credentials');
-			throw new BadRequestException('Missing credentials');
+			switch (status) {
+				case 400:
+					throw new BadRequestException(info.message);
+				default:
+					throw new UnauthorizedException();
+			}
 		}
 		return user;
 	}

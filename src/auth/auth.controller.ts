@@ -19,9 +19,12 @@ import { AuthService } from './auth.service';
 import { TokensService } from './tokens/tokens.service';
 import { TwoFactorService } from './2fa/2fa.service';
 
+import { LocalAuthGuard } from './guards/local.guard';
+import { AccessAuthGuard } from './guards/access.guard';
+import { RefreshAuthGuard } from './guards/refresh.guard';
+import { TwoFactorAuthGuard } from './guards/2fa.guard';
 import { Intra42AuthGuard } from './guards/42.guard';
 import { DiscordAuthGuard } from './guards/discord.guard';
-import { TwoFactorAuthGuard } from './guards/2fa.guard';
 
 import { SigninProperty } from './properties/signin.property';
 import { SignupProperty } from './properties/signup.property';
@@ -29,9 +32,6 @@ import { TwoFactorProperty } from './properties/2fa.property';
 
 import { Intra42User, DiscordUser, JwtPayload } from './types';
 import { getFingerprint } from '../utils';
-import { AccessAuthGuard } from './guards/access.guard';
-import { RefreshAuthGuard } from './guards/refresh.guard';
-import { LocalAuthGuard } from './guards/local.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -161,7 +161,7 @@ export class AuthController {
 		return request.image;
 	}
 
-	@UseGuards(AccessAuthGuard, TwoFactorAuthGuard)
+	@UseGuards(TwoFactorAuthGuard)
 	@ApiBody({ type: TwoFactorProperty })
 	@HttpCode(200)
 	@Post('/2fa')
