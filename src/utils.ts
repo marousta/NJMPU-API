@@ -1,4 +1,4 @@
-import { InternalServerErrorException, Logger } from '@nestjs/common';
+import { BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
 
@@ -41,4 +41,38 @@ export function getPartialUser(user: Intra42User | DiscordUser): PartialUsersInf
 
 export function isEmpty(str: string): boolean {
 	return !str || !str.trim().length;
+}
+
+function randomEntry(array: number[]): number {
+	const randomIndex = Math.floor(Math.random() * array.length);
+	return array[randomIndex];
+}
+
+function genArray(): number[] {
+	let arr: number[] = [];
+	for (let i = 0; i <= 9999; ++i) {
+		arr.push(i);
+	}
+	return arr;
+}
+
+export function genIdentifier(exclude: number[]): number | null {
+	const filtered = genArray().filter((i) => !exclude.includes(i));
+	if (filtered.length) {
+		return randomEntry(filtered);
+	}
+	return null;
+}
+
+export function parseUnsigned(raw: object) {
+	const name = Object.keys(raw)[0];
+
+	const value = parseInt(Object.values(raw)[0]);
+	if (isNaN(value)) {
+		return 0;
+	}
+	if (value < 0) {
+		throw new BadRequestException('Invalid ' + name + ' number');
+	}
+	return value;
 }

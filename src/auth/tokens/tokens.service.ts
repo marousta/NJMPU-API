@@ -3,7 +3,6 @@ import {
 	UnauthorizedException,
 	BadRequestException,
 	InternalServerErrorException,
-	NotFoundException,
 	Logger
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -57,14 +56,14 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 	private async getUser(id: number): Promise<UsersInfos> {
 		const token = await this.tokensRepository
 			.createQueryBuilder('token')
-			.leftJoinAndSelect('token.player', 'users_infos')
+			.leftJoinAndSelect('token.user', 'users_infos')
 			.whereInIds(id)
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.error('Failed to fetch token', e);
 				throw new UnauthorizedException();
 			});
-		const user = token.player as unknown as UsersInfos;
+		const user = token.user as unknown as UsersInfos;
 		return user;
 	}
 
@@ -144,9 +143,9 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 		const access_token = this.accessToken({ id, uuid: payload.uuid });
 		const refresh_token = this.refreshToken(id);
 
-		const newTokens = this.tokensRepository.create({
+		const new_tokens = this.tokensRepository.create({
 			id: id,
-			player: payload.uuid,
+			user: payload.uuid,
 			creation_date: new Date(),
 			platform: payload.fingerprint.platform,
 			access_token_hash: await this.hash(access_token),
@@ -155,7 +154,7 @@ export class TokensService extends TypeOrmCrudService<UsersTokens> {
 			ip_hash: await this.hash(payload.fingerprint.ip)
 		});
 
-		await this.tokensRepository.save(newTokens).catch((e) => {
+		await this.tokensRepository.save(new_tokens).catch((e) => {
 			this.logger.error('Failed to insert token', e);
 			throw new InternalServerErrorException();
 		});

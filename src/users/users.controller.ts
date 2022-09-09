@@ -14,6 +14,7 @@ import { UsersService } from './users.service';
 
 import { UsersInfos } from './users.entity';
 
+// TODO: This will be entirely reworked. This is just a placeholder for now
 @UseGuards(AuthGuard('access'))
 @ApiTags('users')
 @Crud({
@@ -32,7 +33,7 @@ import { UsersInfos } from './users.entity';
 	}
 })
 @UseInterceptors(
-	// TODO
+	// TODO: Soon™ not needed
 	class temp {
 		constructor() {}
 		intercept(ctx: ExecutionContext, next: CallHandler) {

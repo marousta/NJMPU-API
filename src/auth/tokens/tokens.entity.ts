@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 
 import { UsersInfos } from '../../users/users.entity';
 
@@ -11,7 +11,7 @@ export class UsersTokens {
 		onDelete: 'CASCADE',
 		nullable: false
 	})
-	player: string;
+	user: string;
 
 	@Column()
 	creation_date: Date;

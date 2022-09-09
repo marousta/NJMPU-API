@@ -8,7 +8,6 @@ import {
 	Request,
 	Response,
 	UseGuards,
-	UnauthorizedException,
 	HttpException
 } from '@nestjs/common';
 import { ApiBody, ApiExcludeEndpoint, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -20,7 +19,6 @@ import { TokensService } from './tokens/tokens.service';
 import { TwoFactorService } from './2fa/2fa.service';
 
 import { LocalAuthGuard } from './guards/local.guard';
-import { AccessAuthGuard } from './guards/access.guard';
 import { RefreshAuthGuard } from './guards/refresh.guard';
 import { TwoFactorAuthGuard } from './guards/2fa.guard';
 import { Intra42AuthGuard } from './guards/42.guard';
@@ -71,6 +69,7 @@ export class AuthController {
 			this.authService.cookie.create(res, { twofactor_token: ret.token });
 			res.sendStatus(202);
 		}
+		// TODO: Dispatch to admin new user log in
 	}
 
 	/**
@@ -84,6 +83,7 @@ export class AuthController {
 	@Post('signup')
 	async registerLocal(@Body() params: SignupProperty) {
 		await this.authService.user.create(params);
+		// TODO: Dispatch to admin new user created
 	}
 
 	/**
@@ -97,6 +97,7 @@ export class AuthController {
 		this.authService.user.disconnect(req.user);
 		this.authService.cookie.delete(res, 'access_token');
 		this.authService.cookie.delete(res, 'refresh_token');
+		// TODO: Dispatch to admin user log out
 	}
 
 	/**
@@ -113,6 +114,7 @@ export class AuthController {
 		);
 		this.authService.cookie.create(res, { access_token });
 		this.authService.cookie.create(res, { refresh_token });
+		// TODO: Dispatch to admin token refresh
 	}
 
 	/**
@@ -134,6 +136,7 @@ export class AuthController {
 	) {
 		const user: Intra42User = req.user as any;
 		await this.authService.APIHandler(user, { req, headers, res });
+		// TODO: Dispatch to admin new user created / log in
 	}
 
 	/**
@@ -155,6 +158,7 @@ export class AuthController {
 	) {
 		const user: DiscordUser = req.user as any;
 		await this.authService.APIHandler(user, { req, headers, res });
+		// TODO: Dispatch to admin new user created / log in
 	}
 
 	/**

@@ -10,6 +10,8 @@ import { ResponseTimeMiddleware } from './time.middleware';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { PicturesModule } from './pictures/pictures.module';
+import { WsModule } from './websockets/ws.module';
+import { ChatsModule } from './chats/chats.module';
 
 import { AppController } from './app.controller';
 
@@ -17,7 +19,6 @@ import { PicturesService } from './pictures/pictures.service';
 
 @Module({
 	imports: [
-		PicturesModule,
 		HttpModule,
 		ConfigModule.forRoot({
 			isGlobal: true
@@ -35,11 +36,15 @@ import { PicturesService } from './pictures/pictures.service';
 				entities: ['dist/**/*.entity{.ts,.js}'],
 				synchronize: configService.get<boolean>('PSQL_SYNC'),
 				namingStrategy: new SnakeNamingStrategy(),
-				migrations: ['dist/database-migration/*{.ts,.js}']
+				migrations: ['dist/database-migration/*{.ts,.js}'],
+				logging: true
 			})
 		}),
+		WsModule,
 		UsersModule,
-		AuthModule
+		PicturesModule,
+		AuthModule,
+		ChatsModule
 	],
 	controllers: [AppController],
 	providers: [PicturesService]

@@ -7,6 +7,8 @@ import { AppModule } from './app.module';
 
 import { colors } from './types';
 
+import { AuthenticatedWsAdapter } from './websockets/ws.adapter';
+
 class ValidateEnv {
 	error = false;
 
@@ -85,10 +87,12 @@ async function bootstrap() {
 	app.use(cookieParser());
 	app.use(requestIp.mw());
 
+	app.useWebSocketAdapter(new AuthenticatedWsAdapter(app));
+
 	const config = new DocumentBuilder()
 		.setTitle('NEW SHINJI MEGA PONG ULTIMATE API')
 		.setDescription('API reference sheet')
-		.setVersion('0.2.5')
+		.setVersion('0.3')
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('/api', app, document);

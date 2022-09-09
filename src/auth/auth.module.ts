@@ -27,6 +27,7 @@ import { TwoFactorStrategy } from './strategies/2fa.strategy';
 import { UsersInfos } from '../users/users.entity';
 import { UsersTokens } from './tokens/tokens.entity';
 import { UsersTwofactorReq } from './2fa/2fa.entity';
+import { WsModule } from '../websockets/ws.module';
 
 @Module({
 	imports: [
@@ -38,6 +39,7 @@ import { UsersTwofactorReq } from './2fa/2fa.entity';
 		JwtModule,
 		HttpModule,
 		PicturesModule,
+		WsModule,
 		TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersTwofactorReq])
 	],
 	providers: [
@@ -53,7 +55,6 @@ import { UsersTwofactorReq } from './2fa/2fa.entity';
 		DiscordStrategy,
 		TwoFactorStrategy
 	],
-	controllers: [AuthController],
-	exports: [AuthService]
+	controllers: [AuthController]
 })
 export class AuthModule {}
