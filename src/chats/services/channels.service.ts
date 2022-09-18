@@ -18,8 +18,13 @@ import { UsersInfos } from '../../users/users.entity';
 import { ChannelsCreateProperty } from '../properties/channels.create.property';
 
 import { isEmpty, genIdentifier } from '../../utils';
-import { ChannelsGetReponse, ChannelGetReponse } from '../properties/channels.get.property';
+import {
+	ChannelsGetResponse,
+	ChannelGetResponse,
+	ChannelData
+} from '../properties/channels.get.property';
 import { DispatchChannelLeave, ChatState, DispatchChannelJoin } from '../../websockets/types';
+import { MessagesService } from './messages.service';
 
 @Injectable()
 export class ChannelsService {
@@ -29,6 +34,7 @@ export class ChannelsService {
 		private readonly channelRepository: Repository<ChatsChannels>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
+		private readonly messagesService: MessagesService,
 		private readonly wsService: WsService
 	) {}
 
@@ -158,7 +164,7 @@ export class ChannelsService {
 		page: number = 1,
 		limit: number = 0,
 		offset: number = 0
-	): Promise<ChannelsGetReponse> {
+	): Promise<ChannelsGetResponse> {
 		if (page === 0) {
 			page = 1;
 		}
@@ -168,25 +174,39 @@ export class ChannelsService {
 			.orderBy('identifier', 'ASC')
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
+			.loadAllRelationIds({ relations: ['users'] })
 			.getManyAndCount();
-		const data = ret[0].map((channel: ChatsChannels) => {
-			const { users, ...filtered } = channel;
-			return { ...filtered, password: channel.password !== null };
-		});
+		let data: ChannelData[] = [];
+		for (const channel of ret[0]) {
+			const { users, user, ...filtered } = channel;
+			const message_count = await this.messagesService.count(channel.uuid);
+			data.push({
+				...filtered,
+				users: users as any as string[],
+				message_count,
+				password: channel.password !== null
+			});
+		}
 		const count = ret[0].length;
 		const total = ret[1];
 		const pageCount = limit ? Math.ceil(total / limit) : 0;
 		return { data, count, total, page, pageCount };
 	}
 
-	async getOne(channel_uuid: string): Promise<ChannelGetReponse> {
+	async getOne(channel_uuid: string): Promise<ChannelGetResponse> {
 		const channel = await this.findOneByRelationOrNull(channel_uuid);
 		if (!channel) {
 			throw new NotFoundException();
 		}
+		const message_count = await this.messagesService.count(channel_uuid);
 		const filteredUsers = channel.users.map((user) => user.uuid);
 		const { users, ...filtered } = channel;
-		return { ...filtered, users: filteredUsers, password: channel.password !== null };
+		return {
+			...filtered,
+			users: filteredUsers,
+			message_count,
+			password: channel.password !== null
+		};
 	}
 
 	async create(params: ChannelsCreateProperty) {

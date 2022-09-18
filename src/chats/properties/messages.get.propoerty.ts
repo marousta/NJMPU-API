@@ -11,7 +11,7 @@ export class MessagesGetProperty {
 	offset: number;
 }
 
-class Data {
+class MessageData {
 	@ApiProperty()
 	id: number;
 
@@ -25,9 +25,9 @@ class Data {
 	message: string;
 }
 
-export class MessagesGetReponse {
-	@ApiProperty({ type: [Data] })
-	data: Data[];
+export class MessagesGetResponse {
+	@ApiProperty({ type: [MessageData] })
+	data: MessageData[];
 
 	@ApiProperty()
 	count: number;

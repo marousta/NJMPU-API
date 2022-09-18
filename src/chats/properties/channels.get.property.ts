@@ -11,23 +11,29 @@ export class ChannelsGetProperty {
 	offset: number;
 }
 
-class Data {
+export class ChannelData {
 	@ApiProperty()
 	uuid: string;
-
-	@ApiProperty()
-	name: string;
 
 	@ApiProperty()
 	identifier: number;
 
 	@ApiProperty()
+	name: string;
+
+	@ApiProperty()
 	password: boolean;
+
+	@ApiProperty()
+	message_count: number;
+
+	@ApiProperty()
+	users: string[];
 }
 
-export class ChannelsGetReponse {
-	@ApiProperty({ type: [Data] })
-	data: Data[];
+export class ChannelsGetResponse {
+	@ApiProperty({ type: [ChannelData] })
+	data: ChannelData[];
 
 	@ApiProperty()
 	count: number;
@@ -42,7 +48,4 @@ export class ChannelsGetReponse {
 	pageCount: number;
 }
 
-export class ChannelGetReponse extends Data {
-	@ApiProperty()
-	users: string[];
-}
+export class ChannelGetResponse extends ChannelData {}

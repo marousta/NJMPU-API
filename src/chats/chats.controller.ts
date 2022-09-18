@@ -21,11 +21,11 @@ import { MessagesService } from './services/messages.service';
 import { ChannelsCreateProperty } from './properties/channels.create.property';
 import {
 	ChannelsGetProperty,
-	ChannelsGetReponse,
-	ChannelGetReponse
+	ChannelsGetResponse,
+	ChannelGetResponse
 } from './properties/channels.get.property';
 import { MessageStoreProperty } from './properties/messages.store.property';
-import { MessagesGetProperty, MessagesGetReponse } from './properties/messages.get.propoerty';
+import { MessagesGetProperty, MessagesGetResponse } from './properties/messages.get.propoerty';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { isEmpty, parseUnsigned } from '../utils';
 import { MessageDeleteProperty } from './properties/message.delete.property';
@@ -50,7 +50,7 @@ export class ChatsController {
 	 * Get all
 	 */
 	@ApiQuery({ type: ChannelsGetProperty })
-	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsGetReponse })
+	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsGetResponse })
 	@HttpCode(200)
 	@Get()
 	async getAll(
@@ -67,7 +67,7 @@ export class ChatsController {
 	/**
 	 * Get one
 	 */
-	@ApiResponse({ status: 200, description: 'Channel details', type: ChannelGetReponse })
+	@ApiResponse({ status: 200, description: 'Channel details', type: ChannelGetResponse })
 	@ApiResponse({ status: 400, description: 'Missing channel uuid' })
 	@ApiResponse({ status: 404, description: "Channel doesn't exist" })
 	@HttpCode(200)
@@ -157,7 +157,7 @@ export class ChatsController {
 	 * Get
 	 */
 	@ApiQuery({ type: MessagesGetProperty })
-	@ApiResponse({ status: 200, description: "Channel's messages", type: MessagesGetReponse })
+	@ApiResponse({ status: 200, description: "Channel's messages", type: MessagesGetResponse })
 	@ApiResponse({ status: 400, description: 'Missing channel uuid' })
 	@ApiResponse({ status: 400, description: 'Invalid number' })
 	@ApiResponse({ status: 403, description: 'User not in channel' })

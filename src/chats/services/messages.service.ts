@@ -14,7 +14,7 @@ import { ChatsChannels } from '../entities/channels.entity';
 import { UsersInfos } from '../../users/users.entity';
 
 import { MessageStoreProperty } from '../properties/messages.store.property';
-import { MessagesGetReponse } from '../properties/messages.get.propoerty';
+import { MessagesGetResponse } from '../properties/messages.get.propoerty';
 
 import { ChatState, DispatchChannelSend, DispatchChannelDelete } from '../../websockets/types';
 
@@ -28,12 +28,21 @@ export class MessagesService {
 		private readonly wsService: WsService
 	) {}
 
+	async count(channel_uuid: string) {
+		return await this.messageRepository
+			.createQueryBuilder('message')
+			.where({ channel: channel_uuid })
+			.orderBy('creation_date', 'ASC')
+			.loadRelationIdAndMap('message.user', 'message.user')
+			.getCount();
+	}
+
 	async get(
 		channel_uuid: string,
 		page: number = 1,
 		limit: number = 0,
 		offset: number = 0
-	): Promise<MessagesGetReponse> {
+	): Promise<MessagesGetResponse> {
 		if (page === 0) {
 			page = 1;
 		}

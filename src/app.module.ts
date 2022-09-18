@@ -37,7 +37,7 @@ import { PicturesService } from './pictures/pictures.service';
 				synchronize: configService.get<boolean>('PSQL_SYNC'),
 				namingStrategy: new SnakeNamingStrategy(),
 				migrations: ['dist/database-migration/*{.ts,.js}'],
-				logging: true
+				logging: false
 			})
 		}),
 		WsModule,
