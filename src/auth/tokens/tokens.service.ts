@@ -8,7 +8,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TypeOrmCrudService } from '@nestjsx/crud-typeorm';
 import { Repository } from 'typeorm';
 import * as argon2 from 'argon2';
 import { readFileSync } from 'fs';
@@ -19,16 +18,14 @@ import { UsersInfos } from '../../users/users.entity';
 import { GeneratedTokens, JwtPayload, PartialUsersInfos } from '../types';
 
 @Injectable()
-export class TokensService extends TypeOrmCrudService<UsersTokens> {
+export class TokensService {
 	private readonly logger = new Logger(TokensService.name);
 	constructor(
 		private readonly configService: ConfigService,
 		@InjectRepository(UsersTokens)
 		private readonly tokensRepository: Repository<UsersTokens>,
 		private readonly jwtService: JwtService
-	) {
-		super(tokensRepository);
-	}
+	) {}
 
 	private accessToken(payload: { id: number; uuid: string }): string {
 		return this.jwtService.sign(payload, {

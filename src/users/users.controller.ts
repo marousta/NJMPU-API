@@ -1,54 +1,38 @@
-import {
-	CallHandler,
-	Controller,
-	ExecutionContext,
-	UseGuards,
-	UseInterceptors
-} from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { Crud, CrudController } from '@nestjsx/crud';
+import { Controller, Delete, Get, HttpCode, Param, Patch, UseGuards } from '@nestjs/common';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { map } from 'rxjs';
 
 import { UsersService } from './users.service';
+import { BadRequestException } from '@nestjs/common';
+import { UserGetResponse } from './users.property';
 
-import { UsersInfos } from './users.entity';
-
-// TODO: This will be entirely reworked. This is just a placeholder for now
 @UseGuards(AuthGuard('access'))
 @ApiTags('users')
-@Crud({
-	model: {
-		type: UsersInfos
-	},
-	params: {
-		uuid: {
-			field: 'uuid',
-			type: 'uuid',
-			primary: true
-		}
-	},
-	routes: {
-		exclude: ['createOneBase', 'createManyBase']
-	}
-})
-@UseInterceptors(
-	// TODO: Soon™ not needed
-	class temp {
-		constructor() {}
-		intercept(ctx: ExecutionContext, next: CallHandler) {
-			return next.handle().pipe(
-				map((data) => {
-					return data?.map((json) => {
-						const { account_type, password, twofactor, ...rest } = json;
-						return { ...rest, twofactor: json.twofactor ? true : false };
-					});
-				})
-			);
-		}
-	}
-)
 @Controller('users')
-export class UsersController implements CrudController<UsersInfos> {
-	constructor(public readonly service: UsersService) {}
+export class UsersController {
+	constructor(public readonly usersService: UsersService) {}
+
+	@ApiResponse({ status: 200, description: 'User details', type: UserGetResponse })
+	@ApiResponse({ status: 400, description: 'Missing user uuid' })
+	@ApiResponse({ status: 404, description: "User doesn't exist" })
+	@Get(':uuid')
+	@HttpCode(200)
+	async get(@Param('uuid') uuid: string) {
+		if (!uuid) {
+			throw new BadRequestException();
+		}
+		return await this.usersService.get(uuid);
+	}
+
+	//TODO
+	@ApiResponse({ status: 200, description: 'Not yet implemented' })
+	@Patch(':uuid')
+	@HttpCode(200)
+	async update(@Param('uuid') uuid: string) {}
+
+	//TODO
+	@ApiResponse({ status: 200, description: 'Not yet implemented' })
+	@Delete(':uuid')
+	@HttpCode(200)
+	async delete(@Param('uuid') uuid: string) {}
 }

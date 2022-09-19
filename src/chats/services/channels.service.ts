@@ -151,8 +151,8 @@ export class ChannelsService {
 				},
 				relations: ['users']
 			})
-			.catch((e) => false)
-			.then((c) => true);
+			.then((c) => true)
+			.catch((e) => false);
 	}
 	//#endregion
 

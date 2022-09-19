@@ -140,8 +140,9 @@ export class ChatsController {
 			throw new BadRequestException();
 		}
 
-		if (!(await this.channelsService.userInChannel(channel_uuid, user_uuid))) {
-			throw new ForbiddenException();
+		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
+		if (!userInChannel) {
+			throw new ForbiddenException("You're not in this channel");
 		}
 
 		await this.channelsService.leave(channel_uuid, user_uuid);
@@ -175,9 +176,12 @@ export class ChatsController {
 		if (!channel_uuid) {
 			throw new BadRequestException('Missing channel uuid');
 		}
-		if (!(await this.channelsService.userInChannel(channel_uuid, user_uuid))) {
-			throw new ForbiddenException();
+
+		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
+		if (!userInChannel) {
+			throw new ForbiddenException("You're not in this channel");
 		}
+
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
@@ -210,8 +214,9 @@ export class ChatsController {
 			throw new BadRequestException('Empty message');
 		}
 
-		if (!(await this.channelsService.userInChannel(channel_uuid, user_uuid))) {
-			throw new ForbiddenException();
+		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
+		if (!userInChannel) {
+			throw new ForbiddenException("You're not in this channel");
 		}
 
 		await this.messagesService.store({
@@ -247,8 +252,9 @@ export class ChatsController {
 			throw new BadRequestException('Missing mesasge id');
 		}
 
-		if (!(await this.channelsService.userInChannel(channel_uuid, user_uuid))) {
-			throw new ForbiddenException();
+		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
+		if (!userInChannel) {
+			throw new ForbiddenException("You're not in this channel");
 		}
 
 		await this.messagesService.delete(id);

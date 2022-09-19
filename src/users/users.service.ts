@@ -1,20 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TypeOrmCrudService } from '@nestjsx/crud-typeorm';
 
 import { UsersInfos } from './users.entity';
 import { genIdentifier } from '../utils';
 
 @Injectable()
-export class UsersService extends TypeOrmCrudService<UsersInfos> {
-	constructor(@InjectRepository(UsersInfos) repo: Repository<UsersInfos>) {
-		super(repo);
-	}
+export class UsersService {
+	private readonly logger = new Logger(UsersService.name);
+	constructor(
+		@InjectRepository(UsersInfos) private readonly usersRepository: Repository<UsersInfos>
+	) {}
 
 	async getIdentfier(username: string) {
 		while (true) {
-			const users = await this.repo.find({
+			const users = await this.usersRepository.find({
 				select: { identifier: true },
 				where: { username }
 			});
@@ -27,5 +27,15 @@ export class UsersService extends TypeOrmCrudService<UsersInfos> {
 			}
 			return id;
 		}
+	}
+
+	async get(uuid: string) {
+		const { email, password, ...filtered } = await this.usersRepository
+			.findOneByOrFail({ uuid })
+			.catch((e) => {
+				this.logger.verbose(uuid + ' not found', e);
+				throw new NotFoundException();
+			});
+		return { ...filtered, twofactor: filtered.twofactor !== null };
 	}
 }

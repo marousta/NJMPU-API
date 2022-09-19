@@ -31,7 +31,7 @@ export class UsersInfos {
 
 	@ApiProperty()
 	@Column({ default: false })
-	is_online: string;
+	is_online: boolean;
 
 	/**
 	 * Relation Channel -> Users

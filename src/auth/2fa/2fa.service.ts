@@ -8,7 +8,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { TypeOrmCrudService } from '@nestjsx/crud-typeorm';
 import { Repository } from 'typeorm';
 import { readFileSync } from 'fs';
 import * as TwoFactor from 'node-2fa';
@@ -21,17 +20,16 @@ import { UsersInfos } from '../../users/users.entity';
 import { TwoFactorRequest } from '../types';
 
 @Injectable()
-export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
+export class TwoFactorService {
 	private readonly logger = new Logger(TwoFactorService.name);
 	constructor(
-		@InjectRepository(UsersTwofactorReq) repo: Repository<UsersTwofactorReq>,
+		@InjectRepository(UsersTwofactorReq)
+		private readonly twofactorRepository: Repository<UsersTwofactorReq>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService
-	) {
-		super(repo);
-	}
+	) {}
 
 	twoFactorToken(uuid: string): string {
 		return this.jwtService.sign(
@@ -47,7 +45,7 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 	}
 
 	private async request(uuid: string) {
-		return await this.repo
+		return await this.twofactorRepository
 			.createQueryBuilder('request')
 			.leftJoinAndSelect('request.player', 'users_infos')
 			.where({ uuid })
@@ -65,7 +63,7 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 
 	private async saveToken(request: UsersTwofactorReq): Promise<string> {
 		const token = this.twoFactorToken(request.uuid);
-		await this.repo
+		await this.twofactorRepository
 			.save({
 				...request,
 				token_hash: await argon2.hash(token, {
@@ -81,7 +79,7 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 	}
 
 	private async requestCreator(uuid: string, secret?: string): Promise<TwoFactorRequest> {
-		const exist = await this.repo
+		const exist = await this.twofactorRepository
 			.createQueryBuilder('request')
 			.leftJoinAndSelect('request.player', 'users_infos')
 			.where({ player: uuid })
@@ -93,15 +91,15 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 
 		if (exist) {
 			for (const request of exist) {
-				await this.repo.delete(request);
+				await this.twofactorRepository.delete(request);
 				this.logger.debug('Deleted 2FA request ' + request.uuid);
 			}
 		}
-		const new_request = this.repo.create({
+		const new_request = this.twofactorRepository.create({
 			player: uuid,
 			secret
 		});
-		const request = await this.repo.save(new_request).catch((e) => {
+		const request = await this.twofactorRepository.save(new_request).catch((e) => {
 			this.logger.error('Could not insert request', e.detail);
 			throw new InternalServerErrorException();
 		});
@@ -123,7 +121,7 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 	}
 
 	async delete(uuid: string) {
-		await this.repo.delete({ uuid }).catch((e) => {
+		await this.twofactorRepository.delete({ uuid }).catch((e) => {
 			this.logger.error('Could not delete request  ' + uuid, e.detail);
 			throw new InternalServerErrorException();
 		});
@@ -140,10 +138,12 @@ export class TwoFactorService extends TypeOrmCrudService<UsersTwofactorReq> {
 
 	public readonly verify = {
 		token: async (payload: { uuid: string; token: string }) => {
-			const request = await this.repo.findOneByOrFail({ uuid: payload.uuid }).catch((e) => {
-				this.logger.verbose('Request not found ' + payload.uuid);
-				throw new UnauthorizedException();
-			});
+			const request = await this.twofactorRepository
+				.findOneByOrFail({ uuid: payload.uuid })
+				.catch((e) => {
+					this.logger.verbose('Request not found ' + payload.uuid);
+					throw new UnauthorizedException();
+				});
 
 			return await argon2.verify(request.token_hash, payload.token);
 		},
