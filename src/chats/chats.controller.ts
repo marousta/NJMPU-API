@@ -45,6 +45,8 @@ export class ChatsController {
 	 */
 	//#region  Channels
 
+	// TODO route where user can see all joined channels
+
 	/**
 	 * Get all
 	 */
@@ -176,10 +178,11 @@ export class ChatsController {
 			throw new BadRequestException('Missing channel uuid');
 		}
 
-		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
-		if (!userInChannel) {
-			throw new ForbiddenException("You're not in this channel");
-		}
+		// TODO: implement private channels
+		//const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
+		//if (!userInChannel) {
+		//	throw new ForbiddenException("You're not in this channel");
+		//}
 
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
