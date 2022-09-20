@@ -10,26 +10,27 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as argon2 from 'argon2';
 
+import { MessagesService } from './messages.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { ChatsChannels } from '../entities/channels.entity';
 import { UsersInfos } from '../../users/users.entity';
 
 import { ChannelsCreateProperty } from '../properties/channels.create.property';
-
-import { isEmpty, genIdentifier } from '../../utils';
 import {
 	ChannelsGetResponse,
 	ChannelGetResponse,
 	ChannelData
 } from '../properties/channels.get.property';
+
+import { isEmpty, genIdentifier } from '../../utils';
+
 import {
 	DispatchChannelLeave,
 	ChatState,
 	DispatchChannelJoin,
 	WsEvents
 } from '../../websockets/types';
-import { MessagesService } from './messages.service';
 
 @Injectable()
 export class ChannelsService {
@@ -250,15 +251,20 @@ export class ChannelsService {
 		});
 		await this.update.user(new_channel, user);
 
-		// TODO: Dispatch created message
+		// Dispatch created message
+		this.wsService.dispatch.all({
+			event: WsEvents.Chat,
+			state: ChatState.Create,
+			channel: new_channel.uuid
+		});
+		// Dispatch joined message
 		this.wsService.subscribe.channel(user.uuid, new_channel.uuid);
-		const data: DispatchChannelJoin = {
+		this.wsService.dispatch.channel({
 			event: WsEvents.Chat,
 			state: ChatState.Join,
 			channel: new_channel.uuid,
 			user: user.uuid
-		};
-		this.wsService.dispatch.channel(data);
+		});
 
 		return {
 			uuid: new_channel.uuid

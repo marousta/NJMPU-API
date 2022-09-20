@@ -92,10 +92,14 @@ async function bootstrap() {
 	const config = new DocumentBuilder()
 		.setTitle('NEW SHINJI MEGA PONG ULTIMATE API')
 		.setDescription('API reference sheet')
-		.setVersion('0.3')
+		.setVersion('0.3.6')
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
-	SwaggerModule.setup('/api', app, document);
+	SwaggerModule.setup('/api', app, document, {
+		swaggerOptions: {
+			tagsSorter: 'alpha'
+		}
+	});
 
 	await app.listen(3000);
 }

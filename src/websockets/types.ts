@@ -6,6 +6,7 @@ export enum WsEvents {
 }
 
 export enum ChatState {
+	Create,
 	Join,
 	Leave,
 	Send,
@@ -27,6 +28,12 @@ interface DispatchChannel {
 	event: WsEvents.Chat;
 	state: ChatState;
 	user: string;
+	channel: string;
+}
+
+export interface DispatchChannelCreate {
+	event: WsEvents.Chat;
+	state: ChatState.Create;
 	channel: string;
 }
 

@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Server, WebSocket } from 'ws';
 
 import { UsersInfos } from '../users/users.entity';
-import { DispatchSessionDestroyed } from './types';
+import { DispatchSessionDestroyed, DispatchChannelCreate } from './types';
 
 import {
 	SubscribedChannels,
@@ -91,8 +91,21 @@ export class WsService {
 	};
 
 	public readonly dispatch = {
-		all: (data: any) => {
-			// .send(JSON.stringify(data));
+		all: (data: DispatchChannelCreate) => {
+			const client = this.ws.clients.values();
+			let c: WebSocket = null;
+			let i = 0;
+			while ((c = client.next().value)) {
+				c.send(JSON.stringify(data));
+				++i;
+			}
+			if (data.event === WsEvents.Chat) {
+				this.logger.verbose(
+					`Created channel ${data.channel} dispatched to ${i} connected ${
+						i != 1 ? 'peers' : 'peer'
+					}`
+				);
+			}
 		},
 		user: (uuid: string, data: DispatchSessionDestroyed) => {
 			const client = this.ws.clients.values();
