@@ -11,11 +11,13 @@ import { PicturesModule } from '../pictures/pictures.module';
 import { TwoFactorModule } from './2fa/2fa.module';
 
 import { AuthController } from './auth.controller';
+import { SessionsController } from './sessions/sessions.controller';
 
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens/tokens.service';
 import { PicturesService } from '../pictures/pictures.service';
 import { TwoFactorService } from './2fa/2fa.service';
+import { SessionsService } from './sessions/sessions.service';
 
 import { LocalStrategy } from './strategies/local.strategy';
 import { AccessStrategy } from './strategies/access.strategy';
@@ -53,8 +55,9 @@ import { WsModule } from '../websockets/ws.module';
 		RefreshStrategy,
 		Intra42Strategy,
 		DiscordStrategy,
-		TwoFactorStrategy
+		TwoFactorStrategy,
+		SessionsService
 	],
-	controllers: [AuthController]
+	controllers: [AuthController, SessionsController]
 })
 export class AuthModule {}

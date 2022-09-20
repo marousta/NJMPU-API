@@ -23,7 +23,12 @@ import {
 	ChannelGetResponse,
 	ChannelData
 } from '../properties/channels.get.property';
-import { DispatchChannelLeave, ChatState, DispatchChannelJoin } from '../../websockets/types';
+import {
+	DispatchChannelLeave,
+	ChatState,
+	DispatchChannelJoin,
+	WsEvents
+} from '../../websockets/types';
 import { MessagesService } from './messages.service';
 
 @Injectable()
@@ -189,8 +194,8 @@ export class ChannelsService {
 		}
 		const count = ret[0].length;
 		const total = ret[1];
-		const pageCount = limit ? Math.ceil(total / limit) : 0;
-		return { data, count, total, page, pageCount };
+		const page_count = limit ? Math.ceil(total / limit) : 1;
+		return { data, count, total, page, page_count };
 	}
 
 	async getOne(channel_uuid: string): Promise<ChannelGetResponse> {
@@ -248,6 +253,7 @@ export class ChannelsService {
 		// TODO: Dispatch created message
 		this.wsService.subscribe.channel(user.uuid, new_channel.uuid);
 		const data: DispatchChannelJoin = {
+			event: WsEvents.Chat,
 			state: ChatState.Join,
 			channel: new_channel.uuid,
 			user: user.uuid
@@ -285,6 +291,7 @@ export class ChannelsService {
 		await this.update.user(channelObj, userObj);
 		// TODO: Dispatch joined message
 		const data: DispatchChannelJoin = {
+			event: WsEvents.Chat,
 			state: ChatState.Join,
 			channel: channelObj.uuid,
 			user: userObj.uuid
@@ -307,6 +314,7 @@ export class ChannelsService {
 		}
 		// TODO: Dispatch unsubscibre message
 		const data: DispatchChannelLeave = {
+			event: WsEvents.Chat,
 			state: ChatState.Leave,
 			channel: channel_uuid,
 			user: user_uuid

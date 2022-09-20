@@ -73,6 +73,7 @@ export class TokensService {
 		await this.tokensRepository
 			.save({
 				id,
+				refresh_date: new Date(),
 				access_token_hash: await this.hash(access_token),
 				refresh_token_hash: await this.hash(refresh_token)
 			})

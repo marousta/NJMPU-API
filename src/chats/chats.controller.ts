@@ -9,7 +9,9 @@ import {
 	Query,
 	Request,
 	Response,
-	UseGuards
+	UseGuards,
+	BadRequestException,
+	ForbiddenException
 } from '@nestjs/common';
 import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -17,19 +19,16 @@ import { Request as Req, Response as Res } from 'express';
 
 import { ChannelsService } from './services/channels.service';
 import { MessagesService } from './services/messages.service';
+import { WsService } from '../websockets/ws.service';
 
 import { ChannelsCreateProperty } from './properties/channels.create.property';
-import {
-	ChannelsGetProperty,
-	ChannelsGetResponse,
-	ChannelGetResponse
-} from './properties/channels.get.property';
+import { ChannelsGetResponse, ChannelGetResponse } from './properties/channels.get.property';
 import { MessageStoreProperty } from './properties/messages.store.property';
 import { MessagesGetProperty, MessagesGetResponse } from './properties/messages.get.propoerty';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { isEmpty, parseUnsigned } from '../utils';
 import { MessageDeleteProperty } from './properties/message.delete.property';
-import { WsService } from '../websockets/ws.service';
+import { GlobalQueryProperty } from '../global.property';
+
+import { isEmpty, parseUnsigned } from '../utils';
 
 @UseGuards(AuthGuard('access'))
 @ApiTags('chats')
@@ -49,7 +48,7 @@ export class ChatsController {
 	/**
 	 * Get all
 	 */
-	@ApiQuery({ type: ChannelsGetProperty })
+	@ApiQuery({ type: GlobalQueryProperty })
 	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsGetResponse })
 	@HttpCode(200)
 	@Get()

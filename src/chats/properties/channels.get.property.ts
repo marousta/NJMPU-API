@@ -1,16 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class ChannelsGetProperty {
-	@ApiPropertyOptional()
-	page: number;
-
-	@ApiPropertyOptional()
-	limit: number;
-
-	@ApiPropertyOptional()
-	offset: number;
-}
-
 export class ChannelData {
 	@ApiProperty()
 	uuid: string;
@@ -45,7 +34,7 @@ export class ChannelsGetResponse {
 	page: number;
 
 	@ApiProperty()
-	pageCount: number;
+	page_count: number;
 }
 
 export class ChannelGetResponse extends ChannelData {}

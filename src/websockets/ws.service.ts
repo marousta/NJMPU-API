@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Server, WebSocket } from 'ws';
 
 import { UsersInfos } from '../users/users.entity';
+import { DispatchSessionDestroyed } from './types';
 
 import {
 	SubscribedChannels,
@@ -11,7 +12,8 @@ import {
 	DispatchChannelLeave,
 	DispatchChannelSend,
 	DispatchChannelDelete,
-	ChatState
+	ChatState,
+	WsEvents
 } from './types';
 
 @Injectable()
@@ -92,6 +94,24 @@ export class WsService {
 		all: (data: any) => {
 			// .send(JSON.stringify(data));
 		},
+		user: (uuid: string, data: DispatchSessionDestroyed) => {
+			const client = this.ws.clients.values();
+			let c: WebSocket = null;
+			let i = 0;
+			while ((c = client.next().value)) {
+				if (c['user_uuid'] === uuid) {
+					c.send(JSON.stringify(data));
+					++i;
+				}
+			}
+			if (data.event === WsEvents.Session) {
+				this.logger.verbose(
+					`Token recheck forced on ${uuid} for ${i} connected ${
+						i != 1 ? 'peers' : 'peer'
+					}`
+				);
+			}
+		},
 		channel: (
 			data:
 				| DispatchChannelJoin
@@ -111,33 +131,35 @@ export class WsService {
 					++i;
 				}
 			}
-			switch (data.state) {
-				case ChatState.Join:
-					return this.logger.verbose(
-						`${user_uuid} JOIN ${channel_uuid} brodcasted to ${i} subscribed ${
-							i != 1 ? 'peers' : 'peer'
-						}`
-					);
-				case ChatState.Leave:
-					return this.logger.verbose(
-						`${user_uuid} LEAVE ${channel_uuid} brodcasted to ${i} subscribed ${
-							i != 1 ? 'peers' : 'peer'
-						}`
-					);
-				case ChatState.Send:
-					return this.logger.verbose(
-						`New message in ${channel_uuid} brodcasted to ${i} subscribed ${
-							i != 1 ? 'peers' : 'peer'
-						}`
-					);
-				case ChatState.Delete:
-					return this.logger.verbose(
-						`Deleted message id ${
-							data.id
-						} in ${channel_uuid} brodcasted to ${i} subscribed ${
-							i != 1 ? 'peers' : 'peer'
-						}`
-					);
+			if (data.event === WsEvents.Chat) {
+				switch (data.state) {
+					case ChatState.Join:
+						return this.logger.verbose(
+							`${user_uuid} JOIN ${channel_uuid} brodcasted to ${i} subscribed ${
+								i != 1 ? 'peers' : 'peer'
+							}`
+						);
+					case ChatState.Leave:
+						return this.logger.verbose(
+							`${user_uuid} LEAVE ${channel_uuid} brodcasted to ${i} subscribed ${
+								i != 1 ? 'peers' : 'peer'
+							}`
+						);
+					case ChatState.Send:
+						return this.logger.verbose(
+							`New message in ${channel_uuid} brodcasted to ${i} subscribed ${
+								i != 1 ? 'peers' : 'peer'
+							}`
+						);
+					case ChatState.Delete:
+						return this.logger.verbose(
+							`Deleted message id ${
+								data.id
+							} in ${channel_uuid} brodcasted to ${i} subscribed ${
+								i != 1 ? 'peers' : 'peer'
+							}`
+						);
+				}
 			}
 		}
 	};
@@ -180,7 +202,7 @@ export class WsService {
 		}
 		if (this.subscribed_channels && this.subscribed_channels[uuid]) {
 			delete this.subscribed_channels[uuid];
-			this.logger.verbose('No more connected client with ' + uuid);
+			this.logger.verbose('No more connected client with user ' + uuid);
 		}
 		this.logger.verbose('Disconnected ' + uuid);
 	}

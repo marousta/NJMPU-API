@@ -39,5 +39,5 @@ export class MessagesGetResponse {
 	page: number;
 
 	@ApiProperty()
-	pageCount: number;
+	page_count: number;
 }

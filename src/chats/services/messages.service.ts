@@ -16,7 +16,12 @@ import { UsersInfos } from '../../users/users.entity';
 import { MessageStoreProperty } from '../properties/messages.store.property';
 import { MessagesGetResponse } from '../properties/messages.get.propoerty';
 
-import { ChatState, DispatchChannelSend, DispatchChannelDelete } from '../../websockets/types';
+import {
+	ChatState,
+	DispatchChannelSend,
+	DispatchChannelDelete,
+	WsEvents
+} from '../../websockets/types';
 
 @Injectable()
 export class MessagesService {
@@ -57,8 +62,8 @@ export class MessagesService {
 		const data = ret[0];
 		const count = ret[0].length;
 		const total = ret[1];
-		const pageCount = limit ? Math.ceil(total / limit) : 0;
-		return { data, count, total, page, pageCount };
+		const page_count = limit ? Math.ceil(total / limit) : 0;
+		return { data, count, total, page, page_count };
 	}
 
 	async store(params: MessageStoreProperty) {
@@ -75,6 +80,7 @@ export class MessagesService {
 		});
 		// TODO: Dispatch new message
 		const data: DispatchChannelSend = {
+			event: WsEvents.Chat,
 			state: ChatState.Send,
 			channel: new_message.channel,
 			user: new_message.user,
@@ -94,6 +100,7 @@ export class MessagesService {
 		await this.messageRepository.save({ ...message, message: null });
 		// TODO: Dispatch delete message
 		const data: DispatchChannelDelete = {
+			event: WsEvents.Chat,
 			state: ChatState.Delete,
 			user: message.user,
 			channel: message.channel,

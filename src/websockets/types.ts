@@ -1,7 +1,8 @@
 export enum WsEvents {
 	Ping,
 	Chat,
-	Game
+	Game,
+	Session
 }
 
 export enum ChatState {
@@ -23,6 +24,7 @@ export interface SubscribedChannels {
 }
 
 interface DispatchChannel {
+	event: WsEvents.Chat;
 	state: ChatState;
 	user: string;
 	channel: string;
@@ -46,4 +48,9 @@ export interface DispatchChannelSend extends DispatchChannel {
 export interface DispatchChannelDelete extends DispatchChannel {
 	state: ChatState.Delete;
 	id: number;
+}
+
+export interface DispatchSessionDestroyed {
+	event: WsEvents.Session;
+	state: 0;
 }

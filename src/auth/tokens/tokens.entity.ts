@@ -16,6 +16,9 @@ export class UsersTokens {
 	@Column()
 	creation_date: Date;
 
+	@Column({ nullable: true })
+	refresh_date: Date;
+
 	@Column()
 	platform: string;
 
