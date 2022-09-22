@@ -287,8 +287,9 @@ export class ChatsController {
 	 */
 	@ApiBody({ type: MessageDeleteProperty })
 	@ApiResponse({ status: 200, description: 'Deleted' })
-	@ApiResponse({ status: 400, description: 'Missing channel uuid' })
-	@ApiResponse({ status: 400, description: 'Missing mesasge id' })
+	@ApiResponse({ status: 400.1, description: 'Missing channel uuid' })
+	@ApiResponse({ status: 400.2, description: 'Missing mesasge id' })
+	@ApiResponse({ status: 400.3, description: "You can't leave direct channel" })
 	@ApiResponse({ status: 403, description: 'User not in channel' })
 	@HttpCode(200)
 	@Delete(':uuid/messages')

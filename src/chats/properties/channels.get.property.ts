@@ -1,8 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ChannelType } from '../types';
 
 export class ChannelData {
 	@ApiProperty()
 	uuid: string;
+
+	@ApiProperty()
+	type: ChannelType;
 
 	@ApiProperty()
 	identifier: number;
@@ -23,9 +27,23 @@ export class ChannelData {
 	users: string[];
 }
 
+export class DirectData {
+	@ApiProperty()
+	uuid: string;
+
+	@ApiProperty()
+	type: ChannelType;
+
+	@ApiProperty()
+	message_count: number;
+
+	@ApiProperty()
+	users: string[];
+}
+
 export class ChannelsGetResponse {
-	@ApiProperty({ type: [ChannelData] })
-	data: ChannelData[];
+	@ApiProperty({ type: Array<ChannelData | DirectData> })
+	data: Array<ChannelData | DirectData>;
 
 	@ApiProperty()
 	count: number;
@@ -41,3 +59,4 @@ export class ChannelsGetResponse {
 }
 
 export class ChannelGetResponse extends ChannelData {}
+export class ChannelDirectGetResponse extends DirectData {}

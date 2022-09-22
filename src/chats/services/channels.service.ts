@@ -23,13 +23,15 @@ import { ChannelsCreateProperty } from '../properties/channels.create.property';
 import {
 	ChannelsGetResponse,
 	ChannelGetResponse,
-	ChannelData
+	ChannelData,
+	DirectData
 } from '../properties/channels.get.property';
 
 import { isEmpty, genIdentifier } from '../../utils';
 
 import { ChannelType, ChatsDirect, ChatsGroupPrivate, ChatsGroupPublic } from '../types';
 import { DispatchChannelLeave, ChatState, WsEvents } from '../../websockets/types';
+import { ChannelDirectGetResponse } from '../properties/channels.get.property';
 
 @Injectable()
 export class ChannelsService {
@@ -226,13 +228,16 @@ export class ChannelsService {
 
 		let data: ChannelData[] = [];
 		for (const channel of ret[0]) {
-			const { type, users, ...filtered } = channel;
+			const { uuid, type, identifier, name, password, moderator, users } = channel;
 			const message_count = await this.messagesService.count(channel.uuid);
 			data.push({
-				...filtered,
+				uuid,
+				type,
+				identifier,
+				name,
+				password: password !== null,
 				message_count,
-				moderator: channel.moderator as any as string,
-				password: channel.password !== null,
+				moderator: moderator as any as string,
 				users: users as any as string[]
 			});
 		}
@@ -264,17 +269,30 @@ export class ChannelsService {
 			.loadAllRelationIds()
 			.getManyAndCount();
 
-		let data: ChannelData[] = [];
+		let data: Array<ChannelData | DirectData> = [];
 		for (const channel of ret[0]) {
-			const { type, users, ...filtered } = channel;
 			const message_count = await this.messagesService.count(channel.uuid);
-			data.push({
-				...filtered,
-				message_count,
-				moderator: channel.moderator as any as string,
-				password: channel.password !== null,
-				users: users as any as string[]
-			});
+			const { uuid, type, identifier, name, password, moderator, users } = channel;
+
+			if (channel.type === ChannelType.Direct) {
+				data.push({
+					uuid,
+					type,
+					message_count,
+					users: users as any as string[]
+				});
+			} else {
+				data.push({
+					uuid,
+					type,
+					identifier,
+					name,
+					message_count,
+					moderator: moderator as any as string,
+					password: password !== null,
+					users: users as any as string[]
+				});
+			}
 		}
 		const count = ret[0].length;
 		const total = ret[1];
@@ -282,27 +300,42 @@ export class ChannelsService {
 		return { data, count, total, page, page_count };
 	}
 
-	async getOne(channel_uuid: string, user_uuid: string): Promise<ChannelGetResponse> {
+	async getOne(
+		channel_uuid: string,
+		user_uuid: string
+	): Promise<ChannelGetResponse | ChannelDirectGetResponse> {
 		const channel = await this.findOneByRelationOrNull(channel_uuid);
 		// prettier-ignore
 		if (!channel || (channel.type === ChannelType.Private && !this.userInChannel(channel, user_uuid))) {
 			throw new NotFoundException();
 		}
+		const { uuid, type, identifier, name, password, moderator, users } = channel;
 
 		const message_count = await this.messagesService.count(channel_uuid);
 		let filteredUsers: string[] = [];
-		for (const u of channel.users) {
+		for (const u of users) {
 			filteredUsers.push(u.uuid);
 		}
 
-		const { type, users, moderator, ...filtered } = channel;
-		return {
-			...filtered,
-			message_count,
-			password: channel.password !== null,
-			moderator: moderator.uuid,
-			users: filteredUsers
-		};
+		if (type === ChannelType.Direct) {
+			return {
+				uuid,
+				type,
+				message_count,
+				users: filteredUsers
+			};
+		} else {
+			return {
+				uuid,
+				type,
+				identifier,
+				name,
+				message_count,
+				moderator: moderator as any as string,
+				password: password !== null,
+				users: filteredUsers
+			};
+		}
 	}
 
 	private readonly create = {
@@ -381,7 +414,7 @@ export class ChannelsService {
 		},
 		direct: async (params: ChatsDirect) => {
 			if (params.current_user_uuid === params.user_uuid) {
-				throw new BadRequestException("You can't DM yourselft");
+				throw new BadRequestException("You can't DM yourself");
 			}
 
 			// Get current user
@@ -410,6 +443,7 @@ export class ChannelsService {
 				.where({ name })
 				.orWhere({ name: rev_name })
 				.getMany()
+				.then((r) => (r.length ? r : null))
 				.catch((e) => {
 					this.logger.verbose("Direct channel doesn't exist yet", e);
 					return null;
@@ -470,7 +504,7 @@ export class ChannelsService {
 			// is channel public join request
 			else {
 				channel = await this.channelRepository
-					.findOneByOrFail({ uuid: parsed.channel_uuid })
+					.findOneOrFail({ where: { uuid: parsed.channel_uuid }, relations: ['users'] })
 					.catch((e) => {
 						this.logger.verbose(
 							`Unable to find public channel ${parsed.channel_uuid}`,
@@ -489,7 +523,10 @@ export class ChannelsService {
 			// is channel private join request
 			else {
 				channel = await this.channelRepository
-					.findOneOrFail({ where: { identifier: parsed.identifier, name: parsed.name } })
+					.findOneOrFail({
+						where: { identifier: parsed.identifier, name: parsed.name },
+						relations: ['users']
+					})
 					.catch((e) => {
 						this.logger.verbose(
 							`Unable to find private channel ${parsed.name}#${parsed.identifier}`,
@@ -500,8 +537,7 @@ export class ChannelsService {
 			}
 		}
 
-		// Needs channel
-		if (!channel) {
+		if (!channel || channel.type === ChannelType.Direct) {
 			throw new NotFoundException("Channel doesn't exist");
 		}
 		if (this.userInChannel(channel, parsed.current_user_uuid)) {
@@ -541,6 +577,10 @@ export class ChannelsService {
 		const channel = await this.findOneByRelationOrNull(channel_uuid);
 		if (!channel) {
 			throw new NotFoundException();
+		}
+
+		if (channel.type === ChannelType.Direct) {
+			throw new BadRequestException("You can't leave direct channel");
 		}
 
 		if (!this.userInChannel(channel, user_uuid)) {

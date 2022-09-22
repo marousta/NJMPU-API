@@ -177,8 +177,10 @@ export class WsService {
 				});
 
 			let subscribed: string[] = [];
-			for (const c of channels) {
-				subscribed.push(c.uuid);
+			if (channels) {
+				for (const c of channels) {
+					subscribed.push(c.uuid);
+				}
 			}
 
 			this.subscribed_channels = {
