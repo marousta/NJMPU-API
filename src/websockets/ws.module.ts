@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { WsGateway } from './ws.gateway';
 
 import { WsService } from './ws.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersInfos } from '../users/users.entity';
+
+import { ChatsChannels } from '../chats/entities/channels.entity';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UsersInfos])],
+	imports: [TypeOrmModule.forFeature([ChatsChannels])],
 	providers: [WsGateway, WsService],
 	exports: [WsService]
 })

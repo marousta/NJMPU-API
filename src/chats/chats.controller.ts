@@ -29,6 +29,7 @@ import { MessageDeleteProperty } from './properties/message.delete.property';
 import { GlobalQueryProperty } from '../global.property';
 
 import { isEmpty, parseUnsigned } from '../utils';
+import { ChannelType } from './types';
 
 @UseGuards(AuthGuard('access'))
 @ApiTags('chats')
@@ -45,13 +46,12 @@ export class ChatsController {
 	 */
 	//#region  Channels
 
-	// TODO route where user can see all joined channels
-
 	/**
 	 * Get all
 	 */
 	@ApiQuery({ type: GlobalQueryProperty })
 	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsGetResponse })
+	@ApiResponse({ status: 400, description: 'Invalid number in query' })
 	@HttpCode(200)
 	@Get()
 	async getAll(
@@ -66,6 +66,27 @@ export class ChatsController {
 	}
 
 	/**
+	 * Get all in
+	 */
+	@ApiQuery({ type: GlobalQueryProperty })
+	@ApiResponse({ status: 200, description: 'List of joined channels', type: ChannelsGetResponse })
+	@ApiResponse({ status: 400, description: 'Invalid number in query' })
+	@HttpCode(200)
+	@Get('/in')
+	async getAllin(
+		@Request() req: Req,
+		@Query('page') page: any,
+		@Query('limit') limit: any,
+		@Query('offset') offset: any
+	) {
+		const uuid = (req.user as any).uuid;
+		page = parseUnsigned({ page });
+		limit = parseUnsigned({ limit });
+		offset = parseUnsigned({ offset });
+		return await this.channelsService.getAllin(uuid, page, limit, offset);
+	}
+
+	/**
 	 * Get one
 	 */
 	@ApiResponse({ status: 200, description: 'Channel details', type: ChannelGetResponse })
@@ -73,11 +94,13 @@ export class ChatsController {
 	@ApiResponse({ status: 404, description: "Channel doesn't exist" })
 	@HttpCode(200)
 	@Get(':uuid')
-	async getOne(@Param('uuid') channel_uuid: string) {
+	async getOne(@Request() req: Req, @Param('uuid') channel_uuid: string) {
+		const uuid = (req.user as any).uuid;
+
 		if (!channel_uuid) {
 			throw new BadRequestException();
 		}
-		return await this.channelsService.getOne(channel_uuid);
+		return await this.channelsService.getOne(channel_uuid, uuid);
 	}
 
 	/**
@@ -86,23 +109,60 @@ export class ChatsController {
 	@ApiBody({
 		type: ChannelsCreateProperty,
 		examples: {
-			Create: {
-				value: { name: 'string' } as ChannelsCreateProperty
+			['Create public']: {
+				value: {
+					type: ChannelType.Public,
+					name: 'string'
+				} as ChannelsCreateProperty
 			},
-			['Create with password']: {
-				value: { name: 'string', password: 'string' } as ChannelsCreateProperty
+			['Create public with password']: {
+				value: {
+					type: ChannelType.Public,
+					name: 'string',
+					password: 'string'
+				} as ChannelsCreateProperty
 			},
-			Join: {
-				value: { channel_uuid: 'string' } as ChannelsCreateProperty
+			['Create private']: {
+				value: {
+					type: ChannelType.Private,
+					name: 'string',
+					password: 'string'
+				} as ChannelsCreateProperty
 			},
-			['Join with password']: {
-				value: { channel_uuid: 'string', password: 'string' } as ChannelsCreateProperty
+			['Create direct']: {
+				value: {
+					user_uuid: 'string'
+				} as ChannelsCreateProperty
+			},
+			['Join public']: {
+				value: {
+					channel_uuid: 'string'
+				} as ChannelsCreateProperty
+			},
+			['Join public with password']: {
+				value: {
+					channel_uuid: 'string',
+					password: 'string'
+				} as ChannelsCreateProperty
+			},
+			['Join private']: {
+				value: {
+					identifier: 9999,
+					name: 'string',
+					password: 'string'
+				} as ChannelsCreateProperty
 			}
 		}
 	})
 	@ApiResponse({ status: 200, description: 'Joined' })
 	@ApiResponse({ status: 201, description: 'Created' })
-	@ApiResponse({ status: 400, description: 'Wrong password' })
+	@ApiResponse({ status: 400.1, description: 'Wrong password' })
+	@ApiResponse({ status: 400.2, description: 'User already in this channel' })
+	@ApiResponse({ status: 400.3, description: "Channel doesn't exist" })
+	@ApiResponse({ status: 400.4, description: "User can't DM herself" })
+	@ApiResponse({ status: 400.5, description: "Remote user doesn't exist" })
+	@ApiResponse({ status: 400.6, description: 'Direct message with this user already exist' })
+	@ApiResponse({ status: 401, description: "User doesn't exist" })
 	@ApiResponse({ status: 404, description: 'Channel not found' })
 	@HttpCode(200)
 	@Post()
@@ -113,12 +173,17 @@ export class ChatsController {
 	) {
 		const uuid = (req.user as any).uuid;
 
-		const joined = await this.channelsService.join({
+		const params: ChannelsCreateProperty = {
+			type: body.type,
+			identifier: body.identifier,
 			name: body.name,
-			user_uuid: uuid,
 			password: body.password,
+			current_user_uuid: uuid,
+			user_uuid: body.user_uuid,
 			channel_uuid: body.channel_uuid
-		});
+		};
+
+		const joined = await this.channelsService.join(params);
 		if (joined) {
 			res.status(201);
 			return joined;
@@ -141,11 +206,6 @@ export class ChatsController {
 			throw new BadRequestException();
 		}
 
-		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
-		if (!userInChannel) {
-			throw new ForbiddenException("You're not in this channel");
-		}
-
 		await this.channelsService.leave(channel_uuid, user_uuid);
 	}
 	//#endregion
@@ -160,8 +220,8 @@ export class ChatsController {
 	 */
 	@ApiQuery({ type: MessagesGetProperty })
 	@ApiResponse({ status: 200, description: "Channel's messages", type: MessagesGetResponse })
-	@ApiResponse({ status: 400, description: 'Missing channel uuid' })
-	@ApiResponse({ status: 400, description: 'Invalid number' })
+	@ApiResponse({ status: 400.1, description: 'Missing channel uuid' })
+	@ApiResponse({ status: 400.2, description: 'Invalid number in query' })
 	@ApiResponse({ status: 403, description: 'User not in channel' })
 	@ApiResponse({ status: 404, description: 'Channel not found' })
 	@HttpCode(200)
@@ -178,16 +238,10 @@ export class ChatsController {
 			throw new BadRequestException('Missing channel uuid');
 		}
 
-		// TODO: implement private channels
-		//const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
-		//if (!userInChannel) {
-		//	throw new ForbiddenException("You're not in this channel");
-		//}
-
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
-		return await this.messagesService.get(channel_uuid, page, limit, offset);
+		return await this.messagesService.get(channel_uuid, user_uuid, page, limit, offset);
 	}
 
 	/**
@@ -216,7 +270,7 @@ export class ChatsController {
 			throw new BadRequestException('Empty message');
 		}
 
-		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
+		const userInChannel = await this.channelsService.userInChannelFind(channel_uuid, user_uuid);
 		if (!userInChannel) {
 			throw new ForbiddenException("You're not in this channel");
 		}
@@ -254,7 +308,7 @@ export class ChatsController {
 			throw new BadRequestException('Missing mesasge id');
 		}
 
-		const userInChannel = await this.channelsService.userInChannel(channel_uuid, user_uuid);
+		const userInChannel = await this.channelsService.userInChannelFind(channel_uuid, user_uuid);
 		if (!userInChannel) {
 			throw new ForbiddenException("You're not in this channel");
 		}

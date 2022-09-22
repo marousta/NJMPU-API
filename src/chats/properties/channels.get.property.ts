@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ChannelData {
 	@ApiProperty()
@@ -15,6 +15,9 @@ export class ChannelData {
 
 	@ApiProperty()
 	message_count: number;
+
+	@ApiProperty()
+	moderator: string;
 
 	@ApiProperty()
 	users: string[];

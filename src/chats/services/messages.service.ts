@@ -2,34 +2,36 @@ import {
 	Injectable,
 	Logger,
 	InternalServerErrorException,
-	NotFoundException
+	NotFoundException,
+	ForbiddenException,
+	Inject,
+	forwardRef
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { ChannelsService } from './channels.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { ChatsMessages } from '../entities/messages.entity';
 import { ChatsChannels } from '../entities/channels.entity';
-import { UsersInfos } from '../../users/users.entity';
 
 import { MessageStoreProperty } from '../properties/messages.store.property';
 import { MessagesGetResponse } from '../properties/messages.get.propoerty';
 
-import {
-	ChatState,
-	DispatchChannelSend,
-	DispatchChannelDelete,
-	WsEvents
-} from '../../websockets/types';
+import { ChannelType } from '../types';
+import { ChatState, WsEvents } from '../../websockets/types';
 
 @Injectable()
 export class MessagesService {
 	private readonly logger = new Logger(MessagesService.name);
 	constructor(
-		@InjectRepository(ChatsMessages) readonly messageRepository: Repository<ChatsMessages>,
-		@InjectRepository(ChatsChannels) readonly channelRepository: Repository<ChatsChannels>,
-		@InjectRepository(UsersInfos) readonly usersRepository: Repository<UsersInfos>,
+		@InjectRepository(ChatsMessages)
+		private readonly messageRepository: Repository<ChatsMessages>,
+		@InjectRepository(ChatsChannels)
+		private readonly channelRepository: Repository<ChatsChannels>,
+		@Inject(forwardRef(() => ChannelsService))
+		private readonly channelsService: ChannelsService,
 		private readonly wsService: WsService
 	) {}
 
@@ -44,6 +46,7 @@ export class MessagesService {
 
 	async get(
 		channel_uuid: string,
+		user_uuid: string,
 		page: number = 1,
 		limit: number = 0,
 		offset: number = 0
@@ -51,6 +54,23 @@ export class MessagesService {
 		if (page === 0) {
 			page = 1;
 		}
+
+		const channel = await this.channelRepository
+			.findOneOrFail({
+				where: { uuid: channel_uuid },
+				relations: ['users']
+			})
+			.catch((e) => {
+				this.logger.verbose('Channel not found', e);
+				throw new NotFoundException();
+			});
+
+		if (channel.type !== ChannelType.Public) {
+			if (!this.channelsService.userInChannel(channel, user_uuid)) {
+				throw new ForbiddenException("You're not in this channel");
+			}
+		}
+
 		const ret = await this.messageRepository
 			.createQueryBuilder('message')
 			.where({ channel: channel_uuid })
@@ -59,6 +79,7 @@ export class MessagesService {
 			.offset((page ? page - 1 : 0) * limit + offset)
 			.loadRelationIdAndMap('message.user', 'message.user')
 			.getManyAndCount();
+
 		const data = ret[0];
 		const count = ret[0].length;
 		const total = ret[1];
@@ -78,8 +99,8 @@ export class MessagesService {
 			this.logger.error('Unable to save message', e);
 			throw new InternalServerErrorException();
 		});
-		// TODO: Dispatch new message
-		const data: DispatchChannelSend = {
+
+		this.wsService.dispatch.channel({
 			event: WsEvents.Chat,
 			state: ChatState.Send,
 			channel: new_message.channel,
@@ -87,8 +108,7 @@ export class MessagesService {
 			id: new_message.id,
 			message: new_message.message,
 			creation_date: new_message.creation_date
-		};
-		this.wsService.dispatch.channel(data);
+		});
 	}
 
 	async delete(id: number) {
@@ -98,14 +118,13 @@ export class MessagesService {
 		});
 
 		await this.messageRepository.save({ ...message, message: null });
-		// TODO: Dispatch delete message
-		const data: DispatchChannelDelete = {
+
+		this.wsService.dispatch.channel({
 			event: WsEvents.Chat,
 			state: ChatState.Delete,
 			user: message.user,
 			channel: message.channel,
 			id: message.id
-		};
-		this.wsService.dispatch.channel(data);
+		});
 	}
 }

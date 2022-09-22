@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server, WebSocket } from 'ws';
 
-import { UsersInfos } from '../users/users.entity';
 import { DispatchSessionDestroyed, DispatchChannelCreate } from './types';
+import { ChatsChannels } from '../chats/entities/channels.entity';
 
 import {
 	SubscribedChannels,
@@ -23,8 +23,8 @@ export class WsService {
 	public subscribed_channels: SubscribedChannels;
 
 	constructor(
-		@InjectRepository(UsersInfos)
-		private readonly userReposity: Repository<UsersInfos>
+		@InjectRepository(ChatsChannels)
+		private readonly channelRepository: Repository<ChatsChannels>
 	) {}
 
 	/**
@@ -41,29 +41,6 @@ export class WsService {
 		}
 		return false;
 	}
-
-	// ClientIsSubscribedToChannel(user_uuid: string, channel_uuid: string) {
-	// 	const client = this.ws.clients.values();
-	// 	let c: WebSocket = null;
-	// 	while ((c = client.next().value)) {
-	// 		if (c['user_uuid'] === user_uuid) {
-	// 			return this.subscribed_channels[user_uuid].includes(channel_uuid)
-	// 		}
-	// 	}
-	// 	return false;
-	// }
-	//#endregion
-
-	// async init() {
-	// 	const users = await this.userReposity.find({ relations: ['channels'] });
-	// 	users.map((user) => {
-	// 		this.subscribed_channels = {
-	// 			...this.subscribed_channels,
-	// 			[user.uuid]: user.channels.map((channel) => channel.uuid)
-	// 		};
-	// 	});
-	// 	console.log(this.subscribed_channels);
-	// }
 
 	/**
 	 * Serivce
@@ -84,9 +61,11 @@ export class WsService {
 
 	public readonly unsubscribe = {
 		channel: (user_uuid: string, channel_uuid: string) => {
-			this.subscribed_channels[user_uuid] = this.subscribed_channels[user_uuid].filter(
-				(c) => c !== channel_uuid
-			);
+			if (this.subscribed_channels[user_uuid]) {
+				this.subscribed_channels[user_uuid] = this.subscribed_channels[user_uuid].filter(
+					(c) => c !== channel_uuid
+				);
+			}
 		}
 	};
 
@@ -107,7 +86,7 @@ export class WsService {
 				);
 			}
 		},
-		user: (uuid: string, data: DispatchSessionDestroyed) => {
+		user: (uuid: string, data: DispatchChannelCreate | DispatchSessionDestroyed) => {
 			const client = this.ws.clients.values();
 			let c: WebSocket = null;
 			let i = 0;
@@ -116,6 +95,14 @@ export class WsService {
 					c.send(JSON.stringify(data));
 					++i;
 				}
+			}
+
+			if (data.event === WsEvents.Chat) {
+				this.logger.verbose(
+					`Created direct channel ${data.channel} dispatched to ${i} connected ${
+						i != 1 ? 'peers' : 'peer'
+					}`
+				);
 			}
 			if (data.event === WsEvents.Session) {
 				this.logger.verbose(
@@ -139,7 +126,7 @@ export class WsService {
 			let c: WebSocket = null;
 			let i = 0;
 			while ((c = client.next().value)) {
-				if (this.subscribed_channels[c['user_uuid']].includes(channel_uuid)) {
+				if (this.subscribed_channels[c['user_uuid']]?.includes(channel_uuid)) {
 					c.send(JSON.stringify(data));
 					++i;
 				}
@@ -179,27 +166,32 @@ export class WsService {
 
 	async connected(uuid: string) {
 		if (!this.subscribed_channels || !this.subscribed_channels[uuid]) {
-			const user = await this.userReposity
-				.findOneOrFail({
-					where: { uuid },
-					relations: ['channels']
+			const channels = await this.channelRepository
+				.find({
+					where: { users: { uuid } }
 				})
+				.then((r) => (r.length ? r : null))
 				.catch((e) => {
-					this.logger.error('Cannot get user, this should not happen', e);
+					this.logger.error('Cannot get channels', e);
 					throw new InternalServerErrorException();
 				});
 
+			let subscribed: string[] = [];
+			for (const c of channels) {
+				subscribed.push(c.uuid);
+			}
+
 			this.subscribed_channels = {
 				...this.subscribed_channels,
-				[user.uuid]: user.channels.map((channel) => channel.uuid)
+				[uuid]: subscribed
 			};
 			this.logger.verbose('Connected ' + uuid);
 
-			const len = this.subscribed_channels[user.uuid].length;
+			const len = this.subscribed_channels[uuid].length;
 			if (len) {
 				this.logger.verbose(
 					`Subscribed to ${len != 1 ? 'channels' : 'channel'}`,
-					this.subscribed_channels[user.uuid]
+					this.subscribed_channels[uuid]
 				);
 			} else {
 				this.logger.verbose('Not subscribed to any channels');

@@ -41,9 +41,9 @@ import { PicturesService } from './pictures/pictures.service';
 			})
 		}),
 		WsModule,
+		AuthModule,
 		UsersModule,
 		PicturesModule,
-		AuthModule,
 		ChatsModule
 	],
 	controllers: [AppController],

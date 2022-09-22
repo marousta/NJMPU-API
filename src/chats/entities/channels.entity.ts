@@ -1,10 +1,18 @@
-import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { UsersInfos } from '../../users/users.entity';
+import { ChannelType } from '../types';
 
 @Entity()
 export class ChatsChannels {
 	@PrimaryGeneratedColumn('uuid')
 	uuid: string;
+
+	@Column({
+		type: 'enum',
+		enum: ChannelType,
+		default: ChannelType.Public
+	})
+	type: ChannelType;
 
 	@Column()
 	identifier: number;
@@ -15,15 +23,10 @@ export class ChatsChannels {
 	@Column({ nullable: true })
 	password: string;
 
-	/**
-	 * Relation User -> Channels
-	 */
-	@OneToMany((type) => UsersInfos, (user) => user.channels, {
-		onDelete: 'CASCADE',
-		nullable: false
+	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
+		onDelete: 'CASCADE'
 	})
-	@JoinTable()
-	user: UsersInfos;
+	moderator: UsersInfos;
 
 	/**
 	 * Relation Channel -> Users

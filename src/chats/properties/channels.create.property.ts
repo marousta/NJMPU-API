@@ -1,14 +1,25 @@
 import { ApiHideProperty, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+import { ChannelType } from '../types';
+
 export class ChannelsCreateProperty {
+	@ApiPropertyOptional()
+	type?: ChannelType;
+
+	@ApiPropertyOptional()
+	identifier?: number;
+
 	@ApiProperty()
-	name: string;
+	name?: string;
 
 	@ApiPropertyOptional()
 	password?: string;
 
 	@ApiHideProperty()
-	user_uuid: string;
+	current_user_uuid: string;
+
+	@ApiProperty()
+	user_uuid?: string;
 
 	@ApiPropertyOptional()
 	channel_uuid?: string;

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinTable, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { ChatsChannels } from '../chats/entities/channels.entity';
 
 @Entity()
@@ -41,20 +41,4 @@ export class UsersInfos {
 	})
 	@JoinTable()
 	channel: ChatsChannels;
-
-	/**
-	 * Relation User -> Channels
-	 */
-	@ManyToMany((type) => ChatsChannels, (channel) => channel.user, {
-		nullable: false
-	})
-	@JoinTable()
-	channels: ChatsChannels[];
-
-	addChannel(channel: ChatsChannels) {
-		if (this.channels === undefined) {
-			this.channels = new Array<ChatsChannels>();
-		}
-		this.channels.push(channel);
-	}
 }
