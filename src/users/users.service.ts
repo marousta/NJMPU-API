@@ -30,12 +30,12 @@ export class UsersService {
 	}
 
 	async get(uuid: string) {
-		const { email, password, ...filtered } = await this.usersRepository
+		const { email, password, twofactor, ...filtered } = await this.usersRepository
 			.findOneByOrFail({ uuid })
 			.catch((e) => {
 				this.logger.verbose(uuid + ' not found', e);
 				throw new NotFoundException();
 			});
-		return { ...filtered, twofactor: filtered.twofactor !== null };
+		return filtered;
 	}
 }

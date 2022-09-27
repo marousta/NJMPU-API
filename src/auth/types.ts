@@ -4,6 +4,7 @@ export interface PartialUsersInfos {
 	username?: string;
 	email?: string;
 	password?: string;
+	twofactor?: boolean;
 	profile_picture?: string;
 	is_online?: string;
 }

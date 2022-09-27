@@ -1,3 +1,4 @@
+import { Body, Logger, Request, InternalServerErrorException } from '@nestjs/common';
 import {
 	SubscribeMessage,
 	WebSocketGateway,
@@ -7,15 +8,14 @@ import {
 	OnGatewayInit,
 	ConnectedSocket
 } from '@nestjs/websockets';
-import { Body, Logger, Request, InternalServerErrorException } from '@nestjs/common';
 import { Server, WebSocket } from 'ws';
-
-import { WsService } from './ws.service';
-
-import { WsEvents } from './types';
 import { Request as Req } from 'express';
 import * as getHeaders from 'get-headers';
 import * as cookie from 'cookie';
+
+import { WsService } from './ws.service';
+
+import { WsNamespace } from './types';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -51,10 +51,10 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	}
 	//#endregion
 
-	@SubscribeMessage(WsEvents.Chat)
-	onGame(@ConnectedSocket() client: WebSocket, @Request() req: Req, @Body() data: any) {
-		console.log('onMessage ' + data);
-	}
+	// @SubscribeMessage(WsNamespace.Game)
+	// onGame(@ConnectedSocket() client: WebSocket, @Request() req: Req, @Body() data: any) {
+	// 	console.log('onMessage ' + data);
+	// }
 
 	async handleConnection(@ConnectedSocket() client: WebSocket, @Request() req: Req) {
 		const uuid = this.getUUID(req);

@@ -1,63 +1,123 @@
-export enum WsEvents {
-	Ping,
-	Chat,
-	Game,
-	Session
-}
-
-export enum ChatState {
-	Create,
-	Join,
-	Leave,
-	Send,
-	Delete
-}
-
-export interface ChatData {
-	state: ChatState;
-	uuid?: string;
-	password?: string;
-	message?: string;
-}
-
 export interface SubscribedChannels {
 	[key: string]: string[];
 }
 
-interface DispatchChannel {
-	event: WsEvents.Chat;
-	state: ChatState;
+/**
+ * Websocket response
+ */
+
+export enum WsNamespace {
+	Chat = 'Chat',
+	User = 'User',
+	Game = 'Game'
+}
+
+/**
+ * Chat
+ */
+
+export enum ChatAction {
+	Create = 'CREATE',
+	Join = 'JOIN',
+	Leave = 'LEAVE',
+	Send = 'SEND',
+	Delete = 'DELETE',
+	Promote = 'PROMOTE',
+	Demote = 'DEMOTE',
+	Mute = 'MUTE',
+	Unmute = 'UNMUTE',
+	Avatar = 'AVATAR'
+}
+
+export interface WsChat {
+	namespace: WsNamespace.Chat;
+	action: ChatAction;
+	channel: string;
+	user?: string;
+}
+
+export interface WsChatCreate extends WsChat {
+	action: ChatAction.Create;
+}
+
+export interface WsChatJoin extends WsChat {
+	action: ChatAction.Join;
 	user: string;
-	channel: string;
 }
 
-export interface DispatchChannelCreate {
-	event: WsEvents.Chat;
-	state: ChatState.Create;
-	channel: string;
+export interface WsChatLeave extends WsChat {
+	action: ChatAction.Leave;
+	user: string;
 }
 
-export interface DispatchChannelJoin extends DispatchChannel {
-	state: ChatState.Join;
-}
-
-export interface DispatchChannelLeave extends DispatchChannel {
-	state: ChatState.Leave;
-}
-
-export interface DispatchChannelSend extends DispatchChannel {
-	state: ChatState.Send;
+export interface WsMessage {
 	id: number;
-	message: string;
-	creation_date: Date;
+	text: string;
+	time: Date;
 }
 
-export interface DispatchChannelDelete extends DispatchChannel {
-	state: ChatState.Delete;
+export interface WsChatSend extends WsChat {
+	action: ChatAction.Send;
+	user: string;
+	message: WsMessage;
+}
+
+export interface WsChatDelete extends WsChat {
+	action: ChatAction.Delete;
 	id: number;
 }
 
-export interface DispatchSessionDestroyed {
-	event: WsEvents.Session;
-	state: 0;
+export interface WsChatPromote extends WsChat {
+	action: ChatAction.Promote;
+	user: string;
+}
+
+export interface WsChatDemote extends WsChat {
+	action: ChatAction.Demote;
+	user: string;
+}
+
+export interface WsChatMute extends WsChat {
+	action: ChatAction.Mute;
+	user: string;
+	expiration: Date;
+}
+
+export interface WsChatUnmute extends WsChat {
+	action: ChatAction.Unmute;
+	user: string;
+}
+
+export interface WsChatAvatar extends WsChat {
+	action: ChatAction.Avatar;
+	path: string;
+}
+
+/**
+ * User
+ */
+
+export enum UserAction {
+	Invite = 'INVITE',
+	Block = 'BLOCK',
+	Unblock = 'UNBLOCK',
+	Refresh = 'REFRESH'
+}
+
+export interface WsUser {
+	namespace: WsNamespace.User;
+	action: UserAction;
+}
+
+export interface WsUserRefresh extends WsUser {
+	action: UserAction.Refresh;
+}
+
+/**
+ * Game
+ */
+
+export interface WsGame {
+	namespace: WsNamespace.Game;
+	action: '';
 }

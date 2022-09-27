@@ -13,7 +13,7 @@ import { UsersTokens } from '../tokens/tokens.entity';
 
 import { Data, SessionsGetResponse } from './sessions.property';
 
-import { WsEvents } from '../../websockets/types';
+import { UserAction, WsNamespace } from '../../websockets/types';
 
 @Injectable()
 export class SessionsService {
@@ -87,8 +87,8 @@ export class SessionsService {
 			throw new InternalServerErrorException();
 		});
 		this.wsService.dispatch.user(uuid, {
-			event: WsEvents.Session,
-			state: 0
+			namespace: WsNamespace.User,
+			action: UserAction.Refresh
 		});
 	}
 }

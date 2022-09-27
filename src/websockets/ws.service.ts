@@ -3,17 +3,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server, WebSocket } from 'ws';
 
-import { DispatchSessionDestroyed, DispatchChannelCreate } from './types';
 import { ChatsChannels } from '../chats/entities/channels.entity';
 
 import {
+	ChatAction,
 	SubscribedChannels,
-	DispatchChannelJoin,
-	DispatchChannelLeave,
-	DispatchChannelSend,
-	DispatchChannelDelete,
-	ChatState,
-	WsEvents
+	WsChatCreate,
+	WsChatDelete,
+	WsChatJoin,
+	WsChatLeave,
+	WsChatSend,
+	WsNamespace,
+	WsUserRefresh
 } from './types';
 
 @Injectable()
@@ -70,7 +71,7 @@ export class WsService {
 	};
 
 	public readonly dispatch = {
-		all: (data: DispatchChannelCreate) => {
+		all: (data: WsChatCreate) => {
 			const client = this.ws.clients.values();
 			let c: WebSocket = null;
 			let i = 0;
@@ -78,7 +79,7 @@ export class WsService {
 				c.send(JSON.stringify(data));
 				++i;
 			}
-			if (data.event === WsEvents.Chat) {
+			if (data.namespace === WsNamespace.Chat) {
 				this.logger.verbose(
 					`Created channel ${data.channel} dispatched to ${i} connected ${
 						i != 1 ? 'peers' : 'peer'
@@ -86,7 +87,7 @@ export class WsService {
 				);
 			}
 		},
-		user: (uuid: string, data: DispatchChannelCreate | DispatchSessionDestroyed) => {
+		user: (uuid: string, data: WsChatCreate | WsUserRefresh) => {
 			const client = this.ws.clients.values();
 			let c: WebSocket = null;
 			let i = 0;
@@ -97,14 +98,14 @@ export class WsService {
 				}
 			}
 
-			if (data.event === WsEvents.Chat) {
+			if (data.namespace === WsNamespace.Chat) {
 				this.logger.verbose(
 					`Created direct channel ${data.channel} dispatched to ${i} connected ${
 						i != 1 ? 'peers' : 'peer'
 					}`
 				);
 			}
-			if (data.event === WsEvents.Session) {
+			if (data.namespace === WsNamespace.User) {
 				this.logger.verbose(
 					`Token recheck forced on ${uuid} for ${i} connected ${
 						i != 1 ? 'peers' : 'peer'
@@ -112,13 +113,7 @@ export class WsService {
 				);
 			}
 		},
-		channel: (
-			data:
-				| DispatchChannelJoin
-				| DispatchChannelLeave
-				| DispatchChannelSend
-				| DispatchChannelDelete
-		) => {
+		channel: (data: WsChatJoin | WsChatLeave | WsChatSend | WsChatDelete) => {
 			const user_uuid = data.user;
 			const channel_uuid = data.channel;
 
@@ -131,27 +126,27 @@ export class WsService {
 					++i;
 				}
 			}
-			if (data.event === WsEvents.Chat) {
-				switch (data.state) {
-					case ChatState.Join:
+			if (data.namespace === WsNamespace.Chat) {
+				switch (data.action) {
+					case ChatAction.Join:
 						return this.logger.verbose(
 							`${user_uuid} JOIN ${channel_uuid} brodcasted to ${i} subscribed ${
 								i != 1 ? 'peers' : 'peer'
 							}`
 						);
-					case ChatState.Leave:
+					case ChatAction.Leave:
 						return this.logger.verbose(
 							`${user_uuid} LEAVE ${channel_uuid} brodcasted to ${i} subscribed ${
 								i != 1 ? 'peers' : 'peer'
 							}`
 						);
-					case ChatState.Send:
+					case ChatAction.Send:
 						return this.logger.verbose(
 							`New message in ${channel_uuid} brodcasted to ${i} subscribed ${
 								i != 1 ? 'peers' : 'peer'
 							}`
 						);
-					case ChatState.Delete:
+					case ChatAction.Delete:
 						return this.logger.verbose(
 							`Deleted message id ${
 								data.id

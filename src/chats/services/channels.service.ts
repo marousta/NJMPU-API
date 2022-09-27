@@ -23,6 +23,7 @@ import { ChannelsCreateProperty } from '../properties/channels.create.property';
 import {
 	ChannelsGetResponse,
 	ChannelGetResponse,
+	ChannelDirectGetResponse,
 	ChannelData,
 	DirectData
 } from '../properties/channels.get.property';
@@ -30,8 +31,7 @@ import {
 import { isEmpty, genIdentifier } from '../../utils';
 
 import { ChannelType, ChatsDirect, ChatsGroupPrivate, ChatsGroupPublic } from '../types';
-import { DispatchChannelLeave, ChatState, WsEvents } from '../../websockets/types';
-import { ChannelDirectGetResponse } from '../properties/channels.get.property';
+import { WsNamespace, ChatAction } from '../../websockets/types';
 
 @Injectable()
 export class ChannelsService {
@@ -344,6 +344,7 @@ export class ChannelsService {
 			const user = await this.usersRepository
 				.findOneByOrFail({ uuid: params.current_user_uuid })
 				.catch((e) => {
+					// Should never happen
 					this.logger.error('Unable to find user ' + params.current_user_uuid, e);
 					throw new UnauthorizedException();
 				});
@@ -391,8 +392,8 @@ export class ChannelsService {
 			// Dispatch created message
 			if (new_channel.type === ChannelType.Public) {
 				this.wsService.dispatch.all({
-					event: WsEvents.Chat,
-					state: ChatState.Create,
+					namespace: WsNamespace.Chat,
+					action: ChatAction.Create,
 					channel: new_channel.uuid
 				});
 			}
@@ -402,8 +403,8 @@ export class ChannelsService {
 
 			// Dispatch joined message
 			this.wsService.dispatch.channel({
-				event: WsEvents.Chat,
-				state: ChatState.Join,
+				namespace: WsNamespace.Chat,
+				action: ChatAction.Join,
 				channel: new_channel.uuid,
 				user: user.uuid
 			});
@@ -471,13 +472,13 @@ export class ChannelsService {
 
 			// Dispatch joined message
 			this.wsService.dispatch.user(current_user.uuid, {
-				event: WsEvents.Chat,
-				state: ChatState.Create,
+				namespace: WsNamespace.Chat,
+				action: ChatAction.Create,
 				channel: new_direct.uuid
 			});
 			this.wsService.dispatch.user(remote_user.uuid, {
-				event: WsEvents.Chat,
-				state: ChatState.Create,
+				namespace: WsNamespace.Chat,
+				action: ChatAction.Create,
 				channel: new_direct.uuid
 			});
 
@@ -566,8 +567,8 @@ export class ChannelsService {
 
 		// Dispatch user joined to all members of channel
 		this.wsService.dispatch.channel({
-			event: WsEvents.Chat,
-			state: ChatState.Join,
+			namespace: WsNamespace.Chat,
+			action: ChatAction.Join,
 			channel: channelObj.uuid,
 			user: userObj.uuid
 		});
@@ -595,13 +596,12 @@ export class ChannelsService {
 			await this.channelRepository.save(channel);
 		}
 
-		const data: DispatchChannelLeave = {
-			event: WsEvents.Chat,
-			state: ChatState.Leave,
+		this.wsService.dispatch.channel({
+			namespace: WsNamespace.Chat,
+			action: ChatAction.Leave,
 			channel: channel_uuid,
 			user: user_uuid
-		};
-		this.wsService.dispatch.channel(data);
+		});
 		this.wsService.unsubscribe.channel(user_uuid, channel_uuid);
 	}
 	//#endregion

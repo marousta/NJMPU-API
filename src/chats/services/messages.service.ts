@@ -19,8 +19,7 @@ import { ChatsChannels } from '../entities/channels.entity';
 import { MessageStoreProperty } from '../properties/messages.store.property';
 import { MessagesGetResponse } from '../properties/messages.get.propoerty';
 
-import { ChannelType } from '../types';
-import { ChatState, WsEvents } from '../../websockets/types';
+import { WsNamespace, ChatAction } from '../../websockets/types';
 
 @Injectable()
 export class MessagesService {
@@ -65,10 +64,8 @@ export class MessagesService {
 				throw new NotFoundException();
 			});
 
-		if (channel.type !== ChannelType.Public) {
-			if (!this.channelsService.userInChannel(channel, user_uuid)) {
-				throw new ForbiddenException("You're not in this channel");
-			}
+		if (!this.channelsService.userInChannel(channel, user_uuid)) {
+			throw new ForbiddenException("You're not in this channel");
 		}
 
 		const ret = await this.messageRepository
@@ -101,13 +98,15 @@ export class MessagesService {
 		});
 
 		this.wsService.dispatch.channel({
-			event: WsEvents.Chat,
-			state: ChatState.Send,
+			namespace: WsNamespace.Chat,
+			action: ChatAction.Send,
 			channel: new_message.channel,
 			user: new_message.user,
-			id: new_message.id,
-			message: new_message.message,
-			creation_date: new_message.creation_date
+			message: {
+				id: new_message.id,
+				text: new_message.message,
+				time: new_message.creation_date
+			}
 		});
 	}
 
@@ -120,8 +119,8 @@ export class MessagesService {
 		await this.messageRepository.save({ ...message, message: null });
 
 		this.wsService.dispatch.channel({
-			event: WsEvents.Chat,
-			state: ChatState.Delete,
+			namespace: WsNamespace.Chat,
+			action: ChatAction.Delete,
 			user: message.user,
 			channel: message.channel,
 			id: message.id
