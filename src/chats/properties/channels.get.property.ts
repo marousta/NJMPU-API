@@ -21,7 +21,10 @@ export class ChannelData {
 	message_count: number;
 
 	@ApiProperty()
-	moderator: string;
+	administrator: string;
+
+	@ApiProperty()
+	moderators: string[];
 
 	@ApiProperty()
 	users: string[];

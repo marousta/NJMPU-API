@@ -28,9 +28,22 @@ import {
 	DirectData
 } from '../properties/channels.get.property';
 
+import {
+	ChannelModeratorProperty,
+	ChannelModeratorState,
+	ChannelSettingProperty
+} from '../properties/channels.update.property';
+import { ChannelLeaveProperty, LeaveAction } from '../properties/channels.delete.property';
+
 import { isEmpty, genIdentifier } from '../../utils';
 
-import { ChannelType, ChatsDirect, ChatsGroupPrivate, ChatsGroupPublic } from '../types';
+import {
+	ChannelType,
+	ChatsDirect,
+	ChatsGroupPrivate,
+	ChatsGroupPublic,
+	ApiResponseError
+} from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
 
 @Injectable()
@@ -54,7 +67,7 @@ export class ChannelsService {
 		return await this.channelRepository
 			.findOneOrFail({
 				where: { uuid: channel_uuid },
-				relations: ['users', 'moderator']
+				relations: ['users', 'administrator', 'moderators']
 			})
 			.catch((e) => {
 				return null;
@@ -202,6 +215,27 @@ export class ChannelsService {
 		}
 		return false;
 	}
+
+	userIsAdministrator(channel: ChatsChannels, user_uuid: string) {
+		return channel.administrator === user_uuid;
+	}
+
+	userIsModerator(channel: ChatsChannels, user_uuid: string) {
+		for (const m of channel.moderators) {
+			if (m.uuid === user_uuid) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	userHasPermissions(channel: ChatsChannels, user_uuid: string) {
+		//  prettier-ignore
+		return (
+			this.userInChannel(channel, user_uuid)
+			&& (this.userIsAdministrator(channel, user_uuid) || this.userIsModerator(channel, user_uuid))
+		);
+	}
 	//#endregion
 
 	/**
@@ -228,7 +262,8 @@ export class ChannelsService {
 
 		let data: ChannelData[] = [];
 		for (const channel of ret[0]) {
-			const { uuid, type, identifier, name, password, moderator, users } = channel;
+			const { uuid, type, identifier, name, password, administrator, moderators, users } =
+				channel;
 			const message_count = await this.messagesService.count(channel.uuid);
 			data.push({
 				uuid,
@@ -237,7 +272,8 @@ export class ChannelsService {
 				name,
 				password: password !== null,
 				message_count,
-				moderator: moderator as any as string,
+				administrator: administrator as any as string,
+				moderators: moderators as any as string[],
 				users: users as any as string[]
 			});
 		}
@@ -272,7 +308,8 @@ export class ChannelsService {
 		let data: Array<ChannelData | DirectData> = [];
 		for (const channel of ret[0]) {
 			const message_count = await this.messagesService.count(channel.uuid);
-			const { uuid, type, identifier, name, password, moderator, users } = channel;
+			const { uuid, type, identifier, name, password, administrator, moderators, users } =
+				channel;
 
 			if (channel.type === ChannelType.Direct) {
 				data.push({
@@ -288,7 +325,8 @@ export class ChannelsService {
 					identifier,
 					name,
 					message_count,
-					moderator: moderator as any as string,
+					administrator: administrator as any as string,
+					moderators: moderators as any as string[],
 					password: password !== null,
 					users: users as any as string[]
 				});
@@ -307,11 +345,16 @@ export class ChannelsService {
 		const channel = await this.findOneByRelationOrNull(channel_uuid);
 		// prettier-ignore
 		if (!channel || (channel.type === ChannelType.Private && !this.userInChannel(channel, user_uuid))) {
-			throw new NotFoundException();
+			throw new NotFoundException(ApiResponseError.ChannelNotFound);
 		}
-		const { uuid, type, identifier, name, password, moderator, users } = channel;
+		const { uuid, type, identifier, name, password, administrator, moderators, users } =
+			channel;
 
 		const message_count = await this.messagesService.count(channel_uuid);
+		let filteredModerators: string[] = [];
+		for (const m of moderators) {
+			filteredModerators.push(m.uuid);
+		}
 		let filteredUsers: string[] = [];
 		for (const u of users) {
 			filteredUsers.push(u.uuid);
@@ -331,7 +374,8 @@ export class ChannelsService {
 				identifier,
 				name,
 				message_count,
-				moderator: moderator as any as string,
+				administrator: (administrator as any as UsersInfos).uuid,
+				moderators: filteredModerators,
 				password: password !== null,
 				users: filteredUsers
 			};
@@ -346,7 +390,7 @@ export class ChannelsService {
 				.catch((e) => {
 					// Should never happen
 					this.logger.error('Unable to find user ' + params.current_user_uuid, e);
-					throw new UnauthorizedException();
+					throw new InternalServerErrorException();
 				});
 
 			// Generate identifier
@@ -381,7 +425,7 @@ export class ChannelsService {
 				identifier,
 				name: params.name,
 				password,
-				moderator: user
+				administrator: user.uuid
 			});
 			request.addUser(user);
 			const new_channel = await this.channelRepository.save(request).catch((e) => {
@@ -424,7 +468,7 @@ export class ChannelsService {
 				.findOneByOrFail({ uuid: params.current_user_uuid })
 				.catch((e) => {
 					this.logger.error('Unable to find current user ' + params.current_user_uuid, e);
-					throw new UnauthorizedException();
+					throw new InternalServerErrorException();
 				});
 
 			// Get remote user
@@ -432,7 +476,7 @@ export class ChannelsService {
 				.findOneByOrFail({ uuid: params.user_uuid })
 				.catch((e) => {
 					this.logger.error('Unable to find relatiom user ' + params.user_uuid, e);
-					throw new NotFoundException("User doesn't exist");
+					throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
 				});
 
 			const name = current_user.uuid + '+' + remote_user.uuid;
@@ -539,20 +583,20 @@ export class ChannelsService {
 		}
 
 		if (!channel || channel.type === ChannelType.Direct) {
-			throw new NotFoundException("Channel doesn't exist");
+			throw new NotFoundException(ApiResponseError.ChannelNotFound);
 		}
 		if (this.userInChannel(channel, parsed.current_user_uuid)) {
-			throw new BadRequestException("You're already in this channel");
+			throw new BadRequestException(ApiResponseError.AlreadyInChannel);
 		}
 
 		// Channel has password
 		if (channel.password) {
 			if (isEmpty(parsed.password)) {
-				throw new BadRequestException('Wrong password');
+				throw new BadRequestException(ApiResponseError.WrongPassword);
 			}
 			const verif = await argon2.verify(channel.password, parsed.password);
 			if (!verif) {
-				throw new BadRequestException('Wrong password');
+				throw new BadRequestException(ApiResponseError.WrongPassword);
 			}
 		}
 
@@ -574,35 +618,170 @@ export class ChannelsService {
 		});
 	}
 
-	async leave(channel_uuid: string, user_uuid: string) {
-		const channel = await this.findOneByRelationOrNull(channel_uuid);
+	async moderators(params: ChannelModeratorProperty) {
+		const channel = await this.findOneByRelationOrNull(params.channel_uuid);
+
 		if (!channel) {
-			throw new NotFoundException();
+			throw new NotFoundException(ApiResponseError.ChannelNotFound);
+		}
+
+		if (this.userIsAdministrator(channel, params.user_uuid)) {
+			throw new ForbiddenException(ApiResponseError.NotAllowed);
+		}
+
+		let action: ChatAction;
+		switch (params.state) {
+			case ChannelModeratorState.Remove:
+				if (!this.userIsModerator(channel, params.user_uuid)) {
+					throw new BadRequestException(ApiResponseError.NotModerator);
+				}
+
+				channel.moderators = channel.moderators.filter((m) => m.uuid === params.user_uuid);
+				action = ChatAction.Demote;
+				break;
+			case ChannelModeratorState.Add:
+				if (this.userIsModerator(channel, params.user_uuid)) {
+					throw new BadRequestException(ApiResponseError.AlreadyModerator);
+				}
+
+				const in_channel = this.userInChannel(channel, params.user_uuid);
+				if (!in_channel) {
+					throw new BadRequestException(ApiResponseError.NotAllowed);
+				}
+
+				const user = await this.usersRepository
+					.findOneByOrFail({ uuid: params.user_uuid })
+					.catch((e) => {
+						this.logger.verbose('Unable to get user ' + params.user_uuid, e);
+						throw new BadRequestException(ApiResponseError.RemoteUserNotFound);
+					});
+				channel.addModerator(user);
+				action = ChatAction.Promote;
+				break;
+			default:
+				throw new BadRequestException();
+		}
+
+		await this.channelRepository.save(channel).catch((e) => {
+			this.logger.error('Unable to update moderators for channel ' + channel.uuid, e);
+			throw new InternalServerErrorException();
+		});
+
+		this.wsService.dispatch.channel({
+			namespace: WsNamespace.Chat,
+			action,
+			user: params.user_uuid,
+			channel: channel.uuid
+		});
+	}
+
+	async settings(params: ChannelSettingProperty) {
+		const channel = await this.channelRepository
+			.findOneOrFail({
+				where: { uuid: params.channel_uuid },
+				relations: ['administrator', 'moderators', 'users']
+			})
+			.catch((e) => {
+				this.logger.verbose('Unable to get channel ' + params.channel_uuid, e);
+				throw new NotFoundException(ApiResponseError.ChannelNotFound);
+			});
+
+		if (!this.userHasPermissions(channel, params.user_uuid)) {
+			throw new ForbiddenException(ApiResponseError.NotAllowed);
+		}
+
+		let password: string;
+		if (isEmpty(params.password)) {
+			password = null;
+		} else {
+			password = await argon2.hash(params.password, {
+				timeCost: 11,
+				saltLength: 128
+			});
+		}
+
+		await this.channelRepository.save({ ...channel, password }).catch((e) => {
+			this.logger.error('Unable to update channel password for ' + channel.uuid, e);
+			throw new InternalServerErrorException();
+		});
+	}
+
+	async leave(params: ChannelLeaveProperty) {
+		const channel = await this.findOneByRelationOrNull(params.channel_uuid);
+		if (!channel) {
+			throw new NotFoundException(ApiResponseError.ChannelNotFound);
 		}
 
 		if (channel.type === ChannelType.Direct) {
 			throw new BadRequestException("You can't leave direct channel");
 		}
 
-		if (!this.userInChannel(channel, user_uuid)) {
-			throw new ForbiddenException("You're not in this channel");
+		if (!this.userInChannel(channel, params.user_uuid)) {
+			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
-		channel.users = channel.users.filter((user) => user.uuid !== user_uuid);
+		let remove_user: string;
+		switch (params.action) {
+			case LeaveAction.Leave:
+				if (this.userIsAdministrator(channel, params.user_uuid)) {
+					channel.administrator = null;
+				}
+				remove_user = params.user_uuid;
+				break;
+			case LeaveAction.Kick:
+				if (!this.userHasPermissions(channel, params.user_uuid)) {
+					throw new ForbiddenException(ApiResponseError.NotAllowed);
+				}
+				remove_user = params.user;
+				break;
+			case LeaveAction.Remove:
+				break;
+			default:
+				throw new BadRequestException('Invalid action');
+		}
 
-		if (!channel.users.length) {
-			await this.channelRepository.delete(channel.uuid);
+		if (!channel.users.length || LeaveAction.Remove) {
+			await this.channelRepository.delete(channel.uuid).catch((e) => {
+				this.logger.error('Unable to delete channel ' + channel.uuid, e);
+				throw new InternalServerErrorException();
+			});
 		} else {
-			await this.channelRepository.save(channel);
+			if (remove_user) {
+				const user = await this.usersRepository
+					.findOneByOrFail({ uuid: remove_user })
+					.catch((e) => {
+						this.logger.verbose('Unable to find user ' + remove_user, e);
+						throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
+					});
+			}
+
+			channel.moderators = channel.moderators.filter((m) => m.uuid !== remove_user);
+			channel.users = channel.users.filter((user) => user.uuid !== remove_user);
+
+			await this.channelRepository.save(channel).catch((e) => {
+				this.logger.error(
+					'Unable to remove user ' + remove_user + ' from channel ' + channel.uuid,
+					e
+				);
+				throw new InternalServerErrorException();
+			});
 		}
 
-		this.wsService.dispatch.channel({
-			namespace: WsNamespace.Chat,
-			action: ChatAction.Leave,
-			channel: channel_uuid,
-			user: user_uuid
-		});
-		this.wsService.unsubscribe.channel(user_uuid, channel_uuid);
+		if (params.action === LeaveAction.Remove) {
+			this.wsService.dispatch.channel({
+				namespace: WsNamespace.Chat,
+				action: params.action as any,
+				channel: params.channel_uuid
+			});
+		} else {
+			this.wsService.dispatch.channel({
+				namespace: WsNamespace.Chat,
+				action: params.action as any,
+				channel: params.channel_uuid,
+				user: remove_user
+			});
+		}
+		this.wsService.unsubscribe.channel(remove_user, params.channel_uuid);
 	}
 	//#endregion
 }

@@ -11,7 +11,8 @@ import {
 	Response,
 	UseGuards,
 	BadRequestException,
-	ForbiddenException
+	Put,
+	Patch
 } from '@nestjs/common';
 import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -19,7 +20,6 @@ import { Request as Req, Response as Res } from 'express';
 
 import { ChannelsService } from './services/channels.service';
 import { MessagesService } from './services/messages.service';
-import { WsService } from '../websockets/ws.service';
 
 import { ChannelsCreateProperty } from './properties/channels.create.property';
 import { ChannelsGetResponse, ChannelGetResponse } from './properties/channels.get.property';
@@ -29,7 +29,13 @@ import { MessageDeleteProperty } from './properties/message.delete.property';
 import { GlobalQueryProperty } from '../global.property';
 
 import { isEmpty, parseUnsigned } from '../utils';
-import { ChannelType } from './types';
+import { ChannelType, ApiResponseError } from './types';
+import { ChannelSettingProperty } from './properties/channels.update.property';
+import { ChannelLeaveProperty, LeaveAction } from './properties/channels.delete.property';
+import {
+	ChannelModeratorProperty,
+	ChannelModeratorState
+} from './properties/channels.update.property';
 
 @UseGuards(AuthGuard('access'))
 @ApiTags('chats')
@@ -37,8 +43,7 @@ import { ChannelType } from './types';
 export class ChatsController {
 	constructor(
 		private readonly channelsService: ChannelsService,
-		private readonly messagesService: MessagesService,
-		private readonly wsService: WsService
+		private readonly messagesService: MessagesService
 	) {}
 
 	/**
@@ -51,7 +56,7 @@ export class ChatsController {
 	 */
 	@ApiQuery({ type: GlobalQueryProperty })
 	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsGetResponse })
-	@ApiResponse({ status: 400, description: 'Invalid number in query' })
+	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
 	@HttpCode(200)
 	@Get()
 	async getAll(
@@ -70,7 +75,7 @@ export class ChatsController {
 	 */
 	@ApiQuery({ type: GlobalQueryProperty })
 	@ApiResponse({ status: 200, description: 'List of joined channels', type: ChannelsGetResponse })
-	@ApiResponse({ status: 400, description: 'Invalid number in query' })
+	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
 	@HttpCode(200)
 	@Get('/in')
 	async getAllin(
@@ -90,15 +95,15 @@ export class ChatsController {
 	 * Get one
 	 */
 	@ApiResponse({ status: 200, description: 'Channel details', type: ChannelGetResponse })
-	@ApiResponse({ status: 400, description: 'Missing channel uuid' })
-	@ApiResponse({ status: 404, description: "Channel doesn't exist" })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
 	@Get(':uuid')
 	async getOne(@Request() req: Req, @Param('uuid') channel_uuid: string) {
 		const uuid = (req.user as any).uuid;
 
 		if (!channel_uuid) {
-			throw new BadRequestException();
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
 		}
 		return await this.channelsService.getOne(channel_uuid, uuid);
 	}
@@ -156,14 +161,13 @@ export class ChatsController {
 	})
 	@ApiResponse({ status: 200, description: 'Joined' })
 	@ApiResponse({ status: 201, description: 'Created' })
-	@ApiResponse({ status: 400.1, description: 'Wrong password' })
-	@ApiResponse({ status: 400.2, description: 'User already in this channel' })
-	@ApiResponse({ status: 400.3, description: "Channel doesn't exist" })
-	@ApiResponse({ status: 400.4, description: "User can't DM herself" })
-	@ApiResponse({ status: 400.5, description: "Remote user doesn't exist" })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.WrongPassword })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyInChannel })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.ChannelNotFound })
+	@ApiResponse({ status: 400.4, description: "You can't DM yourself" })
+	@ApiResponse({ status: 400.5, description: ApiResponseError.RemoteUserNotFound })
 	@ApiResponse({ status: 400.6, description: 'Direct message with this user already exist' })
-	@ApiResponse({ status: 401, description: "User doesn't exist" })
-	@ApiResponse({ status: 404, description: 'Channel not found' })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
 	@Post()
 	async join(
@@ -191,22 +195,141 @@ export class ChatsController {
 	}
 
 	/**
-	 * Leave
+	 * Moderator
 	 */
-	@ApiResponse({ status: 200, description: 'Leaved' })
-	@ApiResponse({ status: 400, description: 'Missing channel uuid' })
-	@ApiResponse({ status: 403, description: 'User not in channel' })
-	@ApiResponse({ status: 404, description: 'Channel not found' })
-	@HttpCode(200)
-	@Delete(':uuid')
-	async leave(@Request() req: Req, @Param('uuid') channel_uuid: string) {
+	@ApiBody({
+		type: ChannelModeratorProperty,
+		examples: {
+			['Remove moderator']: {
+				value: {
+					state: ChannelModeratorState.Remove,
+					user_uuid: 'string'
+				} as ChannelModeratorProperty
+			},
+			['Add moderator']: {
+				value: {
+					state: ChannelModeratorState.Add,
+					user_uuid: 'string'
+				} as ChannelModeratorProperty
+			}
+		}
+	})
+	@ApiResponse({ status: 200, description: 'Moderator successfully added' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.NotModerator })
+	@ApiResponse({ status: 400.5, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Put(':uuid')
+	async moderators(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelModeratorProperty
+	) {
 		const user_uuid = (req.user as any).uuid;
 
 		if (!channel_uuid) {
-			throw new BadRequestException();
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
 		}
 
-		await this.channelsService.leave(channel_uuid, user_uuid);
+		await this.channelsService.moderators({
+			state: body.state,
+			current_user_uuid: user_uuid,
+			user_uuid: body.user_uuid,
+			channel_uuid
+		});
+	}
+
+	/**
+	 * Settings
+	 */
+	@ApiBody({
+		type: ChannelSettingProperty,
+		examples: {
+			['Add/change password']: {
+				value: {
+					password: 'string'
+				} as ChannelSettingProperty
+			},
+			['Remove password']: {
+				value: {
+					password: null
+				} as ChannelSettingProperty
+			}
+		}
+	})
+	@ApiResponse({ status: 200, description: 'Setting successfully updated' })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Patch(':uuid')
+	async settings(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelSettingProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		if (!channel_uuid) {
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
+		}
+
+		await this.channelsService.settings({
+			channel_uuid,
+			user_uuid,
+			password: body.password
+		});
+	}
+
+	/**
+	 * Leave
+	 * //TODO: Customize route for leaving, kicking, deleting
+	 */
+	@ApiBody({
+		type: ChannelLeaveProperty,
+		examples: {
+			['Leave channel']: {
+				value: {
+					action: LeaveAction.Leave
+				} as ChannelLeaveProperty
+			},
+			['Delete channel']: {
+				value: {
+					action: LeaveAction.Remove
+				} as ChannelLeaveProperty
+			},
+			['Kick user from channel']: {
+				value: {
+					action: LeaveAction.Kick
+				} as ChannelLeaveProperty
+			}
+		}
+	})
+	@ApiResponse({ status: 200, description: 'Leaved' })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@HttpCode(200)
+	@Delete(':uuid')
+	async leave(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelLeaveProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		if (!channel_uuid) {
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
+		}
+
+		await this.channelsService.leave({
+			action: body.action,
+			user: body.user,
+			user_uuid,
+			channel_uuid
+		});
 	}
 	//#endregion
 
@@ -220,10 +343,10 @@ export class ChatsController {
 	 */
 	@ApiQuery({ type: MessagesGetProperty })
 	@ApiResponse({ status: 200, description: "Channel's messages", type: MessagesGetResponse })
-	@ApiResponse({ status: 400.1, description: 'Missing channel uuid' })
-	@ApiResponse({ status: 400.2, description: 'Invalid number in query' })
-	@ApiResponse({ status: 403, description: 'User not in channel' })
-	@ApiResponse({ status: 404, description: 'Channel not found' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.InvalidQuery })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
 	@Get(':uuid/messages')
 	async getMessages(
@@ -235,7 +358,7 @@ export class ChatsController {
 	) {
 		const user_uuid = (req.user as any).uuid;
 		if (!channel_uuid) {
-			throw new BadRequestException('Missing channel uuid');
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
 		}
 
 		page = parseUnsigned({ page });
@@ -249,10 +372,10 @@ export class ChatsController {
 	 */
 	@ApiBody({ type: MessageStoreProperty })
 	@ApiResponse({ status: 201, description: 'Created and brodcasted' })
-	@ApiResponse({ status: 400, description: 'Missing channel uuid' })
-	@ApiResponse({ status: 400, description: 'Empty message' })
-	@ApiResponse({ status: 403, description: 'User not in channel' })
-	@ApiResponse({ status: 404, description: 'Channel not found' })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 400, description: ApiResponseError.EmptyMessage })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(201)
 	@Post(':uuid/messages')
 	async addMessage(
@@ -263,16 +386,11 @@ export class ChatsController {
 		const user_uuid = (req.user as any).uuid;
 
 		if (!channel_uuid) {
-			throw new BadRequestException('Missing channel uuid');
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
 		}
 
 		if (isEmpty(body.message)) {
-			throw new BadRequestException('Empty message');
-		}
-
-		const userInChannel = await this.channelsService.userInChannelFind(channel_uuid, user_uuid);
-		if (!userInChannel) {
-			throw new ForbiddenException("You're not in this channel");
+			throw new BadRequestException(ApiResponseError.EmptyMessage);
 		}
 
 		await this.messagesService.store({
@@ -287,10 +405,10 @@ export class ChatsController {
 	 */
 	@ApiBody({ type: MessageDeleteProperty })
 	@ApiResponse({ status: 200, description: 'Deleted' })
-	@ApiResponse({ status: 400.1, description: 'Missing channel uuid' })
-	@ApiResponse({ status: 400.2, description: 'Missing mesasge id' })
-	@ApiResponse({ status: 400.3, description: "You can't leave direct channel" })
-	@ApiResponse({ status: 403, description: 'User not in channel' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.MissingID })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.MessageNotFound })
 	@HttpCode(200)
 	@Delete(':uuid/messages')
 	async deleteMessage(
@@ -301,20 +419,15 @@ export class ChatsController {
 		const user_uuid = (req.user as any).uuid;
 
 		if (!channel_uuid) {
-			throw new BadRequestException('Missing channel uuid');
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
 		}
 
 		const id = parseUnsigned({ id: body.id });
 		if (!id) {
-			throw new BadRequestException('Missing mesasge id');
+			throw new BadRequestException(ApiResponseError.MissingID);
 		}
 
-		const userInChannel = await this.channelsService.userInChannelFind(channel_uuid, user_uuid);
-		if (!userInChannel) {
-			throw new ForbiddenException("You're not in this channel");
-		}
-
-		await this.messagesService.delete(id);
+		await this.messagesService.delete(channel_uuid, user_uuid, id);
 	}
 	//#endregion
 }

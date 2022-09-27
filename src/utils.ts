@@ -76,3 +76,7 @@ export function parseUnsigned(raw: object) {
 	}
 	return value;
 }
+
+export function peerOrPeers(i: number) {
+	return i != 1 ? 'peers' : 'peer';
+}

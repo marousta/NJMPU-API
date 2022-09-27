@@ -13,13 +13,15 @@ import { Repository } from 'typeorm';
 import { ChannelsService } from './channels.service';
 import { WsService } from '../../websockets/ws.service';
 
-import { ChatsMessages } from '../entities/messages.entity';
+import { UsersInfos } from '../../users/users.entity';
 import { ChatsChannels } from '../entities/channels.entity';
+import { ChatsMessages } from '../entities/messages.entity';
 
 import { MessageStoreProperty } from '../properties/messages.store.property';
 import { MessagesGetResponse } from '../properties/messages.get.propoerty';
 
 import { WsNamespace, ChatAction } from '../../websockets/types';
+import { ApiResponseError } from '../types';
 
 @Injectable()
 export class MessagesService {
@@ -61,11 +63,11 @@ export class MessagesService {
 			})
 			.catch((e) => {
 				this.logger.verbose('Channel not found', e);
-				throw new NotFoundException();
+				throw new NotFoundException(ApiResponseError.ChannelNotFound);
 			});
 
 		if (!this.channelsService.userInChannel(channel, user_uuid)) {
-			throw new ForbiddenException("You're not in this channel");
+			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
 		const ret = await this.messageRepository
@@ -85,6 +87,14 @@ export class MessagesService {
 	}
 
 	async store(params: MessageStoreProperty) {
+		const userInChannel = await this.channelsService.userInChannelFind(
+			params.channel_uuid,
+			params.user_uuid
+		);
+		if (!userInChannel) {
+			throw new ForbiddenException(ApiResponseError.NotAllowed);
+		}
+
 		const request = this.messageRepository.create({
 			user: params.user_uuid,
 			channel: params.channel_uuid,
@@ -110,19 +120,40 @@ export class MessagesService {
 		});
 	}
 
-	async delete(id: number) {
-		const message = await this.messageRepository.findOneByOrFail({ id }).catch((e) => {
-			this.logger.verbose('Unable to find message ' + id, e);
-			throw new NotFoundException();
-		});
+	async delete(channel_uuid: string, user_uuid: string, id: number) {
+		const message = await this.messageRepository
+			.findOneOrFail({ where: { id }, relations: ['user', 'channel'] })
+			.catch((e) => {
+				this.logger.verbose('Unable to find message ' + id, e);
+				throw new NotFoundException(ApiResponseError.MessageNotFound);
+			});
+
+		const channel = await this.channelRepository
+			.findOneOrFail({
+				where: { uuid: channel_uuid },
+				relations: ['administrator', 'moderators', 'users']
+			})
+			.catch((e) => {
+				this.logger.error('Unable to find channel ' + channel_uuid, e);
+				throw new InternalServerErrorException();
+			});
+
+		console.log((message.user as any as UsersInfos).uuid);
+
+		//  prettier-ignore
+		if (!this.channelsService.userHasPermissions(channel, user_uuid) //User is not administrator or moderator
+		&& (message.user as any as UsersInfos).uuid !== user_uuid) //User is not the message owner
+		{
+			throw new ForbiddenException(ApiResponseError.NotAllowed);
+		}
 
 		await this.messageRepository.save({ ...message, message: null });
 
 		this.wsService.dispatch.channel({
 			namespace: WsNamespace.Chat,
 			action: ChatAction.Delete,
-			user: message.user,
-			channel: message.channel,
+			user: user_uuid,
+			channel: channel_uuid,
 			id: message.id
 		});
 	}

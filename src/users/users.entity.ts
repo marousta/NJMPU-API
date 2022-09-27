@@ -34,11 +34,24 @@ export class UsersInfos {
 	is_online: boolean;
 
 	/**
+	 * Relation Channel moderators -> Users
+	 */
+	@OneToMany((type) => ChatsChannels, (channel) => channel.moderators, {
+		nullable: false
+	})
+	@JoinTable({
+		name: 'chats_channels_moderators-users_infos'
+	})
+	moderator: ChatsChannels;
+
+	/**
 	 * Relation Channel -> Users
 	 */
 	@OneToMany((type) => ChatsChannels, (channel) => channel.users, {
 		nullable: false
 	})
-	@JoinTable()
+	@JoinTable({
+		name: 'chats_channels_users-users_infos'
+	})
 	channel: ChatsChannels;
 }

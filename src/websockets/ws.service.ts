@@ -5,13 +5,18 @@ import { Server, WebSocket } from 'ws';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
 
+import { peerOrPeers as PeerOrPeers } from '../utils';
+
 import {
 	ChatAction,
 	SubscribedChannels,
 	WsChatCreate,
 	WsChatDelete,
+	WsChatDemote,
 	WsChatJoin,
 	WsChatLeave,
+	WsChatRemove,
+	WsChatPromote,
 	WsChatSend,
 	WsNamespace,
 	WsUserRefresh
@@ -62,7 +67,7 @@ export class WsService {
 
 	public readonly unsubscribe = {
 		channel: (user_uuid: string, channel_uuid: string) => {
-			if (this.subscribed_channels[user_uuid]) {
+			if (this.subscribed_channels && this.subscribed_channels[user_uuid]) {
 				this.subscribed_channels[user_uuid] = this.subscribed_channels[user_uuid].filter(
 					(c) => c !== channel_uuid
 				);
@@ -81,9 +86,7 @@ export class WsService {
 			}
 			if (data.namespace === WsNamespace.Chat) {
 				this.logger.verbose(
-					`Created channel ${data.channel} dispatched to ${i} connected ${
-						i != 1 ? 'peers' : 'peer'
-					}`
+					`Created channel ${data.channel} dispatched to ${i} connected ${PeerOrPeers(i)}`
 				);
 			}
 		},
@@ -100,20 +103,27 @@ export class WsService {
 
 			if (data.namespace === WsNamespace.Chat) {
 				this.logger.verbose(
-					`Created direct channel ${data.channel} dispatched to ${i} connected ${
-						i != 1 ? 'peers' : 'peer'
-					}`
+					`Created direct channel ${
+						data.channel
+					} dispatched to ${i} connected ${PeerOrPeers(i)}`
 				);
 			}
 			if (data.namespace === WsNamespace.User) {
 				this.logger.verbose(
-					`Token recheck forced on ${uuid} for ${i} connected ${
-						i != 1 ? 'peers' : 'peer'
-					}`
+					`Token recheck forced on ${uuid} for ${i} connected ${PeerOrPeers(i)}`
 				);
 			}
 		},
-		channel: (data: WsChatJoin | WsChatLeave | WsChatSend | WsChatDelete) => {
+		channel: (
+			data:
+				| WsChatJoin
+				| WsChatLeave
+				| WsChatRemove
+				| WsChatSend
+				| WsChatDelete
+				| WsChatPromote
+				| WsChatDemote
+		) => {
 			const user_uuid = data.user;
 			const channel_uuid = data.channel;
 
@@ -130,29 +140,45 @@ export class WsService {
 				switch (data.action) {
 					case ChatAction.Join:
 						return this.logger.verbose(
-							`${user_uuid} JOIN ${channel_uuid} brodcasted to ${i} subscribed ${
-								i != 1 ? 'peers' : 'peer'
-							}`
+							`${user_uuid} JOIN ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
 						);
 					case ChatAction.Leave:
 						return this.logger.verbose(
-							`${user_uuid} LEAVE ${channel_uuid} brodcasted to ${i} subscribed ${
-								i != 1 ? 'peers' : 'peer'
-							}`
+							`${user_uuid} LEAVE ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
 						);
 					case ChatAction.Send:
 						return this.logger.verbose(
-							`New message in ${channel_uuid} brodcasted to ${i} subscribed ${
-								i != 1 ? 'peers' : 'peer'
-							}`
+							`New message in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
 						);
 					case ChatAction.Delete:
 						return this.logger.verbose(
 							`Deleted message id ${
 								data.id
-							} in ${channel_uuid} brodcasted to ${i} subscribed ${
-								i != 1 ? 'peers' : 'peer'
-							}`
+							} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						);
+					case ChatAction.Remove:
+						return this.logger.verbose(
+							`Removed channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
+						);
+					case ChatAction.Promote:
+						return this.logger.verbose(
+							`Promoted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
+						);
+					case ChatAction.Demote:
+						return this.logger.verbose(
+							`Demoted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
 						);
 				}
 			}

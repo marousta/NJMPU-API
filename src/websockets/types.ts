@@ -20,6 +20,7 @@ export enum ChatAction {
 	Create = 'CREATE',
 	Join = 'JOIN',
 	Leave = 'LEAVE',
+	Remove = 'REMOVE',
 	Send = 'SEND',
 	Delete = 'DELETE',
 	Promote = 'PROMOTE',
@@ -48,6 +49,10 @@ export interface WsChatJoin extends WsChat {
 export interface WsChatLeave extends WsChat {
 	action: ChatAction.Leave;
 	user: string;
+}
+
+export interface WsChatRemove extends WsChat {
+	action: ChatAction.Remove;
 }
 
 export interface WsMessage {
