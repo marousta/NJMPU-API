@@ -307,7 +307,7 @@ export class ChatsController {
 			}
 		}
 	})
-	@ApiResponse({ status: 200, description: 'Leaved' })
+	@ApiResponse({ status: 200, description: 'Left' })
 	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })

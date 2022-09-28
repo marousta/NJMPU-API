@@ -16,6 +16,7 @@ import { UsersTokens } from './tokens.entity';
 import { UsersInfos } from '../../users/users.entity';
 
 import { GeneratedTokens, JwtPayload, PartialUsersInfos } from '../types';
+import { isEmpty } from '../../utils';
 
 @Injectable()
 export class TokensService {
@@ -113,6 +114,14 @@ export class TokensService {
 			this.logger.verbose('Token not found', e);
 			throw new UnauthorizedException();
 		});
+
+		if (
+			isEmpty(user_token[token_type + '_hash']) ||
+			isEmpty(user_token.ua_hash) ||
+			isEmpty(user_token.ip_hash)
+		) {
+			throw new UnauthorizedException();
+		}
 
 		const token_verif = await argon2.verify(
 			user_token[token_type + '_hash'],

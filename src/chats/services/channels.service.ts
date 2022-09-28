@@ -720,7 +720,7 @@ export class ChannelsService {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
-		let remove_user: string;
+		let remove_user: string = null;
 		switch (params.action) {
 			case LeaveAction.Leave:
 				if (this.userIsAdministrator(channel, params.user_uuid)) {
@@ -740,20 +740,13 @@ export class ChannelsService {
 				throw new BadRequestException('Invalid action');
 		}
 
-		if (!channel.users.length || LeaveAction.Remove) {
-			await this.channelRepository.delete(channel.uuid).catch((e) => {
-				this.logger.error('Unable to delete channel ' + channel.uuid, e);
-				throw new InternalServerErrorException();
-			});
-		} else {
-			if (remove_user) {
-				const user = await this.usersRepository
-					.findOneByOrFail({ uuid: remove_user })
-					.catch((e) => {
-						this.logger.verbose('Unable to find user ' + remove_user, e);
-						throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
-					});
-			}
+		if (remove_user) {
+			const user = await this.usersRepository
+				.findOneByOrFail({ uuid: remove_user })
+				.catch((e) => {
+					this.logger.verbose('Unable to find user ' + remove_user, e);
+					throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
+				});
 
 			channel.moderators = channel.moderators.filter((m) => m.uuid !== remove_user);
 			channel.users = channel.users.filter((user) => user.uuid !== remove_user);
@@ -767,16 +760,21 @@ export class ChannelsService {
 			});
 		}
 
-		if (params.action === LeaveAction.Remove) {
+		if (!channel.users.length || params.action === LeaveAction.Remove) {
+			await this.channelRepository.delete(channel.uuid).catch((e) => {
+				this.logger.error('Unable to delete channel ' + channel.uuid, e);
+				throw new InternalServerErrorException();
+			});
+
 			this.wsService.dispatch.channel({
 				namespace: WsNamespace.Chat,
-				action: params.action as any,
+				action: ChatAction.Remove,
 				channel: params.channel_uuid
 			});
 		} else {
 			this.wsService.dispatch.channel({
 				namespace: WsNamespace.Chat,
-				action: params.action as any,
+				action: ChatAction.Leave,
 				channel: params.channel_uuid,
 				user: remove_user
 			});
