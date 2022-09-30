@@ -5,9 +5,13 @@ import {
 	JoinTable,
 	ManyToMany,
 	ManyToOne,
+	OneToMany,
 	PrimaryGeneratedColumn
 } from 'typeorm';
+
 import { UsersInfos } from '../../users/users.entity';
+import { ChatsChannelsBlacklist } from './channels.blacklist.entity';
+
 import { ChannelType } from '../types';
 
 @Entity()
@@ -38,7 +42,7 @@ export class ChatsChannels {
 		onDelete: 'SET NULL'
 	})
 	@JoinColumn()
-	administrator: string;
+	administrator: UsersInfos;
 
 	/**
 	 * Relation Channel moderators -> Users
@@ -75,4 +79,28 @@ export class ChatsChannels {
 		}
 		this.users.push(user);
 	}
+
+	/**
+	 * Relation Channel -> Channel blacklist
+	 */
+	@OneToMany((type) => ChatsChannelsBlacklist, (entry) => entry.channel, {
+		nullable: true
+	})
+	@JoinTable({
+		name: 'chats_channels-chats_channels_blacklist'
+	})
+	blacklist: ChatsChannelsBlacklist[];
+
+	addBlacklist(entry: ChatsChannelsBlacklist) {
+		if (this.blacklist === undefined) {
+			this.blacklist = new Array<ChatsChannelsBlacklist>();
+		}
+		this.blacklist.push(entry);
+	}
+}
+
+export interface ChatsChannelsID extends ChatsChannels {
+	administratorID?: string;
+	moderatorsID?: string[];
+	usersID?: string[];
 }

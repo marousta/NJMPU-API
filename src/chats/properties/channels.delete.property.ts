@@ -11,10 +11,10 @@ export class ChannelLeaveProperty {
 	action: LeaveAction;
 
 	@ApiPropertyOptional()
-	user?: string;
+	user_uuid?: string;
 
 	@ApiPropertyOptional()
-	user_uuid: string;
+	current_user_uuid: string;
 
 	@ApiPropertyOptional()
 	channel_uuid: string;

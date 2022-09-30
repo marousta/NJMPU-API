@@ -1,23 +1,6 @@
 import { ApiHideProperty, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export enum ChannelModeratorState {
-	Remove,
-	Add
-}
-
-export class ChannelModeratorProperty {
-	@ApiProperty()
-	state: ChannelModeratorState;
-
-	@ApiHideProperty()
-	current_user_uuid: string;
-
-	@ApiProperty()
-	user_uuid: string;
-
-	@ApiHideProperty()
-	channel_uuid: string;
-}
+import { ChatAction } from '../../websockets/types';
 
 export class ChannelSettingProperty {
 	@ApiPropertyOptional()
@@ -31,4 +14,21 @@ export class ChannelSettingProperty {
 
 	@ApiHideProperty()
 	user_uuid: string;
+}
+
+export class ChannelModeratorProperty {
+	@ApiProperty()
+	action: ChatAction;
+
+	@ApiHideProperty()
+	current_user_uuid: string;
+
+	@ApiProperty()
+	user_uuid: string;
+
+	@ApiPropertyOptional()
+	expiration: Date;
+
+	@ApiHideProperty()
+	channel_uuid: string;
 }

@@ -25,6 +25,8 @@ export enum ChatAction {
 	Delete = 'DELETE',
 	Promote = 'PROMOTE',
 	Demote = 'DEMOTE',
+	Ban = 'BAN',
+	Unban = 'UNBAN',
 	Mute = 'MUTE',
 	Unmute = 'UNMUTE',
 	Avatar = 'AVATAR'
@@ -79,6 +81,17 @@ export interface WsChatPromote extends WsChat {
 
 export interface WsChatDemote extends WsChat {
 	action: ChatAction.Demote;
+	user: string;
+}
+
+export interface WsChaBan extends WsChat {
+	action: ChatAction.Ban;
+	user: string;
+	expiration: Date;
+}
+
+export interface WsChatUnban extends WsChat {
+	action: ChatAction.Unban;
 	user: string;
 }
 

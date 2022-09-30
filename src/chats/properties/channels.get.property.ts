@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
 import { ChannelType } from '../types';
 
 export class ChannelData {
@@ -44,8 +44,26 @@ export class DirectData {
 	users: string[];
 }
 
-export class ChannelsGetResponse {
-	@ApiProperty({ type: Array<ChannelData | DirectData> })
+export class ChannelsDirectGetResponse {
+	@ApiProperty({ isArray: true, type: DirectData })
+	data: Array<ChannelData | DirectData>;
+
+	@ApiProperty()
+	count: number;
+
+	@ApiProperty()
+	total: number;
+
+	@ApiProperty()
+	page: number;
+
+	@ApiProperty()
+	page_count: number;
+}
+
+@ApiExtraModels(ChannelsDirectGetResponse)
+export class ChannelsDataGetResponse {
+	@ApiProperty({ isArray: true, type: ChannelData })
 	data: Array<ChannelData | DirectData>;
 
 	@ApiProperty()

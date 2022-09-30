@@ -14,28 +14,40 @@ import {
 	Put,
 	Patch
 } from '@nestjs/common';
-import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+	ApiBody,
+	ApiExtraModels,
+	ApiQuery,
+	ApiResponse,
+	ApiTags,
+	getSchemaPath
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Request as Req, Response as Res } from 'express';
 
 import { ChannelsService } from './services/channels.service';
 import { MessagesService } from './services/messages.service';
 
+import { GlobalQueryProperty } from '../global.property';
 import { ChannelsCreateProperty } from './properties/channels.create.property';
-import { ChannelsGetResponse, ChannelGetResponse } from './properties/channels.get.property';
+import {
+	ChannelsDataGetResponse,
+	ChannelGetResponse,
+	ChannelsDirectGetResponse
+} from './properties/channels.get.property';
 import { MessageStoreProperty } from './properties/messages.store.property';
 import { MessagesGetProperty, MessagesGetResponse } from './properties/messages.get.propoerty';
 import { MessageDeleteProperty } from './properties/message.delete.property';
-import { GlobalQueryProperty } from '../global.property';
-
-import { isEmpty, parseUnsigned } from '../utils';
-import { ChannelType, ApiResponseError } from './types';
 import { ChannelSettingProperty } from './properties/channels.update.property';
 import { ChannelLeaveProperty, LeaveAction } from './properties/channels.delete.property';
-import {
-	ChannelModeratorProperty,
-	ChannelModeratorState
-} from './properties/channels.update.property';
+import { ChannelModeratorProperty } from './properties/channels.update.property';
+import { BlacklistGetResponse } from './properties/channels.blacklist.get.property';
+
+import { isEmpty, parseUnsigned } from '../utils';
+
+import { ChannelType, ApiResponseError } from './types';
+import { ChatAction } from '../websockets/types';
+import { refs } from '@nestjs/swagger';
 
 @UseGuards(AuthGuard('access'))
 @ApiTags('chats')
@@ -55,7 +67,7 @@ export class ChatsController {
 	 * Get all
 	 */
 	@ApiQuery({ type: GlobalQueryProperty })
-	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsGetResponse })
+	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsDataGetResponse })
 	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
 	@HttpCode(200)
 	@Get()
@@ -74,7 +86,11 @@ export class ChatsController {
 	 * Get all in
 	 */
 	@ApiQuery({ type: GlobalQueryProperty })
-	@ApiResponse({ status: 200, description: 'List of joined channels', type: ChannelsGetResponse })
+	@ApiResponse({
+		status: 200,
+		description: 'List of joined channels',
+		type: ChannelsDataGetResponse
+	})
 	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
 	@HttpCode(200)
 	@Get('/in')
@@ -195,20 +211,46 @@ export class ChatsController {
 	}
 
 	/**
-	 * Moderator
+	 * Moderation
 	 */
 	@ApiBody({
 		type: ChannelModeratorProperty,
 		examples: {
-			['Remove moderator']: {
+			['Add moderator']: {
 				value: {
-					state: ChannelModeratorState.Remove,
+					action: ChatAction.Promote,
 					user_uuid: 'string'
 				} as ChannelModeratorProperty
 			},
-			['Add moderator']: {
+			['Remove moderator']: {
 				value: {
-					state: ChannelModeratorState.Add,
+					action: ChatAction.Demote,
+					user_uuid: 'string'
+				} as ChannelModeratorProperty
+			},
+			['Ban']: {
+				value: {
+					action: ChatAction.Ban,
+					user_uuid: 'string',
+					expiration: new Date()
+				} as ChannelModeratorProperty
+			},
+			['Unban']: {
+				value: {
+					action: ChatAction.Unban,
+					user_uuid: 'string'
+				} as ChannelModeratorProperty
+			},
+			['Mute']: {
+				value: {
+					action: ChatAction.Mute,
+					user_uuid: 'string',
+					expiration: new Date()
+				} as ChannelModeratorProperty
+			},
+			['Unmute']: {
+				value: {
+					action: ChatAction.Unmute,
 					user_uuid: 'string'
 				} as ChannelModeratorProperty
 			}
@@ -218,12 +260,11 @@ export class ChatsController {
 	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.RemoteUserNotFound })
-	@ApiResponse({ status: 400.4, description: ApiResponseError.NotModerator })
-	@ApiResponse({ status: 400.5, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyModerator })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@Put(':uuid')
-	async moderators(
+	async moderation(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModeratorProperty
@@ -234,10 +275,11 @@ export class ChatsController {
 			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
 		}
 
-		await this.channelsService.moderators({
-			state: body.state,
+		await this.channelsService.moderation.dispatch({
+			action: body.action,
 			current_user_uuid: user_uuid,
 			user_uuid: body.user_uuid,
+			expiration: body.expiration,
 			channel_uuid
 		});
 	}
@@ -283,9 +325,28 @@ export class ChatsController {
 		});
 	}
 
+	@ApiResponse({ status: 200, description: 'Blacklist', type: BlacklistGetResponse })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 403.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 403.2, description: ApiResponseError.isAdministrator })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Get(':uuid/blacklist')
+	async getBlacklist(@Request() req: Req, @Param('uuid') channel_uuid: string) {
+		const user_uuid = (req.user as any).uuid;
+
+		if (!channel_uuid) {
+			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
+		}
+
+		return await this.channelsService.blacklist.get({
+			current_user_uuid: user_uuid,
+			channel_uuid
+		});
+	}
+
 	/**
 	 * Leave
-	 * //TODO: Customize route for leaving, kicking, deleting
 	 */
 	@ApiBody({
 		type: ChannelLeaveProperty,
@@ -302,7 +363,8 @@ export class ChatsController {
 			},
 			['Kick user from channel']: {
 				value: {
-					action: LeaveAction.Kick
+					action: LeaveAction.Kick,
+					user_uuid: 'string'
 				} as ChannelLeaveProperty
 			}
 		}
@@ -326,8 +388,8 @@ export class ChatsController {
 
 		await this.channelsService.leave({
 			action: body.action,
-			user: body.user,
-			user_uuid,
+			user_uuid: body.user_uuid,
+			current_user_uuid: user_uuid,
 			channel_uuid
 		});
 	}

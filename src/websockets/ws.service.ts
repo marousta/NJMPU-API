@@ -19,7 +19,11 @@ import {
 	WsChatPromote,
 	WsChatSend,
 	WsNamespace,
-	WsUserRefresh
+	WsUserRefresh,
+	WsChaBan,
+	WsChatUnban,
+	WsChatMute,
+	WsChatUnmute
 } from './types';
 
 @Injectable()
@@ -123,6 +127,10 @@ export class WsService {
 				| WsChatDelete
 				| WsChatPromote
 				| WsChatDemote
+				| WsChaBan
+				| WsChatUnban
+				| WsChatMute
+				| WsChatUnmute
 		) => {
 			const user_uuid = data.user;
 			const channel_uuid = data.channel;
@@ -177,6 +185,30 @@ export class WsService {
 					case ChatAction.Demote:
 						return this.logger.verbose(
 							`Demoted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
+						);
+					case ChatAction.Ban:
+						return this.logger.verbose(
+							`Banned ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
+						);
+					case ChatAction.Unban:
+						return this.logger.verbose(
+							`Unbanned ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
+						);
+					case ChatAction.Mute:
+						return this.logger.verbose(
+							`Muted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
+						);
+					case ChatAction.Unmute:
+						return this.logger.verbose(
+							`Unmuted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);

@@ -18,11 +18,12 @@ export class UsersService {
 				select: { identifier: true },
 				where: { username }
 			});
-			const ids = users.map((u) => u.identifier);
+			const exclude: number[] = [];
+			users?.forEach((u) => exclude.push(u.identifier));
 
-			const id = genIdentifier(ids);
+			const id = genIdentifier(exclude);
 			if (id === null) {
-				username += Math.floor(Math.random() * 100);
+				username += Math.floor(Math.random() * 10);
 				continue;
 			}
 			return id;

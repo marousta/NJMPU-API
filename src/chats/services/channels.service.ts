@@ -2,7 +2,6 @@ import {
 	Injectable,
 	Logger,
 	InternalServerErrorException,
-	UnauthorizedException,
 	BadRequestException,
 	NotFoundException,
 	ForbiddenException,
@@ -13,15 +12,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as argon2 from 'argon2';
 
+import { ChannelsBlacklistService } from './channels.blacklist.service';
 import { MessagesService } from './messages.service';
 import { WsService } from '../../websockets/ws.service';
 
-import { ChatsChannels } from '../entities/channels.entity';
+import { ChatsChannels, ChatsChannelsID } from '../entities/channels.entity';
 import { UsersInfos } from '../../users/users.entity';
 
 import { ChannelsCreateProperty } from '../properties/channels.create.property';
 import {
-	ChannelsGetResponse,
+	ChannelsDataGetResponse,
 	ChannelGetResponse,
 	ChannelDirectGetResponse,
 	ChannelData,
@@ -30,10 +30,10 @@ import {
 
 import {
 	ChannelModeratorProperty,
-	ChannelModeratorState,
 	ChannelSettingProperty
 } from '../properties/channels.update.property';
 import { ChannelLeaveProperty, LeaveAction } from '../properties/channels.delete.property';
+import { BlacklistGetProperty } from '../properties/channels.blacklist.get.property';
 
 import { isEmpty, genIdentifier } from '../../utils';
 
@@ -56,6 +56,7 @@ export class ChannelsService {
 		private readonly usersRepository: Repository<UsersInfos>,
 		@Inject(forwardRef(() => MessagesService))
 		private readonly messagesService: MessagesService,
+		private readonly blacklistService: ChannelsBlacklistService,
 		private readonly wsService: WsService
 	) {}
 
@@ -63,72 +64,83 @@ export class ChannelsService {
 	 * Utils
 	 */
 	//#region  Utils
-	private async findOneByRelationOrNull(channel_uuid: string): Promise<ChatsChannels | null> {
-		return await this.channelRepository
-			.findOneOrFail({
-				where: { uuid: channel_uuid },
-				relations: ['users', 'administrator', 'moderators']
-			})
-			.catch((e) => {
-				return null;
-			});
-	}
-
-	private async findOneBy(uuid: string): Promise<ChatsChannels> {
-		return await this.channelRepository.findOneByOrFail({ uuid }).catch((e) => {
-			this.logger.error('Channel not found ' + uuid, e);
-			throw new InternalServerErrorException();
-		});
-	}
-
-	private async findOneUserBy(uuid: string): Promise<UsersInfos> {
-		return await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
-			this.logger.error('User not found ' + uuid, e);
-			throw new InternalServerErrorException();
-		});
-	}
-
-	private readonly update = new (class {
-		constructor(private readonly service: ChannelsService) {}
-
-		private async parseArgs(
-			channel: ChatsChannels | string,
-			user: UsersInfos | string
-		): Promise<{ channelObj: ChatsChannels; userObj: UsersInfos }> {
-			let channelObj: ChatsChannels;
-			let userObj: UsersInfos;
-			if (typeof channel === 'string') {
-				channelObj = await this.service.findOneBy(channel);
-			} else {
-				channelObj = channel;
-			}
-			if (typeof user === 'string') {
-				userObj = await this.service.findOneUserBy(user);
-			} else {
-				userObj = user;
-			}
-
-			return { channelObj, userObj };
-		}
-
-		async channel(
-			channel: ChatsChannels | string,
-			user: UsersInfos | string
-		): Promise<{ channelObj: ChatsChannels; userObj: UsersInfos }> {
-			const { channelObj, userObj } = await this.parseArgs(channel, user);
-
-			channelObj.addUser(userObj);
-			await this.service.channelRepository.save(channelObj).catch((e) => {
-				this.service.logger.error(
-					'Unable to update channel users list ' + channelObj.uuid,
-					e
-				);
+	readonly findOne = {
+		WithRelationsID: async (channel_uuid: string): Promise<ChatsChannelsID> => {
+			return await this.channelRepository
+				.createQueryBuilder('channels')
+				.where({ uuid: channel_uuid })
+				.loadRelationIdAndMap('channels.administratorID', 'channels.administrator')
+				.loadRelationIdAndMap('channels.moderatorsID', 'channels.moderators')
+				.loadRelationIdAndMap('channels.usersID', 'channels.users')
+				.getOneOrFail()
+				.catch((e) => {
+					this.logger.verbose('Unable to find channel ' + channel_uuid, e);
+					throw new NotFoundException(ApiResponseError.ChannelNotFound);
+				});
+		},
+		WithUsersAndRelationsID: async (
+			where: object,
+			error_msg: string
+		): Promise<ChatsChannelsID> => {
+			return await this.channelRepository
+				.createQueryBuilder('channels')
+				.where(where)
+				.leftJoinAndSelect('channels.users', 'users')
+				.loadRelationIdAndMap('channels.administratorID', 'channels.administrator')
+				.loadRelationIdAndMap('channels.moderatorsID', 'channels.moderators')
+				.loadRelationIdAndMap('channels.usersID', 'channels.users')
+				.getOneOrFail()
+				.catch((e) => {
+					this.logger.verbose(error_msg, e);
+					throw new NotFoundException(ApiResponseError.ChannelNotFound);
+				});
+		},
+		WithAllAndRelationsID: async (
+			where: object,
+			error_msg: string
+		): Promise<ChatsChannelsID> => {
+			return await this.channelRepository
+				.createQueryBuilder('channels')
+				.where(where)
+				.leftJoinAndSelect('channels.users', 'users')
+				.leftJoinAndSelect('channels.moderators', 'moderators')
+				.loadRelationIdAndMap('channels.administratorID', 'channels.administrator')
+				.loadRelationIdAndMap('channels.moderatorsID', 'channels.moderators')
+				.loadRelationIdAndMap('channels.usersID', 'channels.users')
+				.getOneOrFail()
+				.catch((e) => {
+					this.logger.verbose(error_msg, e);
+					throw new NotFoundException(ApiResponseError.ChannelNotFound);
+				});
+		},
+		By: async (uuid: string) => {
+			return await this.channelRepository.findOneByOrFail({ uuid }).catch((e) => {
+				this.logger.error('Channel not found ' + uuid, e);
 				throw new InternalServerErrorException();
 			});
-
-			return { channelObj, userObj };
 		}
-	})(this);
+	};
+
+	private async save(channel: ChatsChannels, error_msg: string) {
+		return await this.channelRepository.save(channel).catch((e) => {
+			this.logger.error(error_msg, e);
+			throw new InternalServerErrorException();
+		});
+	}
+
+	private async updateRelation(channel: ChatsChannels, user: UsersInfos | string) {
+		if (typeof user === 'string') {
+			user = await this.usersRepository.findOneByOrFail({ uuid: user }).catch((e) => {
+				this.logger.error('Unable to find user ' + user);
+				throw new InternalServerErrorException();
+			});
+		}
+
+		channel.addUser(user);
+		channel = await this.save(channel, 'Unable to update channel users list ' + channel.uuid);
+
+		return { channelObj: channel, userObj: user };
+	}
 
 	//  prettier-ignore
 	private validateChannelType(params: ChannelsCreateProperty): ChatsGroupPublic | ChatsGroupPrivate | ChatsDirect {
@@ -192,50 +204,67 @@ export class ChannelsService {
 		throw new BadRequestException('Unable to determine channel type')
 	}
 
-	async userInChannelFind(channel_uuid: string, user_uuid: string): Promise<boolean> {
-		return await this.channelRepository
-			.findOneOrFail({
-				where: {
-					uuid: channel_uuid,
-					users: {
-						uuid: user_uuid
-					}
-				},
-				relations: ['users']
-			})
-			.then((c) => true)
-			.catch((e) => false);
-	}
+	private async getIdentifier(name: string) {
+		while (true) {
+			const channels = await this.channelRepository
+				.find({
+					select: { identifier: true },
+					where: { name: name }
+				})
+				.catch((e) => {
+					this.logger.error(`Unable to find channels`, e);
+					return null;
+				})
+				.then((r) => (r.length ? r : null));
+			const exclude: number[] = [];
+			channels?.forEach((c) => exclude.push(c.identifier));
 
-	userInChannel(channel: ChatsChannels, user_uuid: string) {
-		for (const u of channel.users) {
-			if (u.uuid === user_uuid) {
-				return true;
+			const id = genIdentifier(exclude);
+			if (id === null) {
+				name += Math.floor(Math.random() * 10);
+				continue;
 			}
+			return id;
 		}
-		return false;
 	}
 
-	userIsAdministrator(channel: ChatsChannels, user_uuid: string) {
-		return channel.administrator === user_uuid;
-	}
-
-	userIsModerator(channel: ChatsChannels, user_uuid: string) {
-		for (const m of channel.moderators) {
-			if (m.uuid === user_uuid) {
-				return true;
+	readonly user = {
+		find500: async (user_uuid: string) => {
+			return await this.usersRepository.findOneByOrFail({ uuid: user_uuid }).catch((e) => {
+				this.logger.error('Unable to get user ' + user_uuid, e);
+				throw new InternalServerErrorException();
+			});
+		},
+		inChannelFind: async (channel_uuid: string, user_uuid: string): Promise<boolean> => {
+			const channel = await this.findOne.WithRelationsID(channel_uuid);
+			return this.user.inChannel(channel.usersID, user_uuid);
+		},
+		inChannel: (usersID: string[], user_uuid: string) => {
+			if (!usersID) {
+				throw new Error('Missing relationID for user.inChannel');
 			}
+			return usersID.includes(user_uuid);
+		},
+		isAdministrator: (administratorID: string, user_uuid: string) => {
+			if (!administratorID) {
+				throw new Error('Missing relationID for user.isAdministrator');
+			}
+			return administratorID === user_uuid;
+		},
+		isModerator: (moderatorsID: string[], user_uuid: string) => {
+			if (!moderatorsID) {
+				throw new Error('Missing relationID for user.isModerator');
+			}
+			return moderatorsID.includes(user_uuid);
+		},
+		hasPermissions: (channel: ChatsChannelsID, user_uuid: string) => {
+			//  prettier-ignore
+			return (
+				this.user.inChannel(channel.usersID, user_uuid)
+				&& (this.user.isAdministrator(channel.administratorID, user_uuid) || this.user.isModerator(channel.moderatorsID, user_uuid))
+			);
 		}
-		return false;
-	}
-
-	userHasPermissions(channel: ChatsChannels, user_uuid: string) {
-		//  prettier-ignore
-		return (
-			this.userInChannel(channel, user_uuid)
-			&& (this.userIsAdministrator(channel, user_uuid) || this.userIsModerator(channel, user_uuid))
-		);
-	}
+	};
 	//#endregion
 
 	/**
@@ -246,35 +275,36 @@ export class ChannelsService {
 		page: number = 1,
 		limit: number = 0,
 		offset: number = 0
-	): Promise<ChannelsGetResponse> {
+	): Promise<ChannelsDataGetResponse> {
 		if (page === 0) {
 			page = 1;
 		}
-		const ret = await this.channelRepository
+		const ret: [ChatsChannelsID[], number] = await this.channelRepository
 			.createQueryBuilder('channels')
 			.where({ type: ChannelType.Public })
 			.orderBy('name', 'ASC')
 			.orderBy('identifier', 'ASC')
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
-			.loadAllRelationIds()
+			.loadRelationIdAndMap('channels.administratorID', 'channels.administrator')
+			.loadRelationIdAndMap('channels.moderatorsID', 'channels.moderators')
+			.loadRelationIdAndMap('channels.usersID', 'channels.users')
 			.getManyAndCount();
 
 		let data: ChannelData[] = [];
 		for (const channel of ret[0]) {
-			const { uuid, type, identifier, name, password, administrator, moderators, users } =
-				channel;
 			const message_count = await this.messagesService.count(channel.uuid);
+
 			data.push({
-				uuid,
-				type,
-				identifier,
-				name,
-				password: password !== null,
+				uuid: channel.uuid,
+				type: channel.type,
+				identifier: channel.identifier,
+				name: channel.name,
+				password: channel.password !== null,
 				message_count,
-				administrator: administrator as any as string,
-				moderators: moderators as any as string[],
-				users: users as any as string[]
+				administrator: channel.administratorID,
+				moderators: channel.moderatorsID,
+				users: channel.usersID
 			});
 		}
 		const count = ret[0].length;
@@ -288,11 +318,11 @@ export class ChannelsService {
 		page: number = 1,
 		limit: number = 0,
 		offset: number = 0
-	): Promise<ChannelsGetResponse> {
+	): Promise<ChannelsDataGetResponse> {
 		if (page === 0) {
 			page = 1;
 		}
-		const ret = await this.channelRepository
+		const ret: [ChatsChannelsID[], number] = await this.channelRepository
 			.createQueryBuilder('channels')
 			.leftJoin('channels.users', 'users')
 			.where('users.uuid = :uuid ', {
@@ -302,33 +332,33 @@ export class ChannelsService {
 			.orderBy('channels.identifier', 'ASC')
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
-			.loadAllRelationIds()
+			.loadRelationIdAndMap('channels.administratorID', 'channels.administrator')
+			.loadRelationIdAndMap('channels.moderatorsID', 'channels.moderators')
+			.loadRelationIdAndMap('channels.usersID', 'channels.users')
 			.getManyAndCount();
 
 		let data: Array<ChannelData | DirectData> = [];
 		for (const channel of ret[0]) {
 			const message_count = await this.messagesService.count(channel.uuid);
-			const { uuid, type, identifier, name, password, administrator, moderators, users } =
-				channel;
 
 			if (channel.type === ChannelType.Direct) {
 				data.push({
-					uuid,
-					type,
+					uuid: channel.uuid,
+					type: channel.type,
 					message_count,
-					users: users as any as string[]
+					users: channel.usersID
 				});
 			} else {
 				data.push({
-					uuid,
-					type,
-					identifier,
-					name,
+					uuid: channel.uuid,
+					type: channel.type,
+					identifier: channel.identifier,
+					name: channel.name,
+					password: channel.password !== null,
 					message_count,
-					administrator: administrator as any as string,
-					moderators: moderators as any as string[],
-					password: password !== null,
-					users: users as any as string[]
+					administrator: channel.administratorID,
+					moderators: channel.moderatorsID,
+					users: channel.usersID
 				});
 			}
 		}
@@ -342,73 +372,57 @@ export class ChannelsService {
 		channel_uuid: string,
 		user_uuid: string
 	): Promise<ChannelGetResponse | ChannelDirectGetResponse> {
-		const channel = await this.findOneByRelationOrNull(channel_uuid);
-		// prettier-ignore
-		if (!channel || (channel.type === ChannelType.Private && !this.userInChannel(channel, user_uuid))) {
+		const channel: ChatsChannelsID = await this.channelRepository
+			.createQueryBuilder('channels')
+			.where({ uuid: channel_uuid })
+			.loadRelationIdAndMap('channels.administratorID', 'channels.administrator')
+			.loadRelationIdAndMap('channels.moderatorsID', 'channels.moderators')
+			.loadRelationIdAndMap('channels.usersID', 'channels.users')
+			.getOneOrFail()
+			.catch((e) => {
+				this.logger.verbose('Unable to find channel ' + channel_uuid, e);
+				throw new NotFoundException(ApiResponseError.ChannelNotFound);
+			});
+
+		//  prettier-ignore
+		if (channel.type === ChannelType.Private && !this.user.inChannel(channel.usersID, user_uuid)) {
 			throw new NotFoundException(ApiResponseError.ChannelNotFound);
 		}
-		const { uuid, type, identifier, name, password, administrator, moderators, users } =
-			channel;
 
 		const message_count = await this.messagesService.count(channel_uuid);
-		let filteredModerators: string[] = [];
-		for (const m of moderators) {
-			filteredModerators.push(m.uuid);
-		}
-		let filteredUsers: string[] = [];
-		for (const u of users) {
-			filteredUsers.push(u.uuid);
-		}
 
-		if (type === ChannelType.Direct) {
+		if (channel.type === ChannelType.Direct) {
 			return {
-				uuid,
-				type,
+				uuid: channel.uuid,
+				type: channel.type,
 				message_count,
-				users: filteredUsers
+				users: channel.usersID
 			};
 		} else {
 			return {
-				uuid,
-				type,
-				identifier,
-				name,
+				uuid: channel.uuid,
+				type: channel.type,
+				identifier: channel.identifier,
+				name: channel.name,
+				password: channel.password !== null,
 				message_count,
-				administrator: (administrator as any as UsersInfos).uuid,
-				moderators: filteredModerators,
-				password: password !== null,
-				users: filteredUsers
+				administrator: channel.administratorID,
+				moderators: channel.moderatorsID,
+				users: channel.usersID
 			};
 		}
 	}
 
 	private readonly create = {
 		channel: async (params: ChatsGroupPublic | ChatsGroupPrivate) => {
-			// Get user
+			// Get current user
+			// should not fail
 			const user = await this.usersRepository
 				.findOneByOrFail({ uuid: params.current_user_uuid })
 				.catch((e) => {
-					// Should never happen
 					this.logger.error('Unable to find user ' + params.current_user_uuid, e);
 					throw new InternalServerErrorException();
 				});
-
-			// Generate identifier
-			const channels = await this.channelRepository
-				.findBy({ name: params.name })
-				.catch((e) => {
-					this.logger.error(`Unable to find channels`, e);
-					return null;
-				})
-				.then((r) => (r.length ? r : null));
-			let exclude: number[] = [];
-			let identifier: number;
-			if (channels) {
-				for (const c of channels) {
-					exclude.push(c.identifier);
-				}
-			}
-			identifier = genIdentifier(exclude);
 
 			// Hash password
 			let password = null;
@@ -422,16 +436,14 @@ export class ChannelsService {
 			// Save to database
 			const request = this.channelRepository.create({
 				type: params.type,
-				identifier,
+				identifier: await this.getIdentifier(params.name),
 				name: params.name,
 				password,
-				administrator: user.uuid
+				administrator: user
 			});
 			request.addUser(user);
-			const new_channel = await this.channelRepository.save(request).catch((e) => {
-				this.logger.error('Unable to create channel', e);
-				throw new InternalServerErrorException();
-			});
+
+			const new_channel = await this.save(request, 'Unable to create channel');
 
 			// Dispatch created message
 			if (new_channel.type === ChannelType.Public) {
@@ -500,15 +512,12 @@ export class ChannelsService {
 			// Save to database
 			const request = this.channelRepository.create({
 				type: params.type,
-				identifier: 0,
+				identifier: await this.getIdentifier(name),
 				name
 			});
 			request.addUser(current_user);
 			request.addUser(remote_user);
-			const new_direct = await this.channelRepository.save(request).catch((e) => {
-				this.logger.error('Unable to create channel', e);
-				throw new InternalServerErrorException();
-			});
+			const new_direct = await this.save(request, 'Unable to create channel');
 
 			// Subscribe user to channel
 			this.wsService.subscribe.channel(current_user.uuid, new_direct.uuid);
@@ -540,52 +549,52 @@ export class ChannelsService {
 			return await this.create.direct(parsed); // Return channel uuid
 		}
 
-		let channel: ChatsChannels;
-		if (parsed.type === ChannelType.Public) {
-			// is channel public create request
-			if (isEmpty(parsed.channel_uuid)) {
-				return await this.create.channel(parsed); // Return channel uuid
-			}
-			// is channel public join request
-			else {
-				channel = await this.channelRepository
-					.findOneOrFail({ where: { uuid: parsed.channel_uuid }, relations: ['users'] })
-					.catch((e) => {
-						this.logger.verbose(
-							`Unable to find public channel ${parsed.channel_uuid}`,
-							e
-						);
-						return null;
-					});
-			}
+		let channel: ChatsChannelsID;
+		switch (parsed.type) {
+			case ChannelType.Public:
+				// is channel public create request
+				if (isEmpty(parsed.channel_uuid)) {
+					return await this.create.channel(parsed); // Return channel uuid
+				}
+				// is channel public join request
+				else {
+					channel = await this.findOne.WithUsersAndRelationsID(
+						{ uuid: parsed.channel_uuid },
+						`Unable to find public channel ${parsed.channel_uuid}`
+					);
+				}
+				break;
+			case ChannelType.Private:
+				// is channel private create request
+				if (parsed.identifier === undefined) {
+					return await this.create.channel(parsed); // Return channel uuid
+				}
+				// is channel private join request
+				else {
+					channel = await this.findOne.WithUsersAndRelationsID(
+						{ identifier: parsed.identifier, name: parsed.name },
+						`Unable to find private channel ${parsed.name}#${parsed.identifier}`
+					);
+				}
+				break;
+			default:
+				throw new BadRequestException();
 		}
 
-		if (parsed.type === ChannelType.Private) {
-			// is channel private create request
-			if (parsed.identifier === undefined) {
-				return await this.create.channel(parsed); // Return channel uuid
-			}
-			// is channel private join request
-			else {
-				channel = await this.channelRepository
-					.findOneOrFail({
-						where: { identifier: parsed.identifier, name: parsed.name },
-						relations: ['users']
-					})
-					.catch((e) => {
-						this.logger.verbose(
-							`Unable to find private channel ${parsed.name}#${parsed.identifier}`,
-							e
-						);
-						return null;
-					});
-			}
-		}
-
-		if (!channel || channel.type === ChannelType.Direct) {
+		// Obfuscate result
+		if (channel.type === ChannelType.Direct) {
 			throw new NotFoundException(ApiResponseError.ChannelNotFound);
 		}
-		if (this.userInChannel(channel, parsed.current_user_uuid)) {
+
+		const isBanned = await this.blacklistService.isBanned(
+			channel.uuid,
+			params.current_user_uuid
+		);
+		if (isBanned) {
+			throw new ForbiddenException(ApiResponseError.Banned);
+		}
+
+		if (this.user.inChannel(channel.usersID, parsed.current_user_uuid)) {
 			throw new BadRequestException(ApiResponseError.AlreadyInChannel);
 		}
 
@@ -601,7 +610,7 @@ export class ChannelsService {
 		}
 
 		// Update database relation
-		const { channelObj, userObj } = await this.update.channel(
+		const { channelObj, userObj } = await this.updateRelation(
 			channel,
 			parsed.current_user_uuid
 		);
@@ -618,75 +627,148 @@ export class ChannelsService {
 		});
 	}
 
-	async moderators(params: ChannelModeratorProperty) {
-		const channel = await this.findOneByRelationOrNull(params.channel_uuid);
+	readonly blacklist = {
+		add: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
 
-		if (!channel) {
-			throw new NotFoundException(ApiResponseError.ChannelNotFound);
+			await this.blacklistService.create(params, channel);
+
+			return channel;
+		},
+		remove: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
+
+			await this.blacklistService.delete(params, channel);
+
+			return channel;
+		},
+		get: async (params: BlacklistGetProperty) => {
+			const channel = await this.findOne.WithRelationsID(params.channel_uuid);
+
+			if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
+
+			return await this.blacklistService.get(channel.uuid);
 		}
+	};
 
-		if (this.userIsAdministrator(channel, params.user_uuid)) {
-			throw new ForbiddenException(ApiResponseError.NotAllowed);
+	readonly moderation = {
+		dispatch: async (params: ChannelModeratorProperty) => {
+			let channel = await this.findOne.WithAllAndRelationsID(
+				{ uuid: params.channel_uuid },
+				'Unable to find channel ' + params.channel_uuid
+			);
+
+			let error_msg: string;
+			switch (params.action) {
+				case ChatAction.Promote:
+					channel = await this.moderation.promote(params, channel);
+					error_msg = 'Unable to update moderators for channel ' + channel.uuid;
+					break;
+				case ChatAction.Demote:
+					channel = await this.moderation.demote(params, channel);
+					error_msg = 'Unable to update moderators for channel ' + channel.uuid;
+					break;
+				case ChatAction.Ban:
+					channel = await this.moderation.ban(params, channel);
+					error_msg = 'Unable to update ban list for channel ' + channel.uuid;
+					break;
+				case ChatAction.Unban:
+					channel = await this.moderation.unban(params, channel);
+					error_msg = 'Unable to update ban list for channel ' + channel.uuid;
+					break;
+				case ChatAction.Mute:
+					channel = await this.moderation.mute(params, channel);
+					error_msg = 'Unable to update mute list for channel ' + channel.uuid;
+					break;
+				case ChatAction.Unmute:
+					channel = await this.moderation.unmute(params, channel);
+					error_msg = 'Unable to update mute list for channel ' + channel.uuid;
+					break;
+				default:
+					throw new BadRequestException();
+			}
+
+			await this.save(channel, error_msg);
+
+			this.wsService.dispatch.channel({
+				namespace: WsNamespace.Chat,
+				action: params.action,
+				user: params.user_uuid,
+				channel: channel.uuid,
+				expiration: params.expiration
+			});
+		},
+		promote: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			// Check administrator permission
+			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
+
+			// Check if remote user is the current channel administrator
+			if (this.user.isAdministrator(channel.administratorID, params.user_uuid)) {
+				throw new ForbiddenException(ApiResponseError.isAdministrator);
+			}
+
+			// Check if remote user is already a channel moderator
+			if (this.user.isModerator(channel.moderatorsID, params.user_uuid)) {
+				throw new BadRequestException(ApiResponseError.AlreadyModerator);
+			}
+
+			// Check if remote user is in channel
+			if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
+				throw new BadRequestException(ApiResponseError.NotAllowed);
+			}
+
+			// Get remote user
+			// should not fail
+			const user = await this.user.find500(params.user_uuid);
+			channel.addModerator(user);
+
+			return channel;
+		},
+		demote: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			// Check administrator permission
+			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
+
+			// Check if remote user is a channel moderator
+			if (!this.user.isModerator(channel.moderatorsID, params.user_uuid)) {
+				throw new BadRequestException(ApiResponseError.NotAllowed);
+			}
+
+			channel.moderators = channel.moderators.filter((m) => m.uuid !== params.user_uuid);
+
+			return channel;
+		},
+		ban: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			channel = await this.blacklist.add(params, channel);
+
+			channel.users = channel.users.filter((u) => u.uuid !== params.user_uuid);
+
+			return channel;
+		},
+		unban: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			return await this.blacklist.remove(params, channel);
+		},
+		mute: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			return await this.blacklist.add(params, channel);
+		},
+		unmute: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+			return await this.blacklist.remove(params, channel);
 		}
-
-		let action: ChatAction;
-		switch (params.state) {
-			case ChannelModeratorState.Remove:
-				if (!this.userIsModerator(channel, params.user_uuid)) {
-					throw new BadRequestException(ApiResponseError.NotModerator);
-				}
-
-				channel.moderators = channel.moderators.filter((m) => m.uuid === params.user_uuid);
-				action = ChatAction.Demote;
-				break;
-			case ChannelModeratorState.Add:
-				if (this.userIsModerator(channel, params.user_uuid)) {
-					throw new BadRequestException(ApiResponseError.AlreadyModerator);
-				}
-
-				const in_channel = this.userInChannel(channel, params.user_uuid);
-				if (!in_channel) {
-					throw new BadRequestException(ApiResponseError.NotAllowed);
-				}
-
-				const user = await this.usersRepository
-					.findOneByOrFail({ uuid: params.user_uuid })
-					.catch((e) => {
-						this.logger.verbose('Unable to get user ' + params.user_uuid, e);
-						throw new BadRequestException(ApiResponseError.RemoteUserNotFound);
-					});
-				channel.addModerator(user);
-				action = ChatAction.Promote;
-				break;
-			default:
-				throw new BadRequestException();
-		}
-
-		await this.channelRepository.save(channel).catch((e) => {
-			this.logger.error('Unable to update moderators for channel ' + channel.uuid, e);
-			throw new InternalServerErrorException();
-		});
-
-		this.wsService.dispatch.channel({
-			namespace: WsNamespace.Chat,
-			action,
-			user: params.user_uuid,
-			channel: channel.uuid
-		});
-	}
+	};
 
 	async settings(params: ChannelSettingProperty) {
-		const channel = await this.channelRepository
-			.findOneOrFail({
-				where: { uuid: params.channel_uuid },
-				relations: ['administrator', 'moderators', 'users']
-			})
-			.catch((e) => {
-				this.logger.verbose('Unable to get channel ' + params.channel_uuid, e);
-				throw new NotFoundException(ApiResponseError.ChannelNotFound);
-			});
+		const channel = await this.findOne.WithRelationsID(params.channel_uuid);
 
-		if (!this.userHasPermissions(channel, params.user_uuid)) {
+		if (!this.user.hasPermissions(channel, params.user_uuid)) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
@@ -694,45 +776,42 @@ export class ChannelsService {
 		if (isEmpty(params.password)) {
 			password = null;
 		} else {
-			password = await argon2.hash(params.password, {
+			channel.password = await argon2.hash(params.password, {
 				timeCost: 11,
 				saltLength: 128
 			});
 		}
 
-		await this.channelRepository.save({ ...channel, password }).catch((e) => {
-			this.logger.error('Unable to update channel password for ' + channel.uuid, e);
-			throw new InternalServerErrorException();
-		});
+		await this.save(channel, 'Unable to update channel password for ' + channel.uuid);
 	}
 
 	async leave(params: ChannelLeaveProperty) {
-		const channel = await this.findOneByRelationOrNull(params.channel_uuid);
-		if (!channel) {
-			throw new NotFoundException(ApiResponseError.ChannelNotFound);
-		}
+		const channel = await this.findOne.WithAllAndRelationsID(
+			{ uuid: params.channel_uuid },
+			'Unable to find channel ' + params.channel_uuid
+		);
 
 		if (channel.type === ChannelType.Direct) {
 			throw new BadRequestException("You can't leave direct channel");
 		}
 
-		if (!this.userInChannel(channel, params.user_uuid)) {
+		if (!this.user.inChannel(channel.usersID, params.current_user_uuid)) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
 		let remove_user: string = null;
 		switch (params.action) {
 			case LeaveAction.Leave:
-				if (this.userIsAdministrator(channel, params.user_uuid)) {
+				if (this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
 					channel.administrator = null;
 				}
-				remove_user = params.user_uuid;
+				remove_user = params.current_user_uuid;
 				break;
 			case LeaveAction.Kick:
-				if (!this.userHasPermissions(channel, params.user_uuid)) {
+				if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
 					throw new ForbiddenException(ApiResponseError.NotAllowed);
 				}
-				remove_user = params.user;
+				remove_user = params.user_uuid;
 				break;
 			case LeaveAction.Remove:
 				break;
@@ -751,13 +830,16 @@ export class ChannelsService {
 			channel.moderators = channel.moderators.filter((m) => m.uuid !== remove_user);
 			channel.users = channel.users.filter((user) => user.uuid !== remove_user);
 
-			await this.channelRepository.save(channel).catch((e) => {
-				this.logger.error(
-					'Unable to remove user ' + remove_user + ' from channel ' + channel.uuid,
-					e
-				);
-				throw new InternalServerErrorException();
-			});
+			await this.save(
+				channel,
+				'Unable to remove user ' + remove_user + ' from channel ' + channel.uuid
+			);
+		}
+
+		//  prettier-ignore
+		if  (params.action === LeaveAction.Remove
+		&& !this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
+			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
 		if (!channel.users.length || params.action === LeaveAction.Remove) {
