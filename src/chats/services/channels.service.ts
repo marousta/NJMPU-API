@@ -247,7 +247,8 @@ export class ChannelsService {
 		},
 		isAdministrator: (administratorID: string, user_uuid: string) => {
 			if (!administratorID) {
-				throw new Error('Missing relationID for user.isAdministrator');
+				return false;
+				// throw new Error('Missing relationID for user.isAdministrator');
 			}
 			return administratorID === user_uuid;
 		},
@@ -629,7 +630,10 @@ export class ChannelsService {
 
 	readonly blacklist = {
 		add: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
-			if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
+			//  prettier-ignore
+			if (!this.user.hasPermissions(channel, params.current_user_uuid)			// Check administrator permissions
+			|| this.user.isAdministrator(channel.administratorID, params.user_uuid)		// Check if remote user is administrator
+			|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) {			// Check if remote user is moderator) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -705,14 +709,14 @@ export class ChannelsService {
 			});
 		},
 		promote: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
-			// Check administrator permission
+			// Check administrator permissions
 			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
 			// Check if remote user is the current channel administrator
 			if (this.user.isAdministrator(channel.administratorID, params.user_uuid)) {
-				throw new ForbiddenException(ApiResponseError.isAdministrator);
+				throw new BadRequestException(ApiResponseError.isAdministrator);
 			}
 
 			// Check if remote user is already a channel moderator
@@ -733,14 +737,14 @@ export class ChannelsService {
 			return channel;
 		},
 		demote: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
-			// Check administrator permission
+			// Check administrator permissions
 			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
 			// Check if remote user is a channel moderator
 			if (!this.user.isModerator(channel.moderatorsID, params.user_uuid)) {
-				throw new BadRequestException(ApiResponseError.NotAllowed);
+				throw new BadRequestException(ApiResponseError.ModeratorNotFound);
 			}
 
 			channel.moderators = channel.moderators.filter((m) => m.uuid !== params.user_uuid);
@@ -808,8 +812,14 @@ export class ChannelsService {
 				remove_user = params.current_user_uuid;
 				break;
 			case LeaveAction.Kick:
-				if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
+				//  prettier-ignore
+				if (!this.user.hasPermissions(channel, params.current_user_uuid) 		// Check current user permissions
+				|| this.user.isAdministrator(channel.administratorID, params.user_uuid) // Check if remote user is administrator
+				|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) { 	// Check if remote user is moderator
 					throw new ForbiddenException(ApiResponseError.NotAllowed);
+				}
+				if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
+					throw new BadRequestException(ApiResponseError.RemoteUserNotFound);
 				}
 				remove_user = params.user_uuid;
 				break;
@@ -848,11 +858,24 @@ export class ChannelsService {
 				throw new InternalServerErrorException();
 			});
 
-			this.wsService.dispatch.channel({
-				namespace: WsNamespace.Chat,
-				action: ChatAction.Remove,
-				channel: params.channel_uuid
-			});
+			switch (channel.type) {
+				case ChannelType.Public:
+					this.wsService.dispatch.all({
+						namespace: WsNamespace.Chat,
+						action: ChatAction.Remove,
+						channel: params.channel_uuid
+					});
+					break;
+				case ChannelType.Private:
+					this.wsService.dispatch.channel({
+						namespace: WsNamespace.Chat,
+						action: ChatAction.Remove,
+						channel: params.channel_uuid
+					});
+					break;
+				default:
+					throw new InternalServerErrorException();
+			}
 		} else {
 			this.wsService.dispatch.channel({
 				namespace: WsNamespace.Chat,

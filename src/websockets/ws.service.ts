@@ -80,7 +80,7 @@ export class WsService {
 	};
 
 	public readonly dispatch = {
-		all: (data: WsChatCreate) => {
+		all: (data: WsChatCreate | WsChatRemove) => {
 			const client = this.ws.clients.values();
 			let c: WebSocket = null;
 			let i = 0;
@@ -88,10 +88,24 @@ export class WsService {
 				c.send(JSON.stringify(data));
 				++i;
 			}
+
 			if (data.namespace === WsNamespace.Chat) {
-				this.logger.verbose(
-					`Created channel ${data.channel} dispatched to ${i} connected ${PeerOrPeers(i)}`
-				);
+				switch (data.action) {
+					case ChatAction.Create:
+						this.logger.verbose(
+							`Created channel ${
+								data.channel
+							} dispatched to ${i} connected ${PeerOrPeers(i)}`
+						);
+						break;
+					case ChatAction.Remove:
+						this.logger.verbose(
+							`Removed channel ${
+								data.channel
+							} dispatched to ${i} connected ${PeerOrPeers(i)}`
+						);
+						break;
+				}
 			}
 		},
 		user: (uuid: string, data: WsChatCreate | WsUserRefresh) => {
