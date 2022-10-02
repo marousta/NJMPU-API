@@ -34,7 +34,7 @@ export class TokensService {
 			privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
 				encoding: 'ascii'
 			}),
-			expiresIn: '10m'
+			expiresIn: '20m'
 		});
 	}
 

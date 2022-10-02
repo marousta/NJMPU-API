@@ -119,7 +119,7 @@ export class AuthService {
 			let expires = new Date();
 
 			if (name === 'access_token') {
-				expires = new Date(expires.valueOf() + 60 * 10 * 1000); // 10m
+				expires = new Date(expires.valueOf() + 60 * 10 * 2000); // 20m
 			} else if (name === 'refresh_token') {
 				expires = new Date(expires.valueOf() + 60 * 60 * 24 * 3 * 1000); //3d
 			} else if (name === 'twofactor_token') {
