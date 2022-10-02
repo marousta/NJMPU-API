@@ -20,6 +20,7 @@ import { ChannelModeratorProperty } from '../properties/channels.update.property
 
 import { BlacklistType, ApiResponseError } from '../types';
 import { ChatAction } from '../../websockets/types';
+import { dateFromOffset } from '../../utils';
 
 @Injectable()
 export class ChannelsBlacklistService {
@@ -132,12 +133,13 @@ export class ChannelsBlacklistService {
 				break;
 		}
 
+		const expiration = params.expiration !== 0 ? dateFromOffset(params.expiration) : null;
 		// Create blacklist class entry
 		const entry = this.blacklistRepository.create({
 			type,
 			channel: channel,
 			user: user,
-			expiration: params.expiration
+			expiration
 		});
 
 		// Save to database

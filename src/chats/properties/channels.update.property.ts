@@ -27,8 +27,18 @@ export class ChannelModeratorProperty {
 	user_uuid: string;
 
 	@ApiPropertyOptional()
-	expiration: Date;
+	expiration: number;
 
 	@ApiHideProperty()
 	channel_uuid: string;
+
+	@ApiHideProperty()
+	avatar: string;
+}
+
+export interface ChannelAvatarProperty {
+	action: ChatAction;
+	current_user_uuid: string;
+	channel_uuid?: string;
+	avatar: string;
 }

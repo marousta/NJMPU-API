@@ -14,27 +14,16 @@ import {
 	Put,
 	Patch
 } from '@nestjs/common';
-import {
-	ApiBody,
-	ApiExtraModels,
-	ApiQuery,
-	ApiResponse,
-	ApiTags,
-	getSchemaPath
-} from '@nestjs/swagger';
+import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Request as Req, Response as Res } from 'express';
 
 import { ChannelsService } from './services/channels.service';
 import { MessagesService } from './services/messages.service';
 
-import { GlobalQueryProperty } from '../global.property';
+import { GlobalQueryProperty } from '../app/properties/global.property';
 import { ChannelsCreateProperty } from './properties/channels.create.property';
-import {
-	ChannelsDataGetResponse,
-	ChannelGetResponse,
-	ChannelsDirectGetResponse
-} from './properties/channels.get.property';
+import { ChannelsDataGetResponse, ChannelGetResponse } from './properties/channels.get.property';
 import { MessageStoreProperty } from './properties/messages.store.property';
 import { MessagesGetProperty, MessagesGetResponse } from './properties/messages.get.propoerty';
 import { MessageDeleteProperty } from './properties/message.delete.property';
@@ -47,7 +36,6 @@ import { isEmpty, parseUnsigned } from '../utils';
 
 import { ChannelType, ApiResponseError } from './types';
 import { ChatAction } from '../websockets/types';
-import { refs } from '@nestjs/swagger';
 
 @UseGuards(AuthGuard('access'))
 @ApiTags('chats')
@@ -111,16 +99,12 @@ export class ChatsController {
 	 * Get one
 	 */
 	@ApiResponse({ status: 200, description: 'Channel details', type: ChannelGetResponse })
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
 	@Get(':uuid')
 	async getOne(@Request() req: Req, @Param('uuid') channel_uuid: string) {
 		const uuid = (req.user as any).uuid;
 
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
 		return await this.channelsService.getOne(channel_uuid, uuid);
 	}
 
@@ -180,9 +164,9 @@ export class ChatsController {
 	@ApiResponse({ status: 400.1, description: ApiResponseError.WrongPassword })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyInChannel })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.ChannelNotFound })
-	@ApiResponse({ status: 400.4, description: "You can't DM yourself" })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.DirectYourseft })
 	@ApiResponse({ status: 400.5, description: ApiResponseError.RemoteUserNotFound })
-	@ApiResponse({ status: 400.6, description: 'Direct message with this user already exist' })
+	@ApiResponse({ status: 400.6, description: ApiResponseError.AlreadyDirect })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
 	@Post()
@@ -232,7 +216,7 @@ export class ChatsController {
 				value: {
 					action: ChatAction.Ban,
 					user_uuid: 'string',
-					expiration: new Date()
+					expiration: 60
 				} as ChannelModeratorProperty
 			},
 			['Unban']: {
@@ -245,7 +229,7 @@ export class ChatsController {
 				value: {
 					action: ChatAction.Mute,
 					user_uuid: 'string',
-					expiration: new Date()
+					expiration: 60
 				} as ChannelModeratorProperty
 			},
 			['Unmute']: {
@@ -257,10 +241,9 @@ export class ChatsController {
 		}
 	})
 	@ApiResponse({ status: 200, description: 'Moderator successfully added' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 400.3, description: ApiResponseError.RemoteUserNotFound })
-	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyModerator })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@Put(':uuid')
@@ -271,16 +254,13 @@ export class ChatsController {
 	) {
 		const user_uuid = (req.user as any).uuid;
 
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
-
 		await this.channelsService.moderation.dispatch({
 			action: body.action,
 			current_user_uuid: user_uuid,
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
-			channel_uuid
+			channel_uuid,
+			avatar: null
 		});
 	}
 
@@ -303,7 +283,6 @@ export class ChatsController {
 		}
 	})
 	@ApiResponse({ status: 200, description: 'Setting successfully updated' })
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@Patch(':uuid')
@@ -314,10 +293,6 @@ export class ChatsController {
 	) {
 		const user_uuid = (req.user as any).uuid;
 
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
-
 		await this.channelsService.settings({
 			channel_uuid,
 			user_uuid,
@@ -326,18 +301,13 @@ export class ChatsController {
 	}
 
 	@ApiResponse({ status: 200, description: 'Blacklist', type: BlacklistGetResponse })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyModerator })
-	@ApiResponse({ status: 403.1, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 403.2, description: ApiResponseError.isAdministrator })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.isAdministrator })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@Get(':uuid/blacklist')
 	async getBlacklist(@Request() req: Req, @Param('uuid') channel_uuid: string) {
 		const user_uuid = (req.user as any).uuid;
-
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
 
 		return await this.channelsService.blacklist.get({
 			current_user_uuid: user_uuid,
@@ -370,7 +340,6 @@ export class ChatsController {
 		}
 	})
 	@ApiResponse({ status: 200, description: 'Left' })
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
@@ -381,10 +350,6 @@ export class ChatsController {
 		@Body() body: ChannelLeaveProperty
 	) {
 		const user_uuid = (req.user as any).uuid;
-
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
 
 		await this.channelsService.leave({
 			action: body.action,
@@ -405,8 +370,7 @@ export class ChatsController {
 	 */
 	@ApiQuery({ type: MessagesGetProperty })
 	@ApiResponse({ status: 200, description: "Channel's messages", type: MessagesGetResponse })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.InvalidQuery })
+	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
@@ -419,9 +383,6 @@ export class ChatsController {
 		@Query('offset') offset: any
 	) {
 		const user_uuid = (req.user as any).uuid;
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
 
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
@@ -434,7 +395,6 @@ export class ChatsController {
 	 */
 	@ApiBody({ type: MessageStoreProperty })
 	@ApiResponse({ status: 201, description: 'Created and brodcasted' })
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingChannelUUID })
 	@ApiResponse({ status: 400, description: ApiResponseError.EmptyMessage })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
@@ -446,10 +406,6 @@ export class ChatsController {
 		@Body() body: MessageStoreProperty
 	) {
 		const user_uuid = (req.user as any).uuid;
-
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
 
 		if (isEmpty(body.message)) {
 			throw new BadRequestException(ApiResponseError.EmptyMessage);
@@ -467,8 +423,7 @@ export class ChatsController {
 	 */
 	@ApiBody({ type: MessageDeleteProperty })
 	@ApiResponse({ status: 200, description: 'Deleted' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingChannelUUID })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.MissingID })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingID })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.MessageNotFound })
 	@HttpCode(200)
@@ -479,10 +434,6 @@ export class ChatsController {
 		@Body() body: { id: any }
 	) {
 		const user_uuid = (req.user as any).uuid;
-
-		if (!channel_uuid) {
-			throw new BadRequestException(ApiResponseError.MissingChannelUUID);
-		}
 
 		const id = parseUnsigned({ id: body.id });
 		if (!id) {

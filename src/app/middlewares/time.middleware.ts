@@ -24,6 +24,13 @@ export class ResponseTimeMiddleware implements NestMiddleware {
 	}
 
 	use(req: any, res: any, next: any) {
+		// Exclude avatar upload from api speed counter
+		if (req.params[0] === 'api/avatar') {
+			next();
+			return;
+		}
+
+		// Set times in request object for accessing api speed counter in controller function
 		if (req.params[0] === 'api/stats') {
 			req['times'] = this.getTimes();
 			next();

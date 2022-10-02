@@ -18,6 +18,9 @@ export class ChannelData {
 	password: boolean;
 
 	@ApiProperty()
+	avatar: string;
+
+	@ApiProperty()
 	message_count: number;
 
 	@ApiProperty()

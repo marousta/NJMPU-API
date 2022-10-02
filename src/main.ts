@@ -3,11 +3,14 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import * as requestIp from 'request-ip';
 
-import { AppModule } from './app.module';
+import { AppModule } from './app/app.module';
 
 import { colors } from './types';
 
 import { AuthenticatedWsAdapter } from './websockets/ws.adapter';
+import { existsSync, mkdirSync } from 'fs';
+import { ConfigService } from '@nestjs/config';
+import { resolve } from 'path';
 
 class ValidateEnv {
 	error = false;
@@ -65,6 +68,8 @@ class ValidateEnv {
 async function bootstrap() {
 	const env = new ValidateEnv();
 	env.check('DOMAIN', 'string');
+	env.check('IMG_PATH', 'string');
+	env.check('IMG_MAX_SIZE', 'number');
 	env.check('JWT_PRIVATE', 'string');
 	env.check('PSQL_HOST', 'string');
 	env.check('PSQL_PORT', 0);
@@ -84,10 +89,17 @@ async function bootstrap() {
 
 	app.setGlobalPrefix('api');
 
+	app.enableCors();
+
 	app.use(cookieParser());
 	app.use(requestIp.mw());
 
 	app.useWebSocketAdapter(new AuthenticatedWsAdapter(app));
+
+	const shared = resolve(app.get(ConfigService).get<string>('IMG_PATH'));
+	if (!existsSync(shared)) {
+		mkdirSync(shared);
+	}
 
 	const config = new DocumentBuilder()
 		.setTitle('NEW SHINJI MEGA PONG ULTIMATE API')

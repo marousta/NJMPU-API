@@ -49,7 +49,6 @@ import { WsModule } from '../websockets/ws.module';
 		JwtService,
 		TokensService,
 		TwoFactorService,
-		PicturesService,
 		LocalStrategy,
 		AccessStrategy,
 		RefreshStrategy,
@@ -58,6 +57,7 @@ import { WsModule } from '../websockets/ws.module';
 		TwoFactorStrategy,
 		SessionsService
 	],
-	controllers: [AuthController, SessionsController]
+	controllers: [AuthController, SessionsController],
+	exports: [AccessStrategy]
 })
 export class AuthModule {}

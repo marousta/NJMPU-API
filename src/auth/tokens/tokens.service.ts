@@ -178,7 +178,7 @@ export class TokensService {
 			username: user.username,
 			email: user.email,
 			twofactor: user.twofactor !== null,
-			profile_picture: user.profile_picture
+			avatar: user.avatar
 		};
 	}
 }

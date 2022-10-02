@@ -87,7 +87,7 @@ export interface WsChatDemote extends WsChat {
 export interface WsChaBan extends WsChat {
 	action: ChatAction.Ban;
 	user: string;
-	expiration: Date;
+	expiration: Date | null;
 }
 
 export interface WsChatUnban extends WsChat {
@@ -98,7 +98,7 @@ export interface WsChatUnban extends WsChat {
 export interface WsChatMute extends WsChat {
 	action: ChatAction.Mute;
 	user: string;
-	expiration: Date;
+	expiration: Date | null;
 }
 
 export interface WsChatUnmute extends WsChat {
@@ -108,7 +108,7 @@ export interface WsChatUnmute extends WsChat {
 
 export interface WsChatAvatar extends WsChat {
 	action: ChatAction.Avatar;
-	path: string;
+	avatar: string;
 }
 
 /**
@@ -119,7 +119,8 @@ export enum UserAction {
 	Invite = 'INVITE',
 	Block = 'BLOCK',
 	Unblock = 'UNBLOCK',
-	Refresh = 'REFRESH'
+	Refresh = 'REFRESH',
+	Avatar = 'AVATAR'
 }
 
 export interface WsUser {
@@ -129,6 +130,11 @@ export interface WsUser {
 
 export interface WsUserRefresh extends WsUser {
 	action: UserAction.Refresh;
+}
+
+export interface WsUserAvatar extends WsUser {
+	user: string;
+	action: UserAction.Avatar;
 }
 
 /**

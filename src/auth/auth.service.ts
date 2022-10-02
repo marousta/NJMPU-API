@@ -170,23 +170,23 @@ export class AuthService {
 					throw new BadRequestException('Email address already in use');
 				} else {
 					this.logger.error('Failed to insert user', e);
-					throw new BadRequestException();
+					throw new InternalServerErrorException();
 				}
 			});
 			this.logger.debug('User created ' + new_user.uuid);
 
-			if (params.profile_picture) {
+			if (params.avatar) {
 				const hash = createHash('sha1').update(created_user.uuid).digest('hex');
-				const profile_picture: string | null = await this.pictureService
-					.download(hash, params.profile_picture)
+				const avatar: string | null = await this.pictureService
+					.download(hash, params.avatar)
 					.catch((e) => {
 						this.logger.error('Profile picture download failed', e);
 						return null;
 					});
 
-				await this.usersRepository.save({ ...new_user, profile_picture }).catch((e) => {
+				await this.usersRepository.save({ ...new_user, avatar }).catch((e) => {
 					this.logger.error('Failed to update user profile picture', e);
-					throw new BadRequestException();
+					throw new InternalServerErrorException();
 				});
 				this.logger.debug('User profile picture set for ' + new_user.uuid);
 			}
@@ -208,7 +208,7 @@ export class AuthService {
 			const partial_user = getPartialUser(user);
 
 			http.res.redirect(
-				`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&profile_picture=${partial_user.profile_picture}`
+				`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&avatar=${partial_user.avatar}`
 			);
 		} else if (ret.interface === 'TwoFactorRequest') {
 			this.cookie.create(http.res, { twofactor_token: ret.token });

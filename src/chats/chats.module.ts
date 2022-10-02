@@ -25,6 +25,7 @@ import { UsersInfos } from '../users/users.entity';
 		WsModule
 	],
 	controllers: [ChatsController],
-	providers: [ChannelsService, ChannelsBlacklistService, MessagesService]
+	providers: [ChannelsService, ChannelsBlacklistService, MessagesService],
+	exports: [ChannelsService]
 })
 export class ChatsModule {}

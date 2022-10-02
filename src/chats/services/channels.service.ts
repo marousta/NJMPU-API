@@ -29,13 +29,14 @@ import {
 } from '../properties/channels.get.property';
 
 import {
+	ChannelAvatarProperty,
 	ChannelModeratorProperty,
 	ChannelSettingProperty
 } from '../properties/channels.update.property';
 import { ChannelLeaveProperty, LeaveAction } from '../properties/channels.delete.property';
 import { BlacklistGetProperty } from '../properties/channels.blacklist.get.property';
 
-import { isEmpty, genIdentifier } from '../../utils';
+import { isEmpty, genIdentifier, dateFromOffset } from '../../utils';
 
 import {
 	ChannelType,
@@ -258,6 +259,20 @@ export class ChannelsService {
 			}
 			return moderatorsID.includes(user_uuid);
 		},
+		hasPermissionsGet: async (channel_uuid: string, user_uuid: string) => {
+			const channel = await this.findOne.WithAllAndRelationsID(
+				{ uuid: channel_uuid },
+				'Unable to find channel ' + channel_uuid
+			);
+
+			//  prettier-ignore
+			if (channel.type === ChannelType.Direct
+			|| !this.user.hasPermissions(channel, user_uuid)) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
+
+			return channel;
+		},
 		hasPermissions: (channel: ChatsChannelsID, user_uuid: string) => {
 			//  prettier-ignore
 			return (
@@ -302,6 +317,7 @@ export class ChannelsService {
 				identifier: channel.identifier,
 				name: channel.name,
 				password: channel.password !== null,
+				avatar: channel.avatar,
 				message_count,
 				administrator: channel.administratorID,
 				moderators: channel.moderatorsID,
@@ -356,6 +372,7 @@ export class ChannelsService {
 					identifier: channel.identifier,
 					name: channel.name,
 					password: channel.password !== null,
+					avatar: channel.avatar,
 					message_count,
 					administrator: channel.administratorID,
 					moderators: channel.moderatorsID,
@@ -406,6 +423,7 @@ export class ChannelsService {
 				identifier: channel.identifier,
 				name: channel.name,
 				password: channel.password !== null,
+				avatar: channel.avatar,
 				message_count,
 				administrator: channel.administratorID,
 				moderators: channel.moderatorsID,
@@ -631,7 +649,7 @@ export class ChannelsService {
 	readonly blacklist = {
 		add: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
 			//  prettier-ignore
-			if (!this.user.hasPermissions(channel, params.current_user_uuid)			// Check administrator permissions
+			if (!this.user.hasPermissions(channel, params.current_user_uuid)			// Check permissions
 			|| this.user.isAdministrator(channel.administratorID, params.user_uuid)		// Check if remote user is administrator
 			|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) {			// Check if remote user is moderator) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
@@ -695,17 +713,18 @@ export class ChannelsService {
 					error_msg = 'Unable to update mute list for channel ' + channel.uuid;
 					break;
 				default:
-					throw new BadRequestException();
+					throw new BadRequestException('Invalid action');
 			}
 
 			await this.save(channel, error_msg);
 
+			const expiration = params.expiration !== 0 ? dateFromOffset(params.expiration) : null;
 			this.wsService.dispatch.channel({
 				namespace: WsNamespace.Chat,
 				action: params.action,
 				user: params.user_uuid,
 				channel: channel.uuid,
-				expiration: params.expiration
+				expiration
 			});
 		},
 		promote: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
@@ -766,6 +785,33 @@ export class ChannelsService {
 		},
 		unmute: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
 			return await this.blacklist.remove(params, channel);
+		},
+		avatar: async (params: ChannelAvatarProperty, channel: ChatsChannelsID) => {
+			const old_avatar = channel.avatar;
+			channel.avatar = params.avatar;
+
+			await this.save(channel, 'Unable to update avatar for channel ' + channel.uuid);
+
+			switch (channel.type) {
+				case ChannelType.Public:
+					this.wsService.dispatch.all({
+						namespace: WsNamespace.Chat,
+						action: ChatAction.Avatar,
+						channel: params.channel_uuid,
+						avatar: params.avatar
+					});
+					break;
+				case ChannelType.Private:
+					this.wsService.dispatch.channel({
+						namespace: WsNamespace.Chat,
+						action: ChatAction.Avatar,
+						channel: params.channel_uuid,
+						avatar: params.avatar
+					});
+					break;
+			}
+
+			return { new: params.avatar, old: old_avatar };
 		}
 	};
 
@@ -873,8 +919,6 @@ export class ChannelsService {
 						channel: params.channel_uuid
 					});
 					break;
-				default:
-					throw new InternalServerErrorException();
 			}
 		} else {
 			this.wsService.dispatch.channel({

@@ -23,7 +23,9 @@ import {
 	WsChaBan,
 	WsChatUnban,
 	WsChatMute,
-	WsChatUnmute
+	WsChatUnmute,
+	WsChatAvatar,
+	WsUserAvatar
 } from './types';
 
 @Injectable()
@@ -80,7 +82,7 @@ export class WsService {
 	};
 
 	public readonly dispatch = {
-		all: (data: WsChatCreate | WsChatRemove) => {
+		all: (data: WsChatCreate | WsChatRemove | WsChatAvatar | WsUserAvatar) => {
 			const client = this.ws.clients.values();
 			let c: WebSocket = null;
 			let i = 0;
@@ -105,7 +107,22 @@ export class WsService {
 							} dispatched to ${i} connected ${PeerOrPeers(i)}`
 						);
 						break;
+					case ChatAction.Avatar:
+						this.logger.verbose(
+							`Updated channel avatar for ${
+								data.channel
+							} dispatched to ${i} connected ${PeerOrPeers(i)}`
+						);
+						break;
 				}
+				return;
+			}
+			if (data.namespace === WsNamespace.User) {
+				this.logger.verbose(
+					`Updated avatar for user ${
+						data.user
+					} dispatched to ${i} connected ${PeerOrPeers(i)}`
+				);
 			}
 		},
 		user: (uuid: string, data: WsChatCreate | WsUserRefresh) => {
@@ -145,6 +162,7 @@ export class WsService {
 				| WsChatUnban
 				| WsChatMute
 				| WsChatUnmute
+				| WsChatAvatar
 		) => {
 			const user_uuid = data.user;
 			const channel_uuid = data.channel;
@@ -204,9 +222,9 @@ export class WsService {
 						);
 					case ChatAction.Ban:
 						return this.logger.verbose(
-							`Banned ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
+							`Banned ${user_uuid} in ${channel_uuid} ${
+								data.expiration ? 'until ' + data.expiration : 'permanently'
+							} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 						);
 					case ChatAction.Unban:
 						return this.logger.verbose(
@@ -216,9 +234,9 @@ export class WsService {
 						);
 					case ChatAction.Mute:
 						return this.logger.verbose(
-							`Muted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
+							`Muted ${user_uuid} in ${channel_uuid} ${
+								data.expiration ? 'until ' + data.expiration : 'permanently'
+							} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 						);
 					case ChatAction.Unmute:
 						return this.logger.verbose(
@@ -226,6 +244,13 @@ export class WsService {
 								i
 							)}`
 						);
+					case ChatAction.Avatar:
+						this.logger.verbose(
+							`Updated channel avatar for ${
+								data.channel
+							} dispatched to ${i} connected ${PeerOrPeers(i)}`
+						);
+						break;
 				}
 			}
 		}

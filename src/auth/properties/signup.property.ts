@@ -14,5 +14,5 @@ export class SignupProperty {
 	confirm: string;
 
 	@ApiHideProperty()
-	profile_picture: string;
+	avatar: string;
 }

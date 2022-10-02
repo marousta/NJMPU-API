@@ -37,6 +37,7 @@ export enum ApiResponseError {
 	AlreadyModerator = 'Already a moderator',
 	AlreadyBanned = 'Already banned',
 	AlreadyMuted = 'Already muted',
+	AlreadyDirect = 'Direct message with this user already exist',
 	NotAllowed = 'Not allowed',
 	MissingChannelUUID = 'Missing channel uuid',
 	MissingID = 'Missing id',
@@ -48,7 +49,9 @@ export enum ApiResponseError {
 	Banned = 'Banned',
 	WrongPassword = 'Wrong password',
 	InvalidQuery = 'Invalid number in query',
+	DirectYourseft = "You can't DM yourself",
 	EmptyMessage = 'Empty message',
 	EmptyBody = 'Empty body',
-	isAdministrator = 'User is channel administrator'
+	isAdministrator = 'User is channel administrator',
+	ImgTooLarge = 'Image too large'
 }

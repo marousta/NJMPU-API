@@ -28,7 +28,7 @@ export class UsersInfos {
 
 	@ApiProperty()
 	@Column({ nullable: true })
-	profile_picture: string;
+	avatar: string;
 
 	@ApiProperty()
 	@Column({ default: false })

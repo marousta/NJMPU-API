@@ -12,9 +12,10 @@ import { AccessStrategy } from '../auth/strategies/access.strategy';
 
 import { UsersInfos } from './users.entity';
 import { UsersTokens } from '../auth/tokens/tokens.entity';
+import { WsModule } from '../websockets/ws.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UsersInfos, UsersTokens])],
+	imports: [TypeOrmModule.forFeature([UsersInfos, UsersTokens]), WsModule],
 	controllers: [UsersController],
 	providers: [UsersService, ConfigService, AccessStrategy, TokensService, JwtService],
 	exports: [UsersService]

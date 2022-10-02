@@ -15,7 +15,7 @@ import { SessionsGetResponse } from './sessions.property';
 import { Request as Req } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { parseUnsigned } from 'src/utils';
-import { GlobalQueryProperty } from '../../global.property';
+import { GlobalQueryProperty } from '../../app/properties/global.property';
 
 @UseGuards(AuthGuard('access'))
 @ApiTags('sessions')

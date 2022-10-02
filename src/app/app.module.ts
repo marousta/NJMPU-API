@@ -5,17 +5,15 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { HttpModule } from '@nestjs/axios';
 import { HelmetMiddleware } from '@nest-middleware-collection/helmet';
 
-import { ResponseTimeMiddleware } from './time.middleware';
+import { ResponseTimeMiddleware } from './middlewares/time.middleware';
 
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
-import { PicturesModule } from './pictures/pictures.module';
-import { WsModule } from './websockets/ws.module';
-import { ChatsModule } from './chats/chats.module';
+import { UsersModule } from '../users/users.module';
+import { AuthModule } from '../auth/auth.module';
+import { PicturesModule } from '../pictures/pictures.module';
+import { WsModule } from '../websockets/ws.module';
+import { ChatsModule } from '../chats/chats.module';
 
 import { AppController } from './app.controller';
-
-import { PicturesService } from './pictures/pictures.service';
 
 @Module({
 	imports: [
@@ -41,13 +39,12 @@ import { PicturesService } from './pictures/pictures.service';
 			})
 		}),
 		WsModule,
+		PicturesModule,
 		AuthModule,
 		UsersModule,
-		PicturesModule,
 		ChatsModule
 	],
-	controllers: [AppController],
-	providers: [PicturesService]
+	controllers: [AppController]
 })
 export class AppModule {
 	configure(consumer: MiddlewareConsumer) {

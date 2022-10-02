@@ -14,7 +14,7 @@ export class UserGetResponse {
 	twofactor: boolean;
 
 	@ApiProperty()
-	profile_picture: string;
+	avatar: string;
 
 	@ApiProperty()
 	is_online: boolean;

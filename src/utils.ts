@@ -25,13 +25,13 @@ export function getPartialUser(user: Intra42User | DiscordUser): PartialUsersInf
 			return {
 				username: user.username,
 				email: user.emails[0].value,
-				profile_picture: user.photos[0].value
+				avatar: user.photos[0].value
 			};
 		case 'DiscordUser':
 			return {
 				username: user.username,
 				email: user.email,
-				profile_picture: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}?size=256`
+				avatar: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}?size=256`
 			};
 		default:
 			new Logger('getPartialUser').error('unknown user type ', user);
@@ -79,4 +79,8 @@ export function parseUnsigned(raw: object) {
 
 export function peerOrPeers(i: number) {
 	return i != 1 ? 'peers' : 'peer';
+}
+
+export function dateFromOffset(offset: number) {
+	return new Date(new Date().valueOf() + offset * 1000);
 }

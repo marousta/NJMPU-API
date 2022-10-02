@@ -35,6 +35,9 @@ export class ChatsChannels {
 	@Column({ nullable: true })
 	password: string;
 
+	@Column({ nullable: true })
+	avatar: string;
+
 	/**
 	 * Relation Channel administrator -> User
 	 */
