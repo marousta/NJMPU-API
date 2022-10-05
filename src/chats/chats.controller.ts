@@ -23,7 +23,12 @@ import { MessagesService } from './services/messages.service';
 
 import { GlobalQueryProperty } from '../app/properties/global.property';
 import { ChannelsCreateProperty } from './properties/channels.create.property';
-import { ChannelsDataGetResponse, ChannelGetResponse } from './properties/channels.get.property';
+import {
+	ChannelsDataGetResponse,
+	ChannelGetResponse,
+	ChannelPrivateGetResponse,
+	ChannelPrivateProperty
+} from './properties/channels.get.property';
 import { MessageStoreProperty } from './properties/messages.store.property';
 import { MessagesGetProperty, MessagesGetResponse } from './properties/messages.get.propoerty';
 import { MessageDeleteProperty } from './properties/message.delete.property';
@@ -106,6 +111,22 @@ export class ChatsController {
 		const uuid = (req.user as any).uuid;
 
 		return await this.channelsService.getOne(channel_uuid, uuid);
+	}
+
+	/**
+	 * find one private
+	 */
+	@ApiBody({ type: ChannelPrivateProperty })
+	@ApiResponse({ status: 200, description: 'Private uuid', type: ChannelPrivateGetResponse })
+	@ApiResponse({ status: 400 })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@HttpCode(200)
+	@Post('private')
+	async findPriv(@Body() body: ChannelPrivateProperty) {
+		if (body.identifier === undefined || isEmpty(body.name)) {
+		}
+
+		return await this.channelsService.findPriv(body);
 	}
 
 	/**

@@ -1,5 +1,6 @@
 import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
 import { ChannelType } from '../types';
+import { PassportModule } from '@nestjs/passport';
 
 export class ChannelData {
 	@ApiProperty()
@@ -84,3 +85,25 @@ export class ChannelsDataGetResponse {
 
 export class ChannelGetResponse extends ChannelData {}
 export class ChannelDirectGetResponse extends DirectData {}
+
+export class ChannelPrivateProperty {
+	@ApiProperty()
+	name: string;
+
+	@ApiProperty()
+	identifier: number;
+}
+
+export class ChannelPrivateGetResponse {
+	@ApiProperty()
+	uuid: string;
+
+	@ApiProperty()
+	identifier: number;
+
+	@ApiProperty()
+	name: string;
+
+	@ApiProperty()
+	avatar: string;
+}

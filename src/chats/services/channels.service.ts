@@ -25,7 +25,8 @@ import {
 	ChannelGetResponse,
 	ChannelDirectGetResponse,
 	ChannelData,
-	DirectData
+	DirectData,
+	ChannelPrivateGetResponse
 } from '../properties/channels.get.property';
 
 import {
@@ -46,6 +47,7 @@ import {
 	ApiResponseError
 } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
+import { ChannelPrivateProperty } from '../properties/channels.get.property';
 
 @Injectable()
 export class ChannelsService {
@@ -430,6 +432,27 @@ export class ChannelsService {
 				users: channel.usersID
 			};
 		}
+	}
+
+	async findPriv(params: ChannelPrivateProperty): Promise<ChannelPrivateGetResponse> {
+		const channel: ChatsChannelsID = await this.channelRepository
+			.createQueryBuilder('channels')
+			.where({ name: params.name, identifier: params.identifier })
+			.getOneOrFail()
+			.catch((e) => {
+				this.logger.verbose(
+					`Unable to find channel ${params.name} #${params.identifier}`,
+					e
+				);
+				throw new NotFoundException(ApiResponseError.ChannelNotFound);
+			});
+
+		return {
+			uuid: channel.uuid,
+			identifier: channel.identifier,
+			name: channel.name,
+			avatar: channel.avatar
+		};
 	}
 
 	private readonly create = {
