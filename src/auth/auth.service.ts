@@ -8,7 +8,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as argon2 from 'argon2';
 import e, { Request, Response } from 'express';
 import { createHash } from 'crypto';
 
@@ -21,6 +20,7 @@ import { SignupProperty } from './properties/signup.property';
 
 import { UsersInfos } from '../users/users.entity';
 
+import { hash_password_config } from './config';
 import {
 	DiscordUser,
 	GeneratedTokens,
@@ -30,6 +30,7 @@ import {
 	TwoFactorRequest
 } from './types';
 import { getPartialUser, isEmpty, getFingerprint } from '../utils';
+import { hash, hash_verify } from './utils';
 
 @Injectable()
 export class AuthService {
@@ -50,7 +51,7 @@ export class AuthService {
 			throw new UnauthorizedException();
 		});
 
-		const verif = await argon2.verify(user.password, password);
+		const verif = await hash_verify(user.password, password);
 		if (!verif) {
 			this.logger.verbose('Failed to verify password');
 			throw new UnauthorizedException();
@@ -86,9 +87,7 @@ export class AuthService {
 			const parital_user = getPartialUser(user);
 
 			const exist = await this.usersRepository
-				.findOneByOrFail({
-					email: parital_user.email
-				})
+				.findOneByOrFail({ email: parital_user.email })
 				.catch((e) => {
 					this.logger.verbose('No user with email ' + parital_user.email);
 					return null;
@@ -162,7 +161,7 @@ export class AuthService {
 				identifier: await this.usersService.getIdentfier(params.username),
 				username: params.username,
 				email: params.email,
-				password: await argon2.hash(params.password, { timeCost: 11, saltLength: 128 })
+				password: await hash(params.password, hash_password_config)
 			});
 
 			const created_user = await this.usersRepository.save(new_user).catch((e) => {

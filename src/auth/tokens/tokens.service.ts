@@ -9,14 +9,15 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as argon2 from 'argon2';
 import { readFileSync } from 'fs';
 
 import { UsersTokens } from './tokens.entity';
 import { UsersInfos } from '../../users/users.entity';
 
+import { hash_token_config } from '../config';
 import { GeneratedTokens, JwtPayload, PartialUsersInfos } from '../types';
 import { isEmpty } from '../../utils';
+import { hash, hash_verify } from '../utils';
 
 @Injectable()
 export class TokensService {
@@ -71,12 +72,17 @@ export class TokensService {
 		const access_token = this.accessToken({ id, uuid: user.uuid });
 		const refresh_token = this.refreshToken(id);
 
+		const hashs = await Promise.all([
+			hash(access_token, hash_token_config),
+			hash(refresh_token, hash_token_config)
+		]);
+
 		await this.tokensRepository
 			.save({
 				id,
 				refresh_date: new Date(),
-				access_token_hash: await this.hash(access_token),
-				refresh_token_hash: await this.hash(refresh_token)
+				access_token_hash: hashs[0],
+				refresh_token_hash: hashs[1]
 			})
 			.catch((e) => {
 				this.logger.error('Unable to update token', e);
@@ -120,27 +126,20 @@ export class TokensService {
 			isEmpty(user_token.ua_hash) ||
 			isEmpty(user_token.ip_hash)
 		) {
+			this.logger.verbose('Token is destroyed');
 			throw new UnauthorizedException();
 		}
 
-		const token_verif = await argon2.verify(
-			user_token[token_type + '_hash'],
-			Object.values(token)[0]
-		);
-		const ua_verif = await argon2.verify(user_token.ua_hash, ua);
-		const ip_verif = await argon2.verify(user_token.ip_hash, ip);
+		const hashs_verif = await Promise.all([
+			hash_verify(user_token[token_type + '_hash'], Object.values(token)[0]),
+			hash_verify(user_token.ua_hash, ua),
+			hash_verify(user_token.ip_hash, ip)
+		]);
 
-		if (!token_verif || !ua_verif || !ip_verif) {
+		if (!hashs_verif[0] || !hashs_verif[1] || !hashs_verif[2]) {
 			this.logger.verbose('Token is not trusted');
 			throw new UnauthorizedException();
 		}
-	}
-
-	async hash(token: string): Promise<string> {
-		return await argon2.hash(token, {
-			timeCost: 11,
-			saltLength: 128
-		});
 	}
 
 	async create(payload: JwtPayload): Promise<GeneratedTokens> {
@@ -150,15 +149,22 @@ export class TokensService {
 		const access_token = this.accessToken({ id, uuid: payload.uuid });
 		const refresh_token = this.refreshToken(id);
 
+		const hashs = await Promise.all([
+			hash(access_token, hash_token_config),
+			hash(refresh_token, hash_token_config),
+			hash(payload.fingerprint.ua, hash_token_config),
+			hash(payload.fingerprint.ip, hash_token_config)
+		]);
+
 		const new_tokens = this.tokensRepository.create({
 			id: id,
 			user: payload.uuid,
 			creation_date: new Date(),
 			platform: payload.fingerprint.platform,
-			access_token_hash: await this.hash(access_token),
-			refresh_token_hash: await this.hash(refresh_token),
-			ua_hash: await this.hash(payload.fingerprint.ua),
-			ip_hash: await this.hash(payload.fingerprint.ip)
+			access_token_hash: hashs[0],
+			refresh_token_hash: hashs[1],
+			ua_hash: hashs[2],
+			ip_hash: hashs[3]
 		});
 
 		await this.tokensRepository.save(new_tokens).catch((e) => {
