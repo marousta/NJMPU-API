@@ -157,11 +157,15 @@ export class AuthService {
 				throw new BadRequestException('Password missmatch');
 			}
 
+			const requests = await Promise.all([
+				this.usersService.getIdentfier(params.username),
+				hash(params.password, hash_password_config)
+			]);
 			const new_user = this.usersRepository.create({
-				identifier: await this.usersService.getIdentfier(params.username),
+				identifier: requests[0],
 				username: params.username,
 				email: params.email,
-				password: await hash(params.password, hash_password_config)
+				password: requests[1]
 			});
 
 			const created_user = await this.usersRepository.save(new_user).catch((e) => {
@@ -176,7 +180,7 @@ export class AuthService {
 
 			if (params.avatar) {
 				const hash = createHash('sha1').update(created_user.uuid).digest('hex');
-				const avatar: string | null = await this.pictureService
+				const avatar: string = await this.pictureService
 					.download(hash, params.avatar)
 					.catch((e) => {
 						this.logger.error('Profile picture download failed', e);
@@ -201,8 +205,7 @@ export class AuthService {
 	) {
 		const fingerprint = getFingerprint(http.req, http.headers);
 
-		let ret = await this.login.byAPI(user, fingerprint);
-
+		const ret = await this.login.byAPI(user, fingerprint);
 		if (!ret) {
 			const partial_user = getPartialUser(user);
 
@@ -241,8 +244,10 @@ export class AuthService {
 		login: async (request_uuid: string, fingerprint: UserFingerprint) => {
 			this.logger.debug('2FA request is valid ' + request_uuid);
 
-			let user = await this.twoFactorService.user(request_uuid);
+			const user = await this.twoFactorService.user(request_uuid);
+
 			await this.twoFactorService.delete(request_uuid);
+
 			return await this.tokensService.create({
 				uuid: user.uuid,
 				fingerprint

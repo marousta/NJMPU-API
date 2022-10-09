@@ -48,6 +48,7 @@ import {
 } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
 import { ChannelPrivateProperty } from '../properties/channels.get.property';
+import { hash_verify } from '../../auth/utils';
 
 @Injectable()
 export class ChannelsService {
@@ -344,9 +345,7 @@ export class ChannelsService {
 		const ret: [ChatsChannelsID[], number] = await this.channelRepository
 			.createQueryBuilder('channels')
 			.leftJoin('channels.users', 'users')
-			.where('users.uuid = :uuid ', {
-				uuid
-			})
+			.where('users.uuid = :uuid ', { uuid })
 			.orderBy('channels.name', 'ASC')
 			.orderBy('channels.identifier', 'ASC')
 			.limit(limit)
@@ -356,9 +355,15 @@ export class ChannelsService {
 			.loadRelationIdAndMap('channels.usersID', 'channels.users')
 			.getManyAndCount();
 
-		let data: Array<ChannelData | DirectData> = [];
+		let count_primise: Promise<number>[] = [];
 		for (const channel of ret[0]) {
-			const message_count = await this.messagesService.count(channel.uuid);
+			count_primise.push(this.messagesService.count(channel.uuid));
+		}
+		const messages_counts = await Promise.all(count_primise);
+
+		let data: Array<ChannelData | DirectData> = [];
+		for (const [i, channel] of ret[0].entries()) {
+			const message_count = messages_counts[i];
 
 			if (channel.type === ChannelType.Direct) {
 				data.push({
@@ -458,7 +463,7 @@ export class ChannelsService {
 	private readonly create = {
 		channel: async (params: ChatsGroupPublic | ChatsGroupPrivate) => {
 			// Get current user
-			// should not fail
+			// Should never fail
 			const user = await this.usersRepository
 				.findOneByOrFail({ uuid: params.current_user_uuid })
 				.catch((e) => {
@@ -516,22 +521,27 @@ export class ChannelsService {
 				throw new BadRequestException("You can't DM yourself");
 			}
 
-			// Get current user
-			// should not fail
-			const current_user = await this.usersRepository
-				.findOneByOrFail({ uuid: params.current_user_uuid })
-				.catch((e) => {
-					this.logger.error('Unable to find current user ' + params.current_user_uuid, e);
-					throw new InternalServerErrorException();
-				});
-
-			// Get remote user
-			const remote_user = await this.usersRepository
-				.findOneByOrFail({ uuid: params.user_uuid })
-				.catch((e) => {
+			const users: UsersInfos[] = await Promise.all([
+				// Get current user
+				// Should never fail
+				this.usersRepository
+					.findOneByOrFail({ uuid: params.current_user_uuid })
+					.catch((e) => {
+						this.logger.error(
+							'Unable to find current user ' + params.current_user_uuid,
+							e
+						);
+						throw new InternalServerErrorException();
+					}),
+				// Get remote user
+				this.usersRepository.findOneByOrFail({ uuid: params.user_uuid }).catch((e) => {
 					this.logger.error('Unable to find relatiom user ' + params.user_uuid, e);
 					throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
-				});
+				})
+			]);
+
+			const current_user = users[0];
+			const remote_user = users[1];
 
 			const name = current_user.uuid + '+' + remote_user.uuid;
 			const rev_name = remote_user.uuid + '+' + current_user.uuid;
@@ -645,7 +655,7 @@ export class ChannelsService {
 			if (isEmpty(parsed.password)) {
 				throw new BadRequestException(ApiResponseError.WrongPassword);
 			}
-			const verif = await argon2.verify(channel.password, parsed.password);
+			const verif = await hash_verify(channel.password, parsed.password);
 			if (!verif) {
 				throw new BadRequestException(ApiResponseError.WrongPassword);
 			}
@@ -772,7 +782,7 @@ export class ChannelsService {
 			}
 
 			// Get remote user
-			// should not fail
+			// Should never fail
 			const user = await this.user.find500(params.user_uuid);
 			channel.addModerator(user);
 

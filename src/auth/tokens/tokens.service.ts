@@ -175,16 +175,4 @@ export class TokensService {
 		this.logger.debug('User as sign in ' + payload.uuid);
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
-
-	async user(id: number): Promise<PartialUsersInfos> {
-		const user = await this.getUser(id);
-		return {
-			uuid: user.uuid,
-			identifier: user.identifier,
-			username: user.username,
-			email: user.email,
-			twofactor: user.twofactor !== null,
-			avatar: user.avatar
-		};
-	}
 }

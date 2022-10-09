@@ -77,15 +77,18 @@ export class SessionsService {
 				this.logger.verbose('No session found for ' + uuid + ' with id ' + id, e);
 				throw new NotFoundException();
 			});
+
 		session.refresh_date = new Date(0);
 		session.access_token_hash = '';
 		session.refresh_token_hash = '';
 		session.ua_hash = '';
 		session.ip_hash = '';
+
 		await this.tokenRepository.save(session).catch((e) => {
 			this.logger.debug('Unable to destroy session ' + id, e);
 			throw new InternalServerErrorException();
 		});
+
 		this.wsService.dispatch.user(uuid, {
 			namespace: WsNamespace.User,
 			action: UserAction.Refresh

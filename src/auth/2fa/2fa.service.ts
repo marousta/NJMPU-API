@@ -18,6 +18,8 @@ import { UsersTwofactorReq } from './2fa.entity';
 import { UsersInfos } from '../../users/users.entity';
 
 import { TwoFactorRequest } from '../types';
+import { hash, hash_verify } from '../utils';
+import { hash_token_config } from '../config';
 
 @Injectable()
 export class TwoFactorService {
@@ -66,10 +68,7 @@ export class TwoFactorService {
 		await this.twofactorRepository
 			.save({
 				...request,
-				token_hash: await argon2.hash(token, {
-					timeCost: 11,
-					saltLength: 128
-				})
+				token_hash: await hash(token, hash_token_config)
 			})
 			.catch((e) => {
 				this.logger.error('Could not insert token', e.detail);
@@ -90,20 +89,28 @@ export class TwoFactorService {
 			});
 
 		if (exist) {
+			let requests = [];
 			for (const request of exist) {
-				await this.twofactorRepository.delete(request);
-				this.logger.debug('Deleted 2FA request ' + request.uuid);
+				requests.push(
+					this.twofactorRepository.delete(request).then(() => {
+						this.logger.debug('Deleted 2FA request ' + request.uuid);
+					})
+				);
 			}
+			await Promise.all(requests);
 		}
+
 		const new_request = this.twofactorRepository.create({
 			player: uuid,
 			secret
 		});
+
 		const request = await this.twofactorRepository.save(new_request).catch((e) => {
 			this.logger.error('Could not insert request', e.detail);
 			throw new InternalServerErrorException();
 		});
 		const token = await this.saveToken(request);
+
 		return { interface: 'TwoFactorRequest', uuid: request.uuid, token };
 	}
 
@@ -113,10 +120,16 @@ export class TwoFactorService {
 			account: user.email
 		});
 
-		const qr = await QRCode.toDataURL(token.uri);
+		const requests = await Promise.all([
+			QRCode.toDataURL(token.uri),
+			this.requestCreator(user.uuid, token.secret)
+		]);
 
-		const request = await this.requestCreator(user.uuid, token.secret);
+		const qr = requests[0];
+		const request = requests[1];
+
 		this.logger.debug('Created 2FA request ' + request.uuid);
+
 		return { ...request, image: qr };
 	}
 
@@ -145,7 +158,7 @@ export class TwoFactorService {
 					throw new UnauthorizedException();
 				});
 
-			return await argon2.verify(request.token_hash, payload.token);
+			return await hash_verify(request.token_hash, payload.token);
 		},
 		code: async (request_uuid: string, code: string): Promise<boolean> => {
 			const request = await this.request(request_uuid);

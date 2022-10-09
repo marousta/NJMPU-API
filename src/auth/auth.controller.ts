@@ -173,11 +173,7 @@ export class AuthController {
 	@ApiResponse({ status: 403, description: '2FA already set' })
 	@HttpCode(202)
 	@Get('/2fa')
-	async twoFactorCreator(
-		@Request() req: Req,
-		@Headers() headers: Headers,
-		@Response({ passthrough: true }) res: Res
-	) {
+	async twoFactorCreator(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
 		const payload = req.user as JwtPayload;
 		const request = await this.authService.twoFactor.demand(payload);
 		this.authService.cookie.create(res, { twofactor_token: request.token });
@@ -209,18 +205,5 @@ export class AuthController {
 		} else {
 			throw new HttpException('Code is invalid', 417);
 		}
-	}
-
-	/**
-	 * Front helper
-	 */
-	@UseGuards(AuthGuard('access'))
-	@ApiResponse({ status: 200, description: 'User filtered infos' })
-	@ApiResponse({ status: 401, description: 'User not logged in' })
-	@HttpCode(200)
-	@Get('whoami')
-	async whoami(@Request() req: Req) {
-		const user = req.user as any;
-		return await this.tokensService.user(user.id);
 	}
 }

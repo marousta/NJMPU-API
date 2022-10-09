@@ -36,7 +36,7 @@ export class MessagesService {
 	) {}
 
 	async count(channel_uuid: string) {
-		return await this.messageRepository
+		return this.messageRepository
 			.createQueryBuilder('message')
 			.where({ channel: channel_uuid })
 			.orderBy('creation_date', 'ASC')
@@ -80,12 +80,14 @@ export class MessagesService {
 	}
 
 	async store(params: MessageStoreProperty) {
-		const userInChannel = await this.channelsService.user.inChannelFind(
-			params.channel_uuid,
-			params.user_uuid
-		);
+		const requests = await Promise.all([
+			this.channelsService.user.inChannelFind(params.channel_uuid, params.user_uuid),
+			this.blacklistService.isMuted(params.channel_uuid, params.user_uuid)
+		]);
 
-		const muted = await this.blacklistService.isMuted(params.channel_uuid, params.user_uuid);
+		const userInChannel = requests[0];
+		const muted = requests[1];
+
 		if (!userInChannel || muted) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
@@ -116,14 +118,18 @@ export class MessagesService {
 	}
 
 	async delete(channel_uuid: string, user_uuid: string, id: number) {
-		const message = await this.messageRepository
-			.findOneOrFail({ where: { id }, relations: ['user', 'channel'] })
-			.catch((e) => {
-				this.logger.verbose('Unable to find message ' + id, e);
-				throw new NotFoundException(ApiResponseError.MessageNotFound);
-			});
+		const requests = await Promise.all([
+			this.messageRepository
+				.findOneOrFail({ where: { id }, relations: ['user', 'channel'] })
+				.catch((e) => {
+					this.logger.verbose('Unable to find message ' + id, e);
+					throw new NotFoundException(ApiResponseError.MessageNotFound);
+				}),
+			this.channelsService.findOne.WithRelationsID(channel_uuid)
+		]);
 
-		const channel = await this.channelsService.findOne.WithRelationsID(channel_uuid);
+		const message = requests[0];
+		const channel = requests[1];
 
 		//  prettier-ignore
 		if (!this.channelsService.user.hasPermissions(channel, user_uuid) //User is not administrator or moderator
