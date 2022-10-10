@@ -15,7 +15,12 @@ import * as cookie from 'cookie';
 
 import { WsService } from './ws.service';
 
-import { WsNamespace } from './types';
+import { UserAction, WsNamespace } from './types';
+import { readFileSync } from 'fs';
+import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { TokensService } from '../auth/tokens/tokens.service';
+import { getClientIp } from 'request-ip';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -24,7 +29,12 @@ import { WsNamespace } from './types';
 })
 export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
 	private readonly logger = new Logger(WsGateway.name);
-	constructor(private readonly wsService: WsService) {}
+	constructor(
+		private readonly jwtService: JwtService,
+		private readonly configService: ConfigService,
+		private readonly tokensService: TokensService,
+		private readonly wsService: WsService
+	) {}
 
 	@WebSocketServer()
 	readonly server: Server;
@@ -35,19 +45,71 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	//#region  Utils
 	private getCookies(req: Req) {
 		const headers = getHeaders.array(req.rawHeaders);
-		return cookie.parse(headers['Cookie'] as string);
+		const cookies = headers['Cookie'] as string;
+		return cookies ? cookie.parse(cookies) : {};
 	}
 
-	private getUUID(req: Req): string | null {
-		const cookies = this.getCookies(req);
-		const access_token = cookies['access_token'];
-		if (!access_token) {
+	private parseCookies(cookies: Record<string, string>) {
+		const token_str = {
+			access_token: cookies['access_token'],
+			refresh_token: cookies['refresh_token']
+		};
+		if (!token_str.access_token || !token_str.refresh_token) {
 			return null;
 		}
-		const arr = access_token.split('.');
-		const buff = Buffer.from(arr[1], 'base64').toString();
-		const user = JSON.parse(buff);
-		return (user as any).uuid;
+		let ret = {};
+		for (const token in token_str) {
+			const arr = token_str[token].split('.');
+			const buff = Buffer.from(arr[1], 'base64').toString();
+			ret[token] = JSON.parse(buff);
+		}
+		return ret;
+	}
+
+	private getUUID(parsed_cookies: any): string | null {
+		if (!parsed_cookies) {
+			return null;
+		}
+		return parsed_cookies.access_token.uuid;
+	}
+
+	async validate(cookies: any, ua: string, ip: string): Promise<boolean> {
+		const config = {
+			algorithms: ['RS256'],
+			secret: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
+				encoding: 'ascii'
+			})
+		};
+
+		const valid_jwt_token = await Promise.all([
+			this.jwtService
+				.verifyAsync(cookies['access_token'], config as JwtVerifyOptions)
+				.catch((e) => null),
+			this.jwtService
+				.verifyAsync(cookies['refresh_token'], config as JwtVerifyOptions)
+				.catch((e) => null)
+		]);
+		if (!valid_jwt_token[0] || !valid_jwt_token[1]) {
+			return false;
+		}
+
+		const valid_token = await Promise.all([
+			this.tokensService
+				.validate(valid_jwt_token[0].id, { access_token: cookies['access_token'] }, ua, ip)
+				.catch((e) => false)
+				.then((r) => true),
+			this.tokensService
+				.validate(
+					valid_jwt_token[1].id,
+					{ refresh_token: cookies['refresh_token'] },
+					ua,
+					ip
+				)
+				.catch((e) => false)
+				.then((r) => true)
+		]);
+
+		return valid_token[0] && valid_token[1];
 	}
 	//#endregion
 
@@ -57,12 +119,32 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	// }
 
 	async handleConnection(@ConnectedSocket() client: WebSocket, @Request() req: Req) {
-		const uuid = this.getUUID(req);
+		// Validation
+		const headers = getHeaders.array(req.rawHeaders);
+		const ip = getClientIp(req);
+		const cookies = this.getCookies(req);
+		const validate = await this.validate(cookies, headers['User-Agent'] as string, ip);
+		if (!validate) {
+			client.send(
+				JSON.stringify({
+					namespace: WsNamespace.User,
+					action: UserAction.Refresh
+				})
+			);
+			client.close();
+			return;
+		}
+
+		// Post validation
+		const parsed_cookies: any = this.parseCookies(cookies);
+		const uuid = this.getUUID(parsed_cookies);
 		if (!uuid) {
 			this.logger.error('Cannot get user uuid, this should not happen');
 			throw new InternalServerErrorException();
 		}
 		client['user_uuid'] = uuid;
+		client['refresh_token_iat'] = parsed_cookies.refresh_token.iat;
+		console.log(client['user_uuid'], client['refresh_token_iat']);
 		await this.wsService.connected(uuid);
 	}
 

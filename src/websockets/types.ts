@@ -120,6 +120,7 @@ export enum UserAction {
 	Block = 'BLOCK',
 	Unblock = 'UNBLOCK',
 	Refresh = 'REFRESH',
+	Expired = 'EXPIRED',
 	Avatar = 'AVATAR'
 }
 
@@ -130,6 +131,10 @@ export interface WsUser {
 
 export interface WsUserRefresh extends WsUser {
 	action: UserAction.Refresh;
+}
+
+export interface WsUserExpired extends WsUser {
+	action: UserAction.Expired;
 }
 
 export interface WsUserAvatar extends WsUser {

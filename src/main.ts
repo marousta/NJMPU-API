@@ -7,10 +7,10 @@ import { AppModule } from './app/app.module';
 
 import { colors } from './types';
 
-import { AuthenticatedWsAdapter } from './websockets/ws.adapter';
 import { existsSync, mkdirSync } from 'fs';
 import { ConfigService } from '@nestjs/config';
 import { resolve } from 'path';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 class ValidateEnv {
 	error = false;
@@ -94,7 +94,7 @@ async function bootstrap() {
 	app.use(cookieParser());
 	app.use(requestIp.mw());
 
-	app.useWebSocketAdapter(new AuthenticatedWsAdapter(app));
+	app.useWebSocketAdapter(new WsAdapter(app));
 
 	const shared = resolve(app.get(ConfigService).get<string>('IMG_PATH'));
 	if (!existsSync(shared)) {

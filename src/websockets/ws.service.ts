@@ -25,7 +25,9 @@ import {
 	WsChatMute,
 	WsChatUnmute,
 	WsChatAvatar,
-	WsUserAvatar
+	WsUserAvatar,
+	UserAction,
+	WsUserExpired
 } from './types';
 
 @Injectable()
@@ -52,6 +54,24 @@ export class WsService {
 			}
 		}
 		return false;
+	}
+
+	tokenHasExpired(iat: number) {
+		const offset = 60 * 60 * 24 * 3 * 1000; //3d
+		return iat * 1000 + offset < new Date().valueOf();
+	}
+
+	send(client: WebSocket, data: any) {
+		if (this.tokenHasExpired(client['refresh_token_iat'])) {
+			const expired: WsUserExpired = {
+				namespace: WsNamespace.User,
+				action: UserAction.Expired
+			};
+			client.send(JSON.stringify(expired));
+			this.logger.verbose(`Token for client with user ${client['user_uuid']} has expired`);
+		} else {
+			client.send(JSON.stringify(data));
+		}
 	}
 
 	/**
@@ -87,7 +107,7 @@ export class WsService {
 			let c: WebSocket = null;
 			let i = 0;
 			while ((c = client.next().value)) {
-				c.send(JSON.stringify(data));
+				this.send(c, data);
 				++i;
 			}
 
@@ -131,7 +151,7 @@ export class WsService {
 			let i = 0;
 			while ((c = client.next().value)) {
 				if (c['user_uuid'] === uuid) {
-					c.send(JSON.stringify(data));
+					this.send(c, data);
 					++i;
 				}
 			}
@@ -172,7 +192,7 @@ export class WsService {
 			let i = 0;
 			while ((c = client.next().value)) {
 				if (this.subscribed_channels[c['user_uuid']]?.includes(channel_uuid)) {
-					c.send(JSON.stringify(data));
+					this.send(c, data);
 					++i;
 				}
 			}
@@ -260,6 +280,7 @@ export class WsService {
 		if (!this.subscribed_channels || !this.subscribed_channels[uuid]) {
 			const channels = await this.channelRepository
 				.find({
+					select: { uuid: true },
 					where: { users: { uuid } }
 				})
 				.then((r) => (r.length ? r : null))
@@ -303,7 +324,7 @@ export class WsService {
 			delete this.subscribed_channels[uuid];
 			this.logger.verbose('No more connected client with user ' + uuid);
 		}
-		this.logger.verbose('Disconnected ' + uuid);
+		this.logger.verbose('Disconnected ' + uuid ? uuid : 'unauthenticated client');
 	}
 	//#endregion
 }

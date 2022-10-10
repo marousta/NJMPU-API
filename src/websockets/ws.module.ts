@@ -6,9 +6,12 @@ import { WsGateway } from './ws.gateway';
 import { WsService } from './ws.service';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
+import { TokensModule } from '../auth/tokens/tokens.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([ChatsChannels])],
+	imports: [JwtModule, ConfigModule, TokensModule, TypeOrmModule.forFeature([ChatsChannels])],
 	providers: [WsGateway, WsService],
 	exports: [WsService]
 })
