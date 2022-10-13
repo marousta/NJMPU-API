@@ -24,8 +24,7 @@ import { getClientIp } from 'request-ip';
 
 @WebSocketGateway({
 	path: '/api/streaming',
-	cors: true,
-	origins: ['http://localhost:5137']
+	cors: true
 })
 export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
 	private readonly logger = new Logger(WsGateway.name);
@@ -143,8 +142,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 			throw new InternalServerErrorException();
 		}
 		client['user_uuid'] = uuid;
-		client['refresh_token_iat'] = parsed_cookies.refresh_token.iat;
-		console.log(client['user_uuid'], client['refresh_token_iat']);
+		client['refresh_token_exp'] = parsed_cookies.refresh_token.exp;
+
 		await this.wsService.connected(uuid);
 	}
 

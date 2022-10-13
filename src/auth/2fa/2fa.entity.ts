@@ -1,5 +1,6 @@
-import { UsersInfos } from 'src/users/users.entity';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+
+import { UsersInfos } from '../../users/users.entity';
 
 @Entity()
 export class UsersTwofactorReq {
@@ -10,11 +11,18 @@ export class UsersTwofactorReq {
 		onDelete: 'CASCADE'
 	})
 	@JoinColumn()
-	player: string;
+	user_uuid: string;
 
 	@Column({ nullable: true })
 	secret: string;
 
 	@Column({ nullable: true })
 	token_hash: string;
+
+	@Column({ nullable: false })
+	expiration: Date;
+}
+
+export interface UsersTwofactorReqID extends UsersTwofactorReq {
+	user?: UsersInfos;
 }

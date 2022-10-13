@@ -19,6 +19,7 @@ import { TokensService } from './tokens/tokens.service';
 import { TwoFactorService } from './2fa/2fa.service';
 
 import { LocalAuthGuard } from './guards/local.guard';
+import { AccessAuthGuard } from './guards/access.guard';
 import { RefreshAuthGuard } from './guards/refresh.guard';
 import { TwoFactorAuthGuard } from './guards/2fa.guard';
 import { Intra42AuthGuard } from './guards/42.guard';
@@ -164,7 +165,7 @@ export class AuthController {
 	/**
 	 * 2FA
 	 */
-	@UseGuards(RefreshAuthGuard)
+	@UseGuards(AccessAuthGuard)
 	@ApiResponse({
 		status: 202,
 		description: 'Create a 2FA request and return QRCode image in base64'

@@ -11,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { readFileSync } from 'fs';
 
-import { UsersTokens } from './tokens.entity';
+import { UsersTokens, UsersTokensID } from './tokens.entity';
 import { UsersInfos } from '../../users/users.entity';
 
 import { hash_token_config } from '../config';
@@ -53,17 +53,17 @@ export class TokensService {
 	}
 
 	private async getUser(id: number): Promise<UsersInfos> {
-		const token = await this.tokensRepository
+		const token: UsersTokensID = await this.tokensRepository
 			.createQueryBuilder('token')
-			.leftJoinAndSelect('token.user', 'users_infos')
+			.leftJoinAndSelect('token.user', 'user')
 			.whereInIds(id)
 			.getOneOrFail()
 			.catch((e) => {
+				console.log(id);
 				this.logger.error('Failed to fetch token', e);
 				throw new UnauthorizedException();
 			});
-		const user = token.user as unknown as UsersInfos;
-		return user;
+		return token.user;
 	}
 
 	async update(id: number): Promise<GeneratedTokens> {
@@ -158,7 +158,7 @@ export class TokensService {
 
 		const new_tokens = this.tokensRepository.create({
 			id: id,
-			user: payload.uuid,
+			user_uuid: payload.uuid,
 			creation_date: new Date(),
 			platform: payload.fingerprint.platform,
 			access_token_hash: hashs[0],

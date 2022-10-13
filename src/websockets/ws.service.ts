@@ -45,7 +45,7 @@ export class WsService {
 	 * Utils
 	 */
 	//#region  Utils
-	wsHasUUID(uuid: string) {
+	private wsHasUUID(uuid: string) {
 		const client = this.ws.clients.values();
 		let c = null;
 		while ((c = client.next().value)) {
@@ -56,22 +56,23 @@ export class WsService {
 		return false;
 	}
 
-	tokenHasExpired(iat: number) {
-		const offset = 60 * 60 * 24 * 3 * 1000; //3d
-		return iat * 1000 + offset < new Date().valueOf();
+	private tokenHasExpired(exp: number) {
+		return exp * 1000 < new Date().valueOf();
 	}
 
-	send(client: WebSocket, data: any) {
-		if (this.tokenHasExpired(client['refresh_token_iat'])) {
+	private send(client: WebSocket, data: any) {
+		if (this.tokenHasExpired(client['refresh_token_exp'])) {
 			const expired: WsUserExpired = {
 				namespace: WsNamespace.User,
 				action: UserAction.Expired
 			};
 			client.send(JSON.stringify(expired));
 			this.logger.verbose(`Token for client with user ${client['user_uuid']} has expired`);
-		} else {
-			client.send(JSON.stringify(data));
+			return false;
 		}
+
+		client.send(JSON.stringify(data));
+		return true;
 	}
 
 	/**
@@ -107,8 +108,7 @@ export class WsService {
 			let c: WebSocket = null;
 			let i = 0;
 			while ((c = client.next().value)) {
-				this.send(c, data);
-				++i;
+				i += this.send(c, data) ? 1 : 0;
 			}
 
 			if (data.namespace === WsNamespace.Chat) {
@@ -151,8 +151,7 @@ export class WsService {
 			let i = 0;
 			while ((c = client.next().value)) {
 				if (c['user_uuid'] === uuid) {
-					this.send(c, data);
-					++i;
+					i += this.send(c, data) ? 1 : 0;
 				}
 			}
 
@@ -192,8 +191,7 @@ export class WsService {
 			let i = 0;
 			while ((c = client.next().value)) {
 				if (this.subscribed_channels[c['user_uuid']]?.includes(channel_uuid)) {
-					this.send(c, data);
-					++i;
+					i += this.send(c, data) ? 1 : 0;
 				}
 			}
 			if (data.namespace === WsNamespace.Chat) {
@@ -309,7 +307,7 @@ export class WsService {
 					this.subscribed_channels[uuid]
 				);
 			} else {
-				this.logger.verbose('Not subscribed to any channels');
+				this.logger.verbose('Not subscribed to any channel');
 			}
 		} else {
 			this.logger.verbose('Connected ' + uuid);

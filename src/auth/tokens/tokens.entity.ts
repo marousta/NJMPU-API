@@ -11,7 +11,7 @@ export class UsersTokens {
 		onDelete: 'CASCADE',
 		nullable: false
 	})
-	user: string;
+	user_uuid: string;
 
 	@Column()
 	creation_date: Date;
@@ -33,4 +33,8 @@ export class UsersTokens {
 
 	@Column({ nullable: true })
 	ip_hash: string;
+}
+
+export interface UsersTokensID extends UsersTokens {
+	user?: UsersInfos;
 }
