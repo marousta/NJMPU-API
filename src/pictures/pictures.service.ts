@@ -1,14 +1,20 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+	Injectable,
+	Logger,
+	BadRequestException,
+	InternalServerErrorException
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { readdirSync, writeFileSync, readFileSync, rmSync } from 'fs';
-import { basename, extname } from 'path';
-import { createHash } from 'crypto';
+import { extname } from 'path';
+import * as fs from 'fs';
+import { ExifTransformer } from './exif-be-gone.fixed';
 
 import { ChannelsService } from '../chats/services/channels.service';
 
 import { ChannelAvatarProperty } from '../chats/properties/channels.update.property';
 import { UsersService } from '../users/users.service';
+import { MulterFileLike } from './types';
 
 @Injectable()
 export class PicturesService {
@@ -40,11 +46,32 @@ export class PicturesService {
 				return arr[1];
 			default:
 				throw new BadRequestException(
-					'Unsupported file format expected [jpg, jpeg, jfif, png, apng, gif, webp] got [' +
-						arr[1] +
-						']'
+					'Unsupported file format expected [jpg, jpeg, jfif, png, apng, gif, webp] got ' +
+						arr[1]
 				);
 		}
+	}
+
+	stripExif(file: MulterFileLike) {
+		if (!file) {
+			return null;
+		}
+
+		const file_path = this.folder + '/' + file.filename;
+		const renamed = file.filename + extname(file.originalname);
+		const renamed_path = this.folder + '/' + renamed;
+
+		const reader = fs.createReadStream(file_path);
+		const writer = fs.createWriteStream(renamed_path);
+
+		reader
+			.pipe(new ExifTransformer())
+			.pipe(writer)
+			.on('finish', () => {
+				fs.rmSync(file_path, { force: true });
+			});
+
+		return renamed;
 	}
 
 	private async fetch(path: string) {
@@ -61,40 +88,23 @@ export class PicturesService {
 		return { format: fetched.content_type, data: fetched.data };
 	}
 
-	private remove(old_avatar: string) {
-		if (!old_avatar) {
-			return;
-		}
-
-		try {
-			rmSync(this.folder + '/' + old_avatar);
-		} catch (e) {
-			this.logger.error('Unable to remove previous avatar ' + old_avatar, e);
-		}
-	}
-
 	async download(hash: string, url: string): Promise<string> {
 		return new Promise(async (ret) => {
-			let path: string;
-
-			const shared_dir = readdirSync(this.folder);
-			const user_picture = shared_dir.filter((i) => basename(i, extname(i)) === hash)[0];
-
 			const img = await this.fetch(url);
-			if (user_picture) {
-				path = this.folder + '/' + user_picture;
-				const user_picture_data = readFileSync(path);
-				const md5_actual = createHash('sha1').update(user_picture_data).digest('hex');
-				const md5_new = createHash('sha1').update(img.data).digest('hex');
-				if (md5_actual === md5_new) {
-					ret(user_picture);
-				}
-				rmSync(path);
-			}
-			const newImg = hash + '.' + img.format;
-			path = this.folder + '/' + newImg;
-			writeFileSync(path, img.data);
-			ret(newImg);
+
+			const tmp_path = this.folder + '/' + hash;
+			const final = hash + '.' + img.format;
+			const final_path = this.folder + '/' + final;
+
+			fs.rmSync(final_path, { force: true });
+			fs.writeFileSync(tmp_path, img.data);
+
+			ret(
+				this.stripExif({
+					filename: hash,
+					originalname: final
+				})
+			);
 		});
 	}
 
@@ -119,4 +129,16 @@ export class PicturesService {
 			return { avatar: avatar.new };
 		}
 	};
+
+	private remove(old_avatar: string) {
+		if (!old_avatar) {
+			return;
+		}
+
+		try {
+			fs.rmSync(this.folder + '/' + old_avatar, { force: true });
+		} catch (e) {
+			this.logger.error('Unable to remove previous avatar ' + old_avatar, e);
+		}
+	}
 }

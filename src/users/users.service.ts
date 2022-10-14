@@ -154,7 +154,7 @@ export class UsersService {
 				throw new InternalServerErrorException();
 			});
 
-		const old_avatar = avatar;
+		const old_avatar = user.avatar;
 		user.avatar = avatar;
 
 		await this.usersRepository.save(user).catch((e) => {

@@ -45,8 +45,7 @@ export class SessionsService {
 		}
 		const ret = await this.tokenRepository
 			.createQueryBuilder('token')
-			.leftJoinAndSelect('token.user', 'user')
-			.where({ user: uuid })
+			.where({ user_uuid: uuid })
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
 			.getManyAndCount();
@@ -70,8 +69,7 @@ export class SessionsService {
 	async destroy(uuid: string, id: number) {
 		let session = await this.tokenRepository
 			.createQueryBuilder('token')
-			.leftJoinAndSelect('token.user', 'user')
-			.where({ id, user: uuid })
+			.where({ id, user_uuid: uuid })
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose('No session found for ' + uuid + ' with id ' + id, e);

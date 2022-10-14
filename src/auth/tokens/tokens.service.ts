@@ -55,11 +55,15 @@ export class TokensService {
 	private async getUser(id: number): Promise<UsersInfos> {
 		const token: UsersTokensID = await this.tokensRepository
 			.createQueryBuilder('token')
-			.leftJoinAndSelect('token.user', 'user')
-			.whereInIds(id)
+			.leftJoinAndMapOne(
+				'token.user',
+				UsersInfos,
+				'users_infos',
+				'users_infos.uuid = token.user_uuid'
+			)
+			.where({ id })
 			.getOneOrFail()
 			.catch((e) => {
-				console.log(id);
 				this.logger.error('Failed to fetch token', e);
 				throw new UnauthorizedException();
 			});

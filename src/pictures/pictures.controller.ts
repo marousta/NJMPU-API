@@ -5,23 +5,21 @@ import {
 	UseGuards,
 	UseInterceptors,
 	Logger,
-	InternalServerErrorException,
 	Request,
 	Param,
 	HttpCode
 } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { renameSync } from 'fs';
-import { extname } from 'path';
 
 import { PicturesService } from './pictures.service';
 
 import { AccessAuthGuard } from '../auth/guards/access.guard';
 import { Request as Req } from 'express';
 import { ApiResponseError } from '../chats/types';
-import { PicturesReponse } from './types';
+import { PicturesResponse } from './types';
 import { PicturesInterceptor } from './pictures.interceptor';
-import { ChatAction } from 'src/websockets/types';
+import { ChatAction } from '../websockets/types';
+import { InternalServerErrorException } from '@nestjs/common';
 
 @UseGuards(AccessAuthGuard)
 @ApiTags('avatar')
@@ -29,25 +27,6 @@ import { ChatAction } from 'src/websockets/types';
 export class PicturesController {
 	private readonly logger = new Logger(PicturesController.name);
 	constructor(private readonly picturesService: PicturesService) {}
-
-	private rename(file: Express.Multer.File) {
-		if (!file) {
-			return null;
-		}
-
-		const filename = this.picturesService.folder + '/' + file.filename;
-		const renamed = file.filename + extname(file.originalname);
-		const renamed_path = this.picturesService.folder + '/' + renamed;
-
-		try {
-			renameSync(filename, renamed_path);
-		} catch (e) {
-			this.logger.error('Unable to create image file', e);
-			throw new InternalServerErrorException();
-		}
-
-		return renamed;
-	}
 
 	@ApiConsumes('multipart/form-data')
 	@ApiBody({
@@ -61,7 +40,7 @@ export class PicturesController {
 			}
 		}
 	})
-	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesReponse })
+	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesResponse })
 	@ApiResponse({ status: 413, description: ApiResponseError.ImgTooLarge })
 	@HttpCode(200)
 	@Post('channel/:uuid')
@@ -73,7 +52,13 @@ export class PicturesController {
 	) {
 		const user_uuid = (req.user as any).uuid;
 
-		const filename = this.rename(file);
+		let filename: string;
+		try {
+			filename = this.picturesService.stripExif(file);
+		} catch (e) {
+			this.logger.error('Unable to create image file', e);
+			throw new InternalServerErrorException();
+		}
 
 		return await this.picturesService.update.channel({
 			action: ChatAction.Avatar,
@@ -95,7 +80,7 @@ export class PicturesController {
 			}
 		}
 	})
-	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesReponse })
+	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesResponse })
 	@ApiResponse({ status: 413, description: ApiResponseError.ImgTooLarge })
 	@HttpCode(200)
 	@Post('user')
@@ -103,7 +88,13 @@ export class PicturesController {
 	async userAvatar(@Request() req: Req, @UploadedFile() file: Express.Multer.File) {
 		const user_uuid = (req.user as any).uuid;
 
-		const filename = this.rename(file);
+		let filename: string;
+		try {
+			filename = this.picturesService.stripExif(file);
+		} catch (e) {
+			this.logger.error('Unable to create image file', e);
+			throw new InternalServerErrorException();
+		}
 
 		return await this.picturesService.update.user({
 			action: ChatAction.Avatar,
