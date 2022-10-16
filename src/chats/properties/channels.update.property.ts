@@ -16,23 +16,19 @@ export class ChannelSettingProperty {
 	user_uuid: string;
 }
 
-export class ChannelModeratorProperty {
-	@ApiProperty()
-	action: ChatAction;
-
-	@ApiHideProperty()
-	current_user_uuid: string;
-
+export class ChannelModerationProperty {
 	@ApiProperty()
 	user_uuid: string;
 
 	@ApiPropertyOptional()
 	expiration: number;
+}
 
-	@ApiHideProperty()
+export interface ChannelModerationPropertyEX extends ChannelModerationProperty {
+	action: ChatAction;
+	current_user_uuid: string;
+	user_uuid: string;
 	channel_uuid: string;
-
-	@ApiHideProperty()
 	avatar: string;
 }
 

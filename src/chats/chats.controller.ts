@@ -15,11 +15,12 @@ import {
 	Patch
 } from '@nestjs/common';
 import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
 import { Request as Req, Response as Res } from 'express';
 
 import { ChannelsService } from './services/channels.service';
 import { MessagesService } from './services/messages.service';
+
+import { AccessAuthGuard } from '../auth/guards/access.guard';
 
 import { GlobalQueryProperty } from '../app/properties/global.property';
 import { ChannelsCreateProperty } from './properties/channels.create.property';
@@ -31,10 +32,10 @@ import {
 } from './properties/channels.get.property';
 import { MessageStoreProperty } from './properties/messages.store.property';
 import { MessagesGetProperty, MessagesGetResponse } from './properties/messages.get.propoerty';
-import { MessageDeleteProperty } from './properties/message.delete.property';
+import { MessageDeleteProperty } from './properties/messages.delete.property';
 import { ChannelSettingProperty } from './properties/channels.update.property';
 import { ChannelLeaveProperty, LeaveAction } from './properties/channels.delete.property';
-import { ChannelModeratorProperty } from './properties/channels.update.property';
+import { ChannelModerationProperty } from './properties/channels.update.property';
 import { BlacklistGetResponse } from './properties/channels.blacklist.get.property';
 
 import { isEmpty, parseUnsigned } from '../utils';
@@ -42,8 +43,7 @@ import { isEmpty, parseUnsigned } from '../utils';
 import { ChannelType, ApiResponseError } from './types';
 import { ChatAction } from '../websockets/types';
 
-@UseGuards(AuthGuard('access'))
-@ApiTags('chats')
+@UseGuards(AccessAuthGuard)
 @Controller('chats/channels')
 export class ChatsController {
 	constructor(
@@ -59,6 +59,7 @@ export class ChatsController {
 	/**
 	 * Get all
 	 */
+	@ApiTags('chats · channels')
 	@ApiQuery({ type: GlobalQueryProperty })
 	@ApiResponse({ status: 200, description: 'List of channels', type: ChannelsDataGetResponse })
 	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
@@ -78,6 +79,7 @@ export class ChatsController {
 	/**
 	 * Get all in
 	 */
+	@ApiTags('chats · channels')
 	@ApiQuery({ type: GlobalQueryProperty })
 	@ApiResponse({
 		status: 200,
@@ -103,6 +105,7 @@ export class ChatsController {
 	/**
 	 * Get one
 	 */
+	@ApiTags('chats · channels')
 	@ApiResponse({ status: 200, description: 'Channel details', type: ChannelGetResponse })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
@@ -116,6 +119,7 @@ export class ChatsController {
 	/**
 	 * find one private
 	 */
+	@ApiTags('chats · channels')
 	@ApiBody({ type: ChannelPrivateProperty })
 	@ApiResponse({ status: 200, description: 'Private uuid', type: ChannelPrivateGetResponse })
 	@ApiResponse({ status: 400 })
@@ -132,6 +136,7 @@ export class ChatsController {
 	/**
 	 * Create / Join
 	 */
+	@ApiTags('chats · channels')
 	@ApiBody({
 		type: ChannelsCreateProperty,
 		examples: {
@@ -216,129 +221,9 @@ export class ChatsController {
 	}
 
 	/**
-	 * Moderation
-	 */
-	@ApiBody({
-		type: ChannelModeratorProperty,
-		examples: {
-			['Add moderator']: {
-				value: {
-					action: ChatAction.Promote,
-					user_uuid: 'string'
-				} as ChannelModeratorProperty
-			},
-			['Remove moderator']: {
-				value: {
-					action: ChatAction.Demote,
-					user_uuid: 'string'
-				} as ChannelModeratorProperty
-			},
-			['Ban']: {
-				value: {
-					action: ChatAction.Ban,
-					user_uuid: 'string',
-					expiration: 60
-				} as ChannelModeratorProperty
-			},
-			['Unban']: {
-				value: {
-					action: ChatAction.Unban,
-					user_uuid: 'string'
-				} as ChannelModeratorProperty
-			},
-			['Mute']: {
-				value: {
-					action: ChatAction.Mute,
-					user_uuid: 'string',
-					expiration: 60
-				} as ChannelModeratorProperty
-			},
-			['Unmute']: {
-				value: {
-					action: ChatAction.Unmute,
-					user_uuid: 'string'
-				} as ChannelModeratorProperty
-			}
-		}
-	})
-	@ApiResponse({ status: 200, description: 'Moderator successfully added' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
-	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyModerator })
-	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
-	@Put(':uuid')
-	async moderation(
-		@Request() req: Req,
-		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelModeratorProperty
-	) {
-		const user_uuid = (req.user as any).uuid;
-
-		await this.channelsService.moderation.dispatch({
-			action: body.action,
-			current_user_uuid: user_uuid,
-			user_uuid: body.user_uuid,
-			expiration: body.expiration,
-			channel_uuid,
-			avatar: null
-		});
-	}
-
-	/**
-	 * Settings
-	 */
-	@ApiBody({
-		type: ChannelSettingProperty,
-		examples: {
-			['Add/change password']: {
-				value: {
-					password: 'string'
-				} as ChannelSettingProperty
-			},
-			['Remove password']: {
-				value: {
-					password: null
-				} as ChannelSettingProperty
-			}
-		}
-	})
-	@ApiResponse({ status: 200, description: 'Setting successfully updated' })
-	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
-	@Patch(':uuid')
-	async settings(
-		@Request() req: Req,
-		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelSettingProperty
-	) {
-		const user_uuid = (req.user as any).uuid;
-
-		await this.channelsService.settings({
-			channel_uuid,
-			user_uuid,
-			password: body.password
-		});
-	}
-
-	@ApiResponse({ status: 200, description: 'Blacklist', type: BlacklistGetResponse })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.AlreadyModerator })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.isAdministrator })
-	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
-	@Get(':uuid/blacklist')
-	async getBlacklist(@Request() req: Req, @Param('uuid') channel_uuid: string) {
-		const user_uuid = (req.user as any).uuid;
-
-		return await this.channelsService.blacklist.get({
-			current_user_uuid: user_uuid,
-			channel_uuid
-		});
-	}
-
-	/**
 	 * Leave
 	 */
+	@ApiTags('chats · channels')
 	@ApiBody({
 		type: ChannelLeaveProperty,
 		examples: {
@@ -382,6 +267,305 @@ export class ChatsController {
 	//#endregion
 
 	/**
+	 * Moderation
+	 */
+	//#region  Moderation
+
+	/**
+	 * Get blacklisted users
+	 */
+	@ApiTags('chats · moderation')
+	@ApiResponse({ status: 200, description: 'Blacklist', type: BlacklistGetResponse })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.isAdministrator })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Get(':uuid/blacklist')
+	async getBlacklist(@Request() req: Req, @Param('uuid') channel_uuid: string) {
+		const user_uuid = (req.user as any).uuid;
+
+		return await this.channelsService.blacklist.get({
+			current_user_uuid: user_uuid,
+			channel_uuid
+		});
+	}
+
+	/**
+	 * Add moderator
+	 */
+	@ApiTags('chats · moderation')
+	@ApiBody({
+		type: ChannelModerationProperty,
+		examples: {
+			['Add moderator']: {
+				value: {
+					user_uuid: 'string'
+				} as ChannelModerationProperty
+			}
+		}
+	})
+	@ApiResponse({ status: 200, description: 'User promoted' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Put(':uuid/moderator')
+	async addModerator(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelModerationProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		await this.channelsService.moderation.dispatch({
+			action: ChatAction.Promote,
+			current_user_uuid: user_uuid,
+			user_uuid: body.user_uuid,
+			expiration: body.expiration,
+			channel_uuid,
+			avatar: null
+		});
+	}
+
+	/**
+	 * Remove moderator
+	 */
+	@ApiTags('chats · moderation')
+	@ApiResponse({ status: 200, description: 'User demoted' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@ApiBody({
+		type: ChannelModerationProperty,
+		examples: {
+			['Remove moderator']: {
+				value: {
+					user_uuid: 'string'
+				} as ChannelModerationProperty
+			}
+		}
+	})
+	@Delete(':uuid/moderator')
+	async removeModerator(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelModerationProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		await this.channelsService.moderation.dispatch({
+			action: ChatAction.Demote,
+			current_user_uuid: user_uuid,
+			user_uuid: body.user_uuid,
+			expiration: body.expiration,
+			channel_uuid,
+			avatar: null
+		});
+	}
+
+	/**
+	 * Ban
+	 */
+	@ApiTags('chats · moderation')
+	@ApiBody({
+		type: ChannelModerationProperty,
+		examples: {
+			['Ban']: {
+				value: {
+					user_uuid: 'string',
+					expiration: 60
+				} as ChannelModerationProperty
+			}
+		}
+	})
+	@ApiResponse({ status: 200, description: 'User banned' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyModerator })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Put(':uuid/ban')
+	async ban(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelModerationProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		await this.channelsService.moderation.dispatch({
+			action: ChatAction.Ban,
+			current_user_uuid: user_uuid,
+			user_uuid: body.user_uuid,
+			expiration: body.expiration,
+			channel_uuid,
+			avatar: null
+		});
+	}
+
+	/**
+	 * Unban
+	 */
+	@ApiTags('chats · moderation')
+	@ApiBody({
+		type: ChannelModerationProperty,
+		examples: {
+			['Unban']: {
+				value: {
+					user_uuid: 'string'
+				} as ChannelModerationProperty
+			}
+		}
+	})
+	@ApiResponse({ status: 200, description: 'User banned' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Delete(':uuid/unban')
+	async unban(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelModerationProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		await this.channelsService.moderation.dispatch({
+			action: ChatAction.Unban,
+			current_user_uuid: user_uuid,
+			user_uuid: body.user_uuid,
+			expiration: body.expiration,
+			channel_uuid,
+			avatar: null
+		});
+	}
+
+	/**
+	 * Mute
+	 */
+	@ApiTags('chats · moderation')
+	@ApiResponse({ status: 200, description: 'User forgiven' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@ApiBody({
+		type: ChannelModerationProperty,
+		examples: {
+			['Mute']: {
+				value: {
+					user_uuid: 'string',
+					expiration: 60
+				} as ChannelModerationProperty
+			}
+		}
+	})
+	@Put(':uuid/mute')
+	async mute(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelModerationProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		await this.channelsService.moderation.dispatch({
+			action: ChatAction.Mute,
+			current_user_uuid: user_uuid,
+			user_uuid: body.user_uuid,
+			expiration: body.expiration,
+			channel_uuid,
+			avatar: null
+		});
+	}
+
+	/**
+	 * Unmute
+	 */
+	@ApiTags('chats · moderation')
+	@ApiResponse({ status: 200, description: 'User muted' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@ApiBody({
+		type: ChannelModerationProperty,
+		examples: {
+			['Unmute']: {
+				value: {
+					user_uuid: 'string'
+				} as ChannelModerationProperty
+			}
+		}
+	})
+	@Delete(':uuid/unmute')
+	@ApiResponse({ status: 200, description: 'User unmuted' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	async unmute(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelModerationProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		await this.channelsService.moderation.dispatch({
+			action: ChatAction.Unmute,
+			current_user_uuid: user_uuid,
+			user_uuid: body.user_uuid,
+			expiration: body.expiration,
+			channel_uuid,
+			avatar: null
+		});
+	}
+
+	/**
+	 * Settings
+	 */
+
+	/**
+	 * Password
+	 */
+	@ApiTags('chats · moderation')
+	@ApiBody({
+		type: ChannelSettingProperty,
+		examples: {
+			['Add/change password']: {
+				value: {
+					password: 'string'
+				} as ChannelSettingProperty
+			},
+			['Remove password']: {
+				value: {
+					password: null
+				} as ChannelSettingProperty
+			}
+		}
+	})
+	@ApiResponse({ status: 200, description: 'Setting successfully updated' })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
+	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
+	@Patch(':uuid')
+	async password(
+		@Request() req: Req,
+		@Param('uuid') channel_uuid: string,
+		@Body() body: ChannelSettingProperty
+	) {
+		const user_uuid = (req.user as any).uuid;
+
+		await this.channelsService.password({
+			channel_uuid,
+			user_uuid,
+			password: body.password
+		});
+	}
+
+	//#endregion
+
+	/**
 	 * Messages
 	 */
 	//#region  Messages
@@ -389,6 +573,7 @@ export class ChatsController {
 	/**
 	 * Get
 	 */
+	@ApiTags('chats · messages')
 	@ApiQuery({ type: MessagesGetProperty })
 	@ApiResponse({ status: 200, description: "Channel's messages", type: MessagesGetResponse })
 	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
@@ -414,6 +599,7 @@ export class ChatsController {
 	/**
 	 * Store
 	 */
+	@ApiTags('chats · messages')
 	@ApiBody({ type: MessageStoreProperty })
 	@ApiResponse({ status: 201, description: 'Created and brodcasted' })
 	@ApiResponse({ status: 400, description: ApiResponseError.EmptyMessage })
@@ -442,6 +628,7 @@ export class ChatsController {
 	/**
 	 * Delete
 	 */
+	@ApiTags('chats · messages')
 	@ApiBody({ type: MessageDeleteProperty })
 	@ApiResponse({ status: 200, description: 'Deleted' })
 	@ApiResponse({ status: 400, description: ApiResponseError.MissingID })

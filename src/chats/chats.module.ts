@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Injectable, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { WsModule } from '../websockets/ws.module';
@@ -13,6 +13,7 @@ import { ChatsChannels } from './entities/channels.entity';
 import { ChatsMessages } from './entities/messages.entity';
 import { ChatsChannelsBlacklist } from './entities/channels.blacklist.entity';
 import { UsersInfos } from '../users/users.entity';
+import { PicturesModule } from '../pictures/pictures.module';
 
 @Module({
 	imports: [

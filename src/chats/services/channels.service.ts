@@ -31,12 +31,14 @@ import {
 
 import {
 	ChannelAvatarProperty,
-	ChannelModeratorProperty,
+	ChannelModerationPropertyEX,
 	ChannelSettingProperty
 } from '../properties/channels.update.property';
 import { ChannelLeaveProperty, LeaveAction } from '../properties/channels.delete.property';
 import { BlacklistGetProperty } from '../properties/channels.blacklist.get.property';
+import { ChannelPrivateProperty } from '../properties/channels.get.property';
 
+import { hash_verify } from '../../auth/utils';
 import { isEmpty, genIdentifier, dateFromOffset } from '../../utils';
 
 import {
@@ -47,8 +49,6 @@ import {
 	ApiResponseError
 } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
-import { ChannelPrivateProperty } from '../properties/channels.get.property';
-import { hash_verify } from '../../auth/utils';
 
 @Injectable()
 export class ChannelsService {
@@ -680,7 +680,7 @@ export class ChannelsService {
 	}
 
 	readonly blacklist = {
-		add: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		add: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			//  prettier-ignore
 			if (!this.user.hasPermissions(channel, params.current_user_uuid)			// Check permissions
 			|| this.user.isAdministrator(channel.administratorID, params.user_uuid)		// Check if remote user is administrator
@@ -692,7 +692,7 @@ export class ChannelsService {
 
 			return channel;
 		},
-		remove: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		remove: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
@@ -713,7 +713,7 @@ export class ChannelsService {
 	};
 
 	readonly moderation = {
-		dispatch: async (params: ChannelModeratorProperty) => {
+		dispatch: async (params: ChannelModerationPropertyEX) => {
 			let channel = await this.findOne.WithAllAndRelationsID(
 				{ uuid: params.channel_uuid },
 				'Unable to find channel ' + params.channel_uuid
@@ -760,7 +760,7 @@ export class ChannelsService {
 				expiration
 			});
 		},
-		promote: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		promote: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			// Check administrator permissions
 			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
@@ -788,7 +788,7 @@ export class ChannelsService {
 
 			return channel;
 		},
-		demote: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		demote: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			// Check administrator permissions
 			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
@@ -803,20 +803,20 @@ export class ChannelsService {
 
 			return channel;
 		},
-		ban: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		ban: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			channel = await this.blacklist.add(params, channel);
 
 			channel.users = channel.users.filter((u) => u.uuid !== params.user_uuid);
 
 			return channel;
 		},
-		unban: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		unban: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			return await this.blacklist.remove(params, channel);
 		},
-		mute: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		mute: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			return await this.blacklist.add(params, channel);
 		},
-		unmute: async (params: ChannelModeratorProperty, channel: ChatsChannelsID) => {
+		unmute: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			return await this.blacklist.remove(params, channel);
 		},
 		avatar: async (params: ChannelAvatarProperty, channel: ChatsChannelsID) => {
@@ -848,7 +848,7 @@ export class ChannelsService {
 		}
 	};
 
-	async settings(params: ChannelSettingProperty) {
+	async password(params: ChannelSettingProperty) {
 		const channel = await this.findOne.WithRelationsID(params.channel_uuid);
 
 		if (!this.user.hasPermissions(channel, params.user_uuid)) {

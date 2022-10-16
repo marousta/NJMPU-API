@@ -7,43 +7,37 @@ import {
 	Logger,
 	Request,
 	Param,
-	HttpCode
+	HttpCode,
+	InternalServerErrorException
 } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request as Req } from 'express';
 
 import { PicturesService } from './pictures.service';
 
-import { AccessAuthGuard } from '../auth/guards/access.guard';
-import { Request as Req } from 'express';
-import { ApiResponseError } from '../chats/types';
-import { PicturesResponse } from './types';
 import { PicturesInterceptor } from './pictures.interceptor';
+
+import { AccessAuthGuard } from '../auth/guards/access.guard';
+
+import { FileInterceptorBody } from './pictures.property';
+
+import { PicturesResponse } from './types';
+import { ApiResponseError } from '../chats/types';
 import { ChatAction } from '../websockets/types';
-import { InternalServerErrorException } from '@nestjs/common';
 
 @UseGuards(AccessAuthGuard)
-@ApiTags('avatar')
-@Controller('avatar')
-export class PicturesController {
-	private readonly logger = new Logger(PicturesController.name);
+@Controller('chats/channels')
+export class PicturesChatsController {
+	private readonly logger = new Logger(PicturesChatsController.name);
 	constructor(private readonly picturesService: PicturesService) {}
 
+	@ApiTags('chats · moderation')
 	@ApiConsumes('multipart/form-data')
-	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				avatar: {
-					type: 'string',
-					format: 'binary'
-				}
-			}
-		}
-	})
+	@ApiBody(FileInterceptorBody)
 	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesResponse })
 	@ApiResponse({ status: 413, description: ApiResponseError.ImgTooLarge })
 	@HttpCode(200)
-	@Post('channel/:uuid')
+	@Post(':uuid/avatar')
 	@UseInterceptors(PicturesInterceptor)
 	async channelAvatar(
 		@Request() req: Req,
@@ -67,23 +61,21 @@ export class PicturesController {
 			channel_uuid: channel_uuid
 		});
 	}
+}
 
+@UseGuards(AccessAuthGuard)
+@Controller('users/avatar')
+export class PicturesUsersController {
+	private readonly logger = new Logger(PicturesUsersController.name);
+	constructor(private readonly picturesService: PicturesService) {}
+
+	@ApiTags('users')
 	@ApiConsumes('multipart/form-data')
-	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				avatar: {
-					type: 'string',
-					format: 'binary'
-				}
-			}
-		}
-	})
+	@ApiBody(FileInterceptorBody)
 	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesResponse })
 	@ApiResponse({ status: 413, description: ApiResponseError.ImgTooLarge })
 	@HttpCode(200)
-	@Post('user')
+	@Post()
 	@UseInterceptors(PicturesInterceptor)
 	async userAvatar(@Request() req: Req, @UploadedFile() file: Express.Multer.File) {
 		const user_uuid = (req.user as any).uuid;

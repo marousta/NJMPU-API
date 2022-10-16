@@ -5,9 +5,8 @@ import { HttpModule } from '@nestjs/axios';
 import { resolve } from 'path';
 
 import { PicturesService } from './pictures.service';
-import { PicturesController } from './pictures.controller';
+import { PicturesUsersController, PicturesChatsController } from './pictures.controller';
 
-import { AuthModule } from '../auth/auth.module';
 import { ChatsModule } from '../chats/chats.module';
 import { UsersModule } from '../users/users.module';
 
@@ -24,12 +23,11 @@ import { UsersModule } from '../users/users.module';
 				limits: { fileSize: 1024 * 1024 * configService.get<number>('IMG_MAX_SIZE') }
 			})
 		}),
-		ChatsModule,
-		UsersModule
-		// AuthModule
+		UsersModule,
+		ChatsModule
 	],
 	providers: [PicturesService],
-	controllers: [PicturesController],
+	controllers: [PicturesUsersController, PicturesChatsController],
 	exports: [PicturesService]
 })
 export class PicturesModule {}

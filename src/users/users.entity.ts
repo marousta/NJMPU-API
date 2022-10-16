@@ -38,6 +38,7 @@ export class UsersInfos {
 	 * Relation Channel moderators -> Users
 	 */
 	@OneToMany((type) => ChatsChannels, (channel) => channel.moderators, {
+		onDelete: 'CASCADE',
 		nullable: false
 	})
 	@JoinTable({
@@ -49,6 +50,7 @@ export class UsersInfos {
 	 * Relation Channel -> Users
 	 */
 	@OneToMany((type) => ChatsChannels, (channel) => channel.users, {
+		onDelete: 'CASCADE',
 		nullable: false
 	})
 	channel: ChatsChannels;
@@ -57,6 +59,7 @@ export class UsersInfos {
 	 * Relation user -> friends
 	 */
 	@ManyToMany((type) => UsersInfos, (user) => user.uuid, {
+		onDelete: 'CASCADE',
 		nullable: true
 	})
 	@JoinTable({

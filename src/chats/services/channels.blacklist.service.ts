@@ -16,7 +16,7 @@ import { ChatsChannelsBlacklist } from '../entities/channels.blacklist.entity';
 import { ChatsChannelsID } from '../entities/channels.entity';
 
 import { BlacklistGetResponse } from '../properties/channels.blacklist.get.property';
-import { ChannelModeratorProperty } from '../properties/channels.update.property';
+import { ChannelModerationPropertyEX } from '../properties/channels.update.property';
 
 import { BlacklistType, ApiResponseError } from '../types';
 import { ChatAction } from '../../websockets/types';
@@ -111,7 +111,7 @@ export class ChannelsBlacklistService {
 	/**
 	 * Service
 	 */
-	async create(params: ChannelModeratorProperty, channel: ChatsChannelsID) {
+	async create(params: ChannelModerationPropertyEX, channel: ChatsChannelsID) {
 		// Get remote user
 		// should not fail
 		const user = await this.channelsService.user.find500(params.user_uuid);
@@ -157,7 +157,7 @@ export class ChannelsBlacklistService {
 		return channel;
 	}
 
-	async delete(params: ChannelModeratorProperty, channel: ChatsChannelsID) {
+	async delete(params: ChannelModerationPropertyEX, channel: ChatsChannelsID) {
 		const entry = await this.blacklistRepository
 			.createQueryBuilder('entry')
 			.where({

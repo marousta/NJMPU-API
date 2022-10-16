@@ -2,7 +2,8 @@ import {
 	Injectable,
 	Logger,
 	BadRequestException,
-	InternalServerErrorException
+	InternalServerErrorException,
+	Inject
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
@@ -15,6 +16,7 @@ import { ChannelsService } from '../chats/services/channels.service';
 import { ChannelAvatarProperty } from '../chats/properties/channels.update.property';
 import { UsersService } from '../users/users.service';
 import { MulterFileLike } from './types';
+import { forwardRef } from '@nestjs/common';
 
 @Injectable()
 export class PicturesService {
@@ -23,7 +25,9 @@ export class PicturesService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly httpService: HttpService,
+		@Inject(forwardRef(() => ChannelsService))
 		private readonly channelsService: ChannelsService,
+		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService
 	) {
 		this.folder = configService.get<string>('IMG_PATH');
