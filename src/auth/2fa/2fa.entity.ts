@@ -1,6 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
 
 @Entity()
 export class UsersTwofactorReq {

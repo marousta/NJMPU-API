@@ -11,16 +11,21 @@ import { InjectRepository } from '@nestjs/typeorm';
 import e, { Request, Response } from 'express';
 import { createHash } from 'crypto';
 
-import { UsersService } from '../users/users.service';
+import { UsersService } from '../users/services/users.service';
 import { TokensService } from './tokens/tokens.service';
 import { PicturesService } from '../pictures/pictures.service';
 import { TwoFactorService } from './2fa/2fa.service';
+import { WsService } from '../websockets/ws.service';
 
 import { SignupProperty } from './properties/signup.property';
 
-import { UsersInfos } from '../users/users.entity';
+import { UsersInfos } from '../users/entities/users.entity';
 
 import { hash_password_config } from './config';
+
+import { getPartialUser, isEmpty, getFingerprint } from '../utils';
+import { hash, hash_verify } from './utils';
+
 import {
 	DiscordUser,
 	GeneratedTokens,
@@ -29,8 +34,7 @@ import {
 	UserFingerprint,
 	TwoFactorRequest
 } from './types';
-import { getPartialUser, isEmpty, getFingerprint } from '../utils';
-import { hash, hash_verify } from './utils';
+import { UserAction, WsNamespace } from '../websockets/types';
 
 @Injectable()
 export class AuthService {
@@ -42,7 +46,8 @@ export class AuthService {
 		private readonly usersService: UsersService,
 		private readonly tokensService: TokensService,
 		private readonly twoFactorService: TwoFactorService,
-		private readonly pictureService: PicturesService
+		private readonly pictureService: PicturesService,
+		private readonly wsService: WsService
 	) {}
 
 	async validateUser(email: string, password: string): Promise<UsersInfos> {
@@ -194,8 +199,20 @@ export class AuthService {
 				this.logger.debug('User profile picture set for ' + new_user.uuid);
 			}
 		},
-		disconnect: async (user: any) => {
-			await this.tokensService.delete(user.id);
+		disconnect: async (payload: any) => {
+			const user = await this.tokensService.getUser(payload.id).catch((e) => null);
+			if (!user) {
+				return;
+			}
+
+			await this.tokensService.delete(payload.id);
+
+			this.wsService.dispatch.user(user.uuid, {
+				namespace: WsNamespace.User,
+				action: UserAction.Session,
+				id: payload.id,
+				active: false
+			});
 		}
 	};
 

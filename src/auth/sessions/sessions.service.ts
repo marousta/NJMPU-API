@@ -11,7 +11,7 @@ import { WsService } from '../../websockets/ws.service';
 
 import { UsersTokens } from '../tokens/tokens.entity';
 
-import { Data, SessionsGetResponse } from './sessions.property';
+import { SessionData, SessionsGetResponse } from './sessions.property';
 
 import { UserAction, WsNamespace } from '../../websockets/types';
 
@@ -35,6 +35,7 @@ export class SessionsService {
 	 * Service
 	 */
 	async get(
+		tid: number,
 		uuid: string,
 		page: number = 1,
 		limit: number = 0,
@@ -43,23 +44,33 @@ export class SessionsService {
 		if (page === 0) {
 			page = 1;
 		}
+
 		const ret = await this.tokenRepository
 			.createQueryBuilder('token')
+			.select(['token.id', 'token.platform', 'token.creation_date', 'token.refresh_date'])
 			.where({ user_uuid: uuid })
+			.orderBy('refresh_date', 'DESC')
+			.orderBy('creation_date', 'DESC')
+			.addOrderBy('id', 'DESC')
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
 			.getManyAndCount();
 
-		let data: Data[] = [];
-		for (const session of ret[0]) {
-			const { id, platform, creation_date, refresh_date } = session;
-			data.push({
-				id,
-				platform,
-				creation_date,
-				active: this.isActive(refresh_date ? refresh_date : creation_date)
-			});
-		}
+		let data: SessionData[] = ret[0].map((token) => {
+			let ret = {
+				id: token.id,
+				platform: token.platform,
+				creation_date: token.creation_date,
+				active: this.isActive(
+					token.refresh_date ? token.refresh_date : token.creation_date
+				),
+				current: false
+			};
+			if (token.id === tid) {
+				ret.current = true;
+			}
+			return ret;
+		});
 		const count = ret[0].length;
 		const total = ret[1];
 		const page_count = limit ? Math.ceil(total / limit) : 1;

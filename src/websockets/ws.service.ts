@@ -27,7 +27,10 @@ import {
 	WsChatAvatar,
 	WsUserAvatar,
 	UserAction,
-	WsUserExpired
+	WsUserExpired,
+	WsUserNotification,
+	WsUserSession,
+	WsUserUpdateSession
 } from './types';
 
 @Injectable()
@@ -145,7 +148,15 @@ export class WsService {
 				);
 			}
 		},
-		user: (uuid: string, data: WsChatCreate | WsUserRefresh) => {
+		user: (
+			uuid: string,
+			data:
+				| WsChatCreate
+				| WsUserRefresh
+				| WsUserSession
+				| WsUserUpdateSession
+				| WsUserNotification
+		) => {
 			const client = this.ws.clients.values();
 			let c: WebSocket = null;
 			let i = 0;
@@ -163,9 +174,27 @@ export class WsService {
 				);
 			}
 			if (data.namespace === WsNamespace.User) {
-				this.logger.verbose(
-					`Token recheck forced on ${uuid} for ${i} connected ${PeerOrPeers(i)}`
-				);
+				switch (data.action) {
+					case UserAction.Refresh:
+						this.logger.verbose(
+							`Token recheck forced on ${uuid} for ${i} connected ${PeerOrPeers(i)}`
+						);
+						break;
+					case UserAction.Session:
+						this.logger.verbose(
+							`Update session for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
+								i
+							)}`
+						);
+						break;
+					case UserAction.Notification:
+						this.logger.verbose(
+							`New notification for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
+								i
+							)}`
+						);
+						break;
+				}
 			}
 		},
 		channel: (

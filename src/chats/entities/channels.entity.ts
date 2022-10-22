@@ -9,7 +9,7 @@ import {
 	PrimaryGeneratedColumn
 } from 'typeorm';
 
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
 import { ChatsChannelsBlacklist } from './channels.blacklist.entity';
 
 import { ChannelType } from '../types';

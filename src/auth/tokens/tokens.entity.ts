@@ -1,6 +1,6 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
 
 @Entity()
 export class UsersTokens {

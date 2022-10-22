@@ -12,9 +12,10 @@ import * as fs from 'fs';
 import { ExifTransformer } from './exif-be-gone.fixed';
 
 import { ChannelsService } from '../chats/services/channels.service';
+import { UsersService } from '../users/services/users.service';
 
 import { ChannelAvatarProperty } from '../chats/properties/channels.update.property';
-import { UsersService } from '../users/users.service';
+
 import { MulterFileLike } from './types';
 import { forwardRef } from '@nestjs/common';
 

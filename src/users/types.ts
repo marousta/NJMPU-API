@@ -5,9 +5,22 @@ export enum UsersFriendship {
 	Requested
 }
 
+export enum NotifcationType {
+	GameInvite,
+	FriendRequest,
+	AcceptedFriendRequest
+}
+
+export interface NotificationsCreateProperty {
+	type: NotifcationType;
+	notified_user: string;
+	interact_w_user: string;
+}
+
 export enum ApiResponseError {
 	AlreadyFriends = 'Already friends',
 	AlreadyPending = 'Already sended a friend request',
-	FriendYourself = "You can't send a friend request to yourself",
-	NotFound = "User doesn't exist"
+	FriendYourself = "You can't be friend with yourself",
+	NotFound = "User doesn't exist",
+	BadRequest = 'Bad request format'
 }

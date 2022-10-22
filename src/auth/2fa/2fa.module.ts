@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TwoFactorService } from './2fa.service';
 
 import { UsersTwofactorReq } from './2fa.entity';
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
 
 @Module({
 	imports: [ConfigModule, JwtModule, TypeOrmModule.forFeature([UsersTwofactorReq, UsersInfos])],

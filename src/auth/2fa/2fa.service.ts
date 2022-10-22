@@ -14,12 +14,14 @@ import * as TwoFactor from 'node-2fa';
 import * as QRCode from 'qrcode';
 
 import { UsersTwofactorReq, UsersTwofactorReqID } from './2fa.entity';
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
+
+import { hash_token_config } from '../config';
+
+import { hash, hash_verify } from '../utils';
+import { dateFromOffset } from '../../utils';
 
 import { TwoFactorRequest } from '../types';
-import { hash, hash_verify } from '../utils';
-import { hash_token_config } from '../config';
-import { dateFromOffset } from 'src/utils';
 
 @Injectable()
 export class TwoFactorService {

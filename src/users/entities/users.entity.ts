@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
-import { ChatsChannels } from '../chats/entities/channels.entity';
+import { ChatsChannels } from '../../chats/entities/channels.entity';
 
 @Entity()
 export class UsersInfos {
@@ -11,26 +11,21 @@ export class UsersInfos {
 	@Column()
 	identifier: number;
 
-	@ApiProperty()
 	@Column()
 	username: string;
 
-	@ApiProperty()
 	@Column({ unique: true })
 	email: string;
 
-	@ApiProperty()
 	@Column({ nullable: true })
 	password: string;
 
 	@Column({ nullable: true })
 	twofactor: string;
 
-	@ApiProperty()
 	@Column({ nullable: true })
 	avatar: string;
 
-	@ApiProperty()
 	@Column({ default: false })
 	is_online: boolean;
 

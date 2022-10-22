@@ -17,7 +17,7 @@ import { MessagesService } from './messages.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { ChatsChannels, ChatsChannelsID } from '../entities/channels.entity';
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
 
 import { ChannelsCreateProperty } from '../properties/channels.create.property';
 import {

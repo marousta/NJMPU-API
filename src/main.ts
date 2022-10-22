@@ -1,16 +1,15 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import * as requestIp from 'request-ip';
+import { existsSync, mkdirSync } from 'fs';
+import { resolve } from 'path';
 
 import { AppModule } from './app/app.module';
 
 import { colors } from './types';
-
-import { existsSync, mkdirSync } from 'fs';
-import { ConfigService } from '@nestjs/config';
-import { resolve } from 'path';
-import { WsAdapter } from '@nestjs/platform-ws';
 
 class ValidateEnv {
 	error = false;
@@ -104,10 +103,11 @@ async function bootstrap() {
 	const config = new DocumentBuilder()
 		.setTitle('NEW SHINJI MEGA PONG ULTIMATE API')
 		.setDescription('API reference sheet')
-		.setVersion('0.3.6')
+		.setVersion('0.6')
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('/api', app, document, {
+		customSiteTitle: 'API - NEW SHINJI MEGA PONG ULTIMATE',
 		swaggerOptions: {
 			tagsSorter: 'alpha'
 		}

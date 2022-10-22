@@ -13,7 +13,7 @@ import { Repository } from 'typeorm';
 import { ChannelsService } from './channels.service';
 import { WsService } from '../../websockets/ws.service';
 
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
 import { ChatsMessages } from '../entities/messages.entity';
 
 import { MessageStoreProperty } from '../properties/messages.store.property';
@@ -75,7 +75,7 @@ export class MessagesService {
 		const data = ret[0];
 		const count = ret[0].length;
 		const total = ret[1];
-		const page_count = limit ? Math.ceil(total / limit) : 0;
+		const page_count = limit ? Math.ceil(total / limit) : 1;
 		return { data, count, total, page, page_count };
 	}
 

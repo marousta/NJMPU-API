@@ -11,13 +11,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { readFileSync } from 'fs';
 
+import { WsService } from '../../websockets/ws.service';
+
 import { UsersTokens, UsersTokensID } from './tokens.entity';
-import { UsersInfos } from '../../users/users.entity';
+import { UsersInfos } from '../../users/entities/users.entity';
 
 import { hash_token_config } from '../config';
-import { GeneratedTokens, JwtPayload, PartialUsersInfos } from '../types';
+
 import { isEmpty } from '../../utils';
 import { hash, hash_verify } from '../utils';
+
+import { GeneratedTokens, JwtPayload } from '../types';
+import { UserAction, WsNamespace } from '../../websockets/types';
 
 @Injectable()
 export class TokensService {
@@ -26,7 +31,8 @@ export class TokensService {
 		private readonly configService: ConfigService,
 		@InjectRepository(UsersTokens)
 		private readonly tokensRepository: Repository<UsersTokens>,
-		private readonly jwtService: JwtService
+		private readonly jwtService: JwtService,
+		private readonly wsService: WsService
 	) {}
 
 	private accessToken(payload: { id: number; uuid: string }): string {
@@ -52,7 +58,7 @@ export class TokensService {
 		);
 	}
 
-	private async getUser(id: number): Promise<UsersInfos> {
+	async getUser(id: number): Promise<UsersInfos> {
 		const token: UsersTokensID = await this.tokensRepository
 			.createQueryBuilder('token')
 			.leftJoinAndMapOne(
@@ -92,6 +98,7 @@ export class TokensService {
 				this.logger.error('Unable to update token', e);
 				throw new UnauthorizedException();
 			});
+
 		this.logger.debug('Token refreshed for user ' + user.uuid);
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
@@ -109,6 +116,7 @@ export class TokensService {
 				this.logger.error('Failed to delete token', e);
 				throw new BadRequestException();
 			});
+
 		this.logger.debug('Token destroyed ' + id);
 	}
 
@@ -160,10 +168,11 @@ export class TokensService {
 			hash(payload.fingerprint.ip, hash_token_config)
 		]);
 
+		const date = new Date();
 		const new_tokens = this.tokensRepository.create({
 			id: id,
 			user_uuid: payload.uuid,
-			creation_date: new Date(),
+			creation_date: date,
 			platform: payload.fingerprint.platform,
 			access_token_hash: hashs[0],
 			refresh_token_hash: hashs[1],
@@ -177,6 +186,15 @@ export class TokensService {
 		});
 
 		this.logger.debug('User as sign in ' + payload.uuid);
+		this.wsService.dispatch.user(payload.uuid, {
+			namespace: WsNamespace.User,
+			action: UserAction.Session,
+			id,
+			platform: payload.fingerprint.platform,
+			creation_date: date,
+			active: true
+		});
+
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
 }

@@ -8,20 +8,22 @@ import {
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WsService } from '../websockets/ws.service';
+import { WsService } from '../../websockets/ws.service';
 
-import { UsersInfos, UsersInfosID } from './users.entity';
+import { UsersInfos, UsersInfosID } from '../entities/users.entity';
 
 import {
 	UsersFriendshipGetResponse,
 	UsersRelationsProperty
-} from './properties/users.relations.get.property';
-import { UsersMeResponse } from './properties/users.get.property';
+} from '../properties/users.relations.get.property';
+import { UsersMeResponse } from '../properties/users.get.property';
 
-import { UserAction, WsNamespace } from '../websockets/types';
-import { ApiResponseError, UsersFriendship } from './types';
+import { UserAction, WsNamespace } from '../../websockets/types';
+import { ApiResponseError, UsersFriendship, NotifcationType } from '../types';
 
-import { genIdentifier } from '../utils';
+import { genIdentifier } from '../../utils';
+import { NotifcationsService } from './notifications.service';
+import { NotificationsCreateProperty } from '../types';
 
 @Injectable()
 export class UsersService {
@@ -29,6 +31,7 @@ export class UsersService {
 	constructor(
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
+		private readonly notifcationsService: NotifcationsService,
 		private readonly wsService: WsService
 	) {}
 
@@ -80,9 +83,25 @@ export class UsersService {
 			});
 	}
 
-	usersAreFriends(current_user: UsersInfosID, remote_user: UsersInfosID): UsersFriendship {
-		const current_friend = current_user.friendsID.includes(remote_user.uuid);
-		const remote_friend = remote_user.friendsID.includes(current_user.uuid);
+	private async findWithRelations(where: object, error_msg: string): Promise<UsersInfosID> {
+		return this.usersRepository
+			.createQueryBuilder('user')
+			.where(where)
+			.leftJoinAndSelect('user.friends', 'friends')
+			.getOneOrFail()
+			.catch((e) => {
+				this.logger.verbose(error_msg, e);
+				throw new NotFoundException();
+			});
+	}
+
+	usersAreFriends(current_user: UsersInfos, remote_user: UsersInfos): UsersFriendship {
+		const current_friend = current_user.friends
+			.map((user) => user.uuid)
+			.includes(remote_user.uuid);
+		const remote_friend = remote_user.friends
+			.map((user) => user.uuid)
+			.includes(current_user.uuid);
 
 		if (current_friend && remote_friend) {
 			return UsersFriendship.True;
@@ -103,7 +122,7 @@ export class UsersService {
 	 * Service
 	 */
 
-	async me(uuid: string): Promise<UsersMeResponse> {
+	async whoami(uuid: string): Promise<UsersMeResponse> {
 		const user = await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
 			this.logger.error('Unable to find user ' + uuid, e);
 			throw new InternalServerErrorException();
@@ -177,14 +196,24 @@ export class UsersService {
 				throw new BadRequestException(ApiResponseError.FriendYourself);
 			}
 
-			const user: UsersInfosID = await this.findWithRelationsID(
-				{ uuid: params.current_user_uuid },
-				'Unable to find current user ' + params.current_user_uuid // Should never fail
-			);
+			const request = await Promise.all([
+				this.findWithRelations(
+					{ uuid: params.current_user_uuid },
+					'Unable to find current user ' + params.current_user_uuid // Should never fail
+				),
+				this.findWithRelations(
+					{ uuid: params.user_uuid },
+					'Unable to find remote user ' + params.user_uuid
+				)
+			]);
+			const current_user = request[0];
+			const remote_user = request[1];
 
 			switch (params.action) {
-				default:
-					return await this.relations.friends.add(user, params.user_uuid);
+				case 'ADD':
+					return await this.relations.friends.add(current_user, remote_user);
+				case 'REMOVE':
+					return await this.relations.friends.remove(current_user, remote_user);
 			}
 		},
 		get: async (uuid: string): Promise<UsersFriendshipGetResponse[]> => {
@@ -225,13 +254,8 @@ export class UsersService {
 			return friendship;
 		},
 		friends: {
-			add: async (current_user: UsersInfosID, remote_user_uuid: string) => {
-				const remote_user = await this.findWithRelationsID(
-					{ uuid: remote_user_uuid },
-					'Unable to find remote user ' + remote_user_uuid
-				);
-
-				const friendship_status = this.usersAreFriends(current_user, remote_user);
+			add: async (current_user: UsersInfos, remote_user: UsersInfos) => {
+				let friendship_status = this.usersAreFriends(current_user, remote_user);
 				switch (friendship_status) {
 					case UsersFriendship.True:
 						throw new BadRequestException(ApiResponseError.AlreadyFriends);
@@ -239,12 +263,77 @@ export class UsersService {
 						throw new BadRequestException(ApiResponseError.AlreadyPending);
 				}
 
-				current_user.addFriends(remote_user);
-				await this.usersRepository.save(current_user);
+				console.log(current_user);
 
-				return { friendship: this.usersAreFriends(current_user, remote_user) };
+				current_user.addFriends(remote_user);
+				console.log(
+					await this.usersRepository.save(current_user).catch((e) => {
+						this.logger.error(
+							'Unable to update friendship status of user ' + current_user.uuid,
+							e
+						);
+						throw new InternalServerErrorException();
+					})
+				);
+
+				friendship_status = this.usersAreFriends(current_user, remote_user);
+				switch (friendship_status) {
+					case UsersFriendship.Pending:
+						this.notifcationsService.add({
+							type: NotifcationType.FriendRequest,
+							notified_user: remote_user.uuid,
+							interact_w_user: current_user.uuid
+						});
+						break;
+					case UsersFriendship.True:
+						this.notifcationsService.add({
+							type: NotifcationType.AcceptedFriendRequest,
+							notified_user: remote_user.uuid,
+							interact_w_user: current_user.uuid
+						});
+						break;
+				}
+
+				return { friendship: friendship_status };
 			},
-			remove: async () => {}
+			remove: async (current_user: UsersInfos, remote_user: UsersInfos) => {
+				const friendship_status = this.usersAreFriends(current_user, remote_user);
+				if (friendship_status === UsersFriendship.False) {
+					return;
+				}
+
+				remote_user.friends = remote_user.friends.filter(
+					(user) => user.uuid !== current_user.uuid
+				);
+				current_user.friends = current_user.friends.filter(
+					(user) => user.uuid !== remote_user.uuid
+				);
+
+				await this.usersRepository.save([current_user, remote_user]).catch((e) => {
+					this.logger.error(
+						'Unable to remove friendship status of users ' +
+							current_user.uuid +
+							' and ' +
+							remote_user.uuid,
+						e
+					);
+					throw new InternalServerErrorException();
+				});
+			}
 		}
 	};
+
+	async invite(params: NotificationsCreateProperty) {
+		const users = await this.usersRepository
+			.findOneByOrFail({ uuid: params.notified_user })
+			.catch((e) => {
+				this.logger.verbose(
+					'Unable to find user to interact with ' + params.notified_user,
+					e
+				);
+				throw new NotFoundException();
+			});
+
+		this.notifcationsService.add(params);
+	}
 }

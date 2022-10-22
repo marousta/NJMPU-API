@@ -5,7 +5,7 @@ export class UsersRelationsProperty {
 	@ApiHideProperty()
 	current_user_uuid: string;
 
-	@ApiProperty()
+	@ApiHideProperty()
 	action: string;
 
 	@ApiProperty()

@@ -10,12 +10,13 @@ import { TokensModule } from './tokens/tokens.module';
 import { PicturesModule } from '../pictures/pictures.module';
 import { TwoFactorModule } from './2fa/2fa.module';
 
+import { WsModule } from '../websockets/ws.module';
+
 import { AuthController } from './auth.controller';
 import { SessionsController } from './sessions/sessions.controller';
 
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens/tokens.service';
-import { PicturesService } from '../pictures/pictures.service';
 import { TwoFactorService } from './2fa/2fa.service';
 import { SessionsService } from './sessions/sessions.service';
 
@@ -26,10 +27,9 @@ import { Intra42Strategy } from './strategies/42.strategy';
 import { DiscordStrategy } from './strategies/discord.strategy';
 import { TwoFactorStrategy } from './strategies/2fa.strategy';
 
-import { UsersInfos } from '../users/users.entity';
+import { UsersInfos } from '../users/entities/users.entity';
 import { UsersTokens } from './tokens/tokens.entity';
 import { UsersTwofactorReq } from './2fa/2fa.entity';
-import { WsModule } from '../websockets/ws.module';
 
 @Module({
 	imports: [

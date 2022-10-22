@@ -12,8 +12,7 @@ import { ChatsController } from './chats.controller';
 import { ChatsChannels } from './entities/channels.entity';
 import { ChatsMessages } from './entities/messages.entity';
 import { ChatsChannelsBlacklist } from './entities/channels.blacklist.entity';
-import { UsersInfos } from '../users/users.entity';
-import { PicturesModule } from '../pictures/pictures.module';
+import { UsersInfos } from '../users/entities/users.entity';
 
 @Module({
 	imports: [

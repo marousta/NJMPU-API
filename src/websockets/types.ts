@@ -1,3 +1,5 @@
+import { NotifcationType } from '../users/types';
+
 export interface SubscribedChannels {
 	[key: string]: string[];
 }
@@ -116,12 +118,13 @@ export interface WsChatAvatar extends WsChat {
  */
 
 export enum UserAction {
-	Invite = 'INVITE',
 	Block = 'BLOCK',
 	Unblock = 'UNBLOCK',
 	Refresh = 'REFRESH',
 	Expired = 'EXPIRED',
-	Avatar = 'AVATAR'
+	Avatar = 'AVATAR',
+	Session = 'SESSION',
+	Notification = 'NOTIFICATION'
 }
 
 export interface WsUser {
@@ -138,8 +141,26 @@ export interface WsUserExpired extends WsUser {
 }
 
 export interface WsUserAvatar extends WsUser {
-	user: string;
 	action: UserAction.Avatar;
+	user: string;
+}
+
+export interface WsUserUpdateSession extends WsUser {
+	action: UserAction.Session;
+	id: number;
+	active: boolean;
+}
+
+export interface WsUserSession extends WsUserUpdateSession {
+	platform: string;
+	creation_date: Date;
+}
+
+export interface WsUserNotification extends WsUser {
+	action: UserAction.Notification;
+	type: NotifcationType;
+	user: string;
+	creation_date: Date;
 }
 
 /**

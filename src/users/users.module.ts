@@ -3,21 +3,31 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 
+import { WsModule } from '../websockets/ws.module';
+
 import { UsersController } from './users.controller';
 
-import { UsersService } from './users.service';
+import { UsersService } from './services/users.service';
 import { TokensService } from '../auth/tokens/tokens.service';
+import { NotifcationsService } from './services/notifications.service';
 
 import { AccessStrategy } from '../auth/strategies/access.strategy';
 
-import { UsersInfos } from './users.entity';
+import { UsersInfos } from './entities/users.entity';
+import { UsersNotifications } from './entities/notifications.entity';
 import { UsersTokens } from '../auth/tokens/tokens.entity';
-import { WsModule } from '../websockets/ws.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UsersInfos, UsersTokens]), WsModule],
+	imports: [TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersNotifications]), WsModule],
 	controllers: [UsersController],
-	providers: [UsersService, ConfigService, AccessStrategy, TokensService, JwtService],
+	providers: [
+		UsersService,
+		NotifcationsService,
+		ConfigService,
+		AccessStrategy,
+		TokensService,
+		JwtService
+	],
 	exports: [UsersService]
 })
 export class UsersModule {}

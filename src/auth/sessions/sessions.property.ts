@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class Data {
+export class SessionData {
 	@ApiProperty()
 	id: number;
 
@@ -12,11 +12,14 @@ export class Data {
 
 	@ApiProperty()
 	active: boolean;
+
+	@ApiProperty()
+	current: boolean;
 }
 
 export class SessionsGetResponse {
-	@ApiProperty({ type: [Data] })
-	data: Data[];
+	@ApiProperty({ type: [SessionData] })
+	data: SessionData[];
 
 	@ApiProperty()
 	count: number;
