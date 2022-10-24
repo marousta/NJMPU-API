@@ -24,6 +24,8 @@ import { ApiResponseError, UsersFriendship, NotifcationType } from '../types';
 import { genIdentifier } from '../../utils';
 import { NotifcationsService } from './notifications.service';
 import { NotificationsCreateProperty } from '../types';
+import { hash, hash_verify } from 'src/auth/utils';
+import { hash_password_config } from '../../auth/config';
 
 @Injectable()
 export class UsersService {
@@ -188,6 +190,29 @@ export class UsersService {
 		});
 
 		return { new: avatar, old: old_avatar };
+	}
+
+	async password(uuid: string, current_password: string, new_password: string) {
+		if (current_password === new_password) {
+			throw new BadRequestException("Passwords can't be identical");
+		}
+
+		const user = await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
+			this.logger.error('Unable to find user ' + uuid, e); // Should never fail
+			throw new InternalServerErrorException();
+		});
+
+		const verif = await hash_verify(user.password, current_password);
+		if (!verif) {
+			throw new BadRequestException('Password missmatch');
+		}
+
+		user.password = await hash(new_password, hash_password_config);
+
+		await this.usersRepository.save(user).catch((e) => {
+			this.logger.error('Unable to update password for user ' + uuid, e);
+			throw new BadRequestException();
+		});
 	}
 
 	public readonly relations = {

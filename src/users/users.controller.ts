@@ -30,6 +30,7 @@ import { GlobalQueryProperty } from '../app/properties/global.property';
 
 import { parseUnsigned } from '../utils';
 import { ApiResponseError, NotifcationType } from './types';
+import { UsersPatchProperty } from './properties/users.patch.property';
 
 @UseGuards(AccessAuthGuard)
 @Controller('users')
@@ -62,6 +63,27 @@ export class UsersController {
 
 		return await this.usersService.get(uuid, remote_user_uuid);
 	}
+
+	/**
+	 * Users account
+	 */
+	@ApiTags('users · account')
+	@ApiResponse({ status: 200, description: 'Password changed' })
+	@ApiResponse({ status: 400.1, description: "Passwords can't be identical" })
+	@ApiResponse({ status: 400.2, description: 'Password missmatch' })
+	@Patch()
+	@HttpCode(200)
+	async changePassword(@Request() req: Req, @Body() body: UsersPatchProperty) {
+		const uuid = (req.user as any).uuid;
+
+		await this.usersService.password(uuid, body.current_password, body.new_password);
+	}
+
+	//TODO
+	// @ApiResponse({ status: 200, description: 'Not yet implemented' })
+	// @Delete()
+	// @HttpCode(200)
+	// async delete() {}
 
 	/**
 	 * Relations
@@ -162,8 +184,6 @@ export class UsersController {
 	/**
 	 * invite
 	 */
-
-	// @ApiBody({ type: UsersRelationsProperty })
 	@ApiTags('users · invite')
 	@ApiResponse({ status: 200, description: 'User notified' })
 	@ApiResponse({ status: 400, description: ApiResponseError.BadRequest })
@@ -179,16 +199,4 @@ export class UsersController {
 			interact_w_user: uuid
 		});
 	}
-
-	//TODO
-	// @ApiResponse({ status: 200, description: 'Not yet implemented' })
-	// @Patch()
-	// @HttpCode(200)
-	// async update() {}
-
-	//TODO
-	// @ApiResponse({ status: 200, description: 'Not yet implemented' })
-	// @Delete()
-	// @HttpCode(200)
-	// async delete() {}
 }

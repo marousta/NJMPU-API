@@ -8,11 +8,11 @@ import {
 	Request,
 	Response,
 	UseGuards,
-	HttpException
+	HttpException,
+	Delete
 } from '@nestjs/common';
 import { ApiBody, ApiExcludeEndpoint, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response as Res, Request as Req } from 'express';
-import { AuthGuard } from '@nestjs/passport';
 
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens/tokens.service';
@@ -29,8 +29,8 @@ import { SigninProperty } from './properties/signin.property';
 import { SignupProperty } from './properties/signup.property';
 import { TwoFactorProperty } from './properties/2fa.property';
 
-import { Intra42User, DiscordUser, JwtPayload } from './types';
 import { getFingerprint } from '../utils';
+import { Intra42User, DiscordUser, JwtPayload } from './types';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -206,5 +206,20 @@ export class AuthController {
 		} else {
 			throw new HttpException('Code is invalid', 417);
 		}
+	}
+
+	@UseGuards(AccessAuthGuard)
+	@ApiResponse({ status: 200, description: '2FA removed' })
+	@ApiResponse({ status: 403, description: '2FA not set' })
+	@HttpCode(200)
+	@Delete('/2fa')
+	async twoFactorRemove(
+		@Request() req: Req,
+		@Headers() headers: Headers,
+		@Response({ passthrough: true }) res: Res
+	) {
+		const uuid = (req.user as any).uuid;
+
+		await this.twoFactorService.remove(uuid);
 	}
 }

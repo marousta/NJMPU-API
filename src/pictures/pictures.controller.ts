@@ -69,7 +69,7 @@ export class PicturesUsersController {
 	private readonly logger = new Logger(PicturesUsersController.name);
 	constructor(private readonly picturesService: PicturesService) {}
 
-	@ApiTags('users · infos')
+	@ApiTags('users · account')
 	@ApiConsumes('multipart/form-data')
 	@ApiBody(FileInterceptorBody)
 	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesResponse })

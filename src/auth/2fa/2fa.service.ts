@@ -22,6 +22,7 @@ import { hash, hash_verify } from '../utils';
 import { dateFromOffset } from '../../utils';
 
 import { TwoFactorRequest } from '../types';
+import { ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class TwoFactorService {
@@ -165,6 +166,24 @@ export class TwoFactorService {
 		});
 	}
 
+	async remove(uuid: string) {
+		const user = await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
+			this.logger.error('Unable to find user ' + uuid, e); // Should never fail
+			throw new InternalServerErrorException();
+		});
+
+		if (!user.twofactor) {
+			throw new ForbiddenException('2FA not set');
+		}
+
+		user.twofactor = null;
+
+		await this.usersRepository.save(user).catch((e) => {
+			this.logger.error('Unable to remove 2FA from user account ' + uuid, e);
+			throw new InternalServerErrorException();
+		});
+	}
+
 	async demand(user: UsersInfos): Promise<TwoFactorRequest> {
 		if (user.twofactor) {
 			// Create 2FA login request
@@ -190,18 +209,25 @@ export class TwoFactorService {
 			const request = await this.request(request_uuid);
 			const user = request.user;
 
-			if (!user.twofactor && TwoFactor.verifyToken(request.secret, code, 2) !== null) {
+			// 2FA set
+			if (user.twofactor) {
+				return TwoFactor.verifyToken(user.twofactor, code, 2) !== null;
+			}
+
+			// 2FA setup
+			if (TwoFactor.verifyToken(request.secret, code, 2) !== null) {
 				const update = this.usersRepository.create({
 					...user,
 					twofactor: request.secret
 				});
+
 				await this.usersRepository.save(update).catch((e) => {
 					this.logger.error('Could not update secret token for user ' + update.uuid, e);
 					throw new InternalServerErrorException();
 				});
+
 				this.logger.debug('2FA set for user ' + user.uuid);
-				return true;
-			} else if (TwoFactor.verifyToken(user.twofactor, code, 2) !== null) {
+
 				return true;
 			}
 			return false;
