@@ -42,6 +42,7 @@ import { isEmpty, parseUnsigned } from '../utils';
 
 import { ChannelType, ApiResponseError } from './types';
 import { ChatAction } from '../websockets/types';
+import { JwtData } from '../auth/types';
 
 @UseGuards(AccessAuthGuard)
 @Controller('chats/channels')
@@ -73,6 +74,7 @@ export class ChatsController {
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
+
 		return await this.channelsService.getAll(page, limit, offset);
 	}
 
@@ -88,17 +90,19 @@ export class ChatsController {
 	})
 	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
 	@HttpCode(200)
-	@Get('/in')
+	@Get('in')
 	async getAllin(
 		@Request() req: Req,
 		@Query('page') page: any,
 		@Query('limit') limit: any,
 		@Query('offset') offset: any
 	) {
-		const uuid = (req.user as any).uuid;
+		const uuid = (req.user as JwtData).infos.uuid;
+
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
+
 		return await this.channelsService.getAllin(uuid, page, limit, offset);
 	}
 
@@ -111,7 +115,7 @@ export class ChatsController {
 	@HttpCode(200)
 	@Get(':uuid')
 	async getOne(@Request() req: Req, @Param('uuid') channel_uuid: string) {
-		const uuid = (req.user as any).uuid;
+		const uuid = (req.user as JwtData).infos.uuid;
 
 		return await this.channelsService.getOne(channel_uuid, uuid);
 	}
@@ -201,7 +205,7 @@ export class ChatsController {
 		@Response({ passthrough: true }) res: Res,
 		@Body() body: ChannelsCreateProperty
 	) {
-		const uuid = (req.user as any).uuid;
+		const uuid = (req.user as JwtData).infos.uuid;
 
 		const params: ChannelsCreateProperty = {
 			type: body.type,
@@ -255,12 +259,12 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelLeaveProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.leave({
 			action: body.action,
 			user_uuid: body.user_uuid,
-			current_user_uuid: user_uuid,
+			current_user: user,
 			channel_uuid
 		});
 	}
@@ -282,7 +286,7 @@ export class ChatsController {
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@Get(':uuid/blacklist')
 	async getBlacklist(@Request() req: Req, @Param('uuid') channel_uuid: string) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		return await this.channelsService.blacklist.get({
 			current_user_uuid: user_uuid,
@@ -316,7 +320,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Promote,
@@ -354,7 +358,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Demote,
@@ -393,7 +397,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Ban,
@@ -430,7 +434,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Unban,
@@ -468,7 +472,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Mute,
@@ -510,7 +514,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Unmute,
@@ -554,7 +558,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelSettingProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		await this.channelsService.password({
 			channel_uuid,
@@ -588,11 +592,12 @@ export class ChatsController {
 		@Query('limit') limit: any,
 		@Query('offset') offset: any
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
+
 		return await this.messagesService.get(channel_uuid, user_uuid, page, limit, offset);
 	}
 
@@ -612,7 +617,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: MessageStoreProperty
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		if (isEmpty(body.message)) {
 			throw new BadRequestException(ApiResponseError.EmptyMessage);
@@ -641,7 +646,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: { id: any }
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user_uuid = (req.user as JwtData).infos.uuid;
 
 		const id = parseUnsigned({ id: body.id });
 		if (!id) {

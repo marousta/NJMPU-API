@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+
 import { NotifcationType } from '../types';
 
 export class NotificationsData {

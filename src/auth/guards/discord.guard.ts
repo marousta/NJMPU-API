@@ -7,6 +7,7 @@ export class DiscordAuthGuard extends AuthGuard('discord') {
 
 	handleRequest(err: any, user: any, info: any, context: any, status: any) {
 		if (err || !user) {
+			console.log(err);
 			this.logger.verbose('Invalid Discord token');
 			// context.getResponse().redirect('/'); // TODO
 			throw new BadRequestException('The provided authorization is invalid or expired');

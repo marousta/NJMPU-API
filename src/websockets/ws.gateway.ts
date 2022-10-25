@@ -1,6 +1,5 @@
-import { Body, Logger, Request, InternalServerErrorException } from '@nestjs/common';
+import { Logger, Request, InternalServerErrorException } from '@nestjs/common';
 import {
-	SubscribeMessage,
 	WebSocketGateway,
 	WebSocketServer,
 	OnGatewayConnection,
@@ -8,19 +7,19 @@ import {
 	OnGatewayInit,
 	ConnectedSocket
 } from '@nestjs/websockets';
+import { ConfigService } from '@nestjs/config';
+import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
 import { Server, WebSocket } from 'ws';
 import { Request as Req } from 'express';
 import * as getHeaders from 'get-headers';
 import * as cookie from 'cookie';
+import { getClientIp } from 'request-ip';
+import { readFileSync } from 'fs';
 
 import { WsService } from './ws.service';
+import { TokensService } from '../auth/tokens/tokens.service';
 
 import { UserAction, WsNamespace } from './types';
-import { readFileSync } from 'fs';
-import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { TokensService } from '../auth/tokens/tokens.service';
-import { getClientIp } from 'request-ip';
 
 @WebSocketGateway({
 	path: '/api/streaming',

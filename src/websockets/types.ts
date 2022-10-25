@@ -143,6 +143,7 @@ export interface WsUserExpired extends WsUser {
 export interface WsUserAvatar extends WsUser {
 	action: UserAction.Avatar;
 	user: string;
+	avatar: string;
 }
 
 export interface WsUserUpdateSession extends WsUser {

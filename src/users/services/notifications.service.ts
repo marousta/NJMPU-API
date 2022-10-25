@@ -12,11 +12,10 @@ import { WsService } from '../../websockets/ws.service';
 import { UsersNotifications } from '../entities/notifications.entity';
 import { UsersInfos } from '../entities/users.entity';
 
-import { NotificationsDeleteProperty } from '../properties/notifications.delete';
 import { NotificationsGetResponse } from '../properties/notifications.get.property';
 
 import { UserAction, WsNamespace } from '../../websockets/types';
-import { NotificationsCreateProperty } from '../types';
+import { NotifcationType } from '../types';
 
 @Injectable()
 export class NotifcationsService {
@@ -24,8 +23,6 @@ export class NotifcationsService {
 	constructor(
 		@InjectRepository(UsersNotifications)
 		private readonly notifcationsRepository: Repository<UsersNotifications>,
-		@InjectRepository(UsersInfos)
-		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly wsService: WsService
 	) {}
 
@@ -36,11 +33,11 @@ export class NotifcationsService {
 	/**
 	 * Service
 	 */
-	async add(notification: NotificationsCreateProperty) {
+	async add(type: NotifcationType, interact_w_user: UsersInfos, notified_user: UsersInfos) {
 		const request = this.notifcationsRepository.create({
-			type: notification.type,
-			notified_user: notification.notified_user,
-			interact_w_user: notification.interact_w_user,
+			type: type,
+			notified_user: notified_user.uuid,
+			interact_w_user: interact_w_user.uuid,
 			creation_date: new Date()
 		});
 		await this.notifcationsRepository.save(request).catch((e) => {
@@ -62,7 +59,7 @@ export class NotifcationsService {
 	}
 
 	async get(
-		uuid: string,
+		user: UsersInfos,
 		page: number = 1,
 		limit: number = 0,
 		offset: number = 0
@@ -73,7 +70,7 @@ export class NotifcationsService {
 
 		const request = await this.notifcationsRepository
 			.createQueryBuilder('notif')
-			.where({ notified_user: { uuid } })
+			.where({ notified_user: user.uuid })
 			.orderBy('read', 'ASC')
 			.addOrderBy('type', 'DESC')
 			.addOrderBy('creation_date', 'DESC')
@@ -90,14 +87,14 @@ export class NotifcationsService {
 		return { data, count, total, page, page_count };
 	}
 
-	async delete(params: NotificationsDeleteProperty) {
+	async delete(user: UsersInfos, uuid: string) {
 		const request = await this.notifcationsRepository
-			.findOneByOrFail({ uuid: params.notification_uuid })
+			.createQueryBuilder('notif')
+			.where({ uuid })
+			.andWhere({ notified_user: user.uuid })
+			.getOneOrFail()
 			.catch((e) => {
-				this.logger.verbose(
-					'No notification found for uuid ' + params.notification_uuid,
-					e
-				);
+				this.logger.verbose('No notification found for uuid ' + uuid, e);
 				throw new NotFoundException();
 			});
 

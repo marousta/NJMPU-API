@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
+import { UsersInfos } from '../../users/entities/users.entity';
+
 export enum LeaveAction {
 	Leave = 'LEAVE',
 	Remove = 'REMOVE',
@@ -14,7 +16,7 @@ export class ChannelLeaveProperty {
 	user_uuid?: string;
 
 	@ApiPropertyOptional()
-	current_user_uuid: string;
+	current_user: UsersInfos;
 
 	@ApiPropertyOptional()
 	channel_uuid: string;

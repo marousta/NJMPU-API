@@ -3,7 +3,8 @@ import {
 	InternalServerErrorException,
 	Logger,
 	NotFoundException,
-	UnauthorizedException
+	UnauthorizedException,
+	ForbiddenException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,7 +14,7 @@ import { readFileSync } from 'fs';
 import * as TwoFactor from 'node-2fa';
 import * as QRCode from 'qrcode';
 
-import { UsersTwofactorReq, UsersTwofactorReqID } from './2fa.entity';
+import { UsersTwofactorReq, UsersTwofactorReqID } from '../entities/2fa.entity';
 import { UsersInfos } from '../../users/entities/users.entity';
 
 import { hash_token_config } from '../config';
@@ -21,8 +22,8 @@ import { hash_token_config } from '../config';
 import { hash, hash_verify } from '../utils';
 import { dateFromOffset } from '../../utils';
 
-import { TwoFactorRequest } from '../types';
-import { ForbiddenException } from '@nestjs/common';
+import { ApiResponseError, TwoFactorRequest } from '../types';
+import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
 export class TwoFactorService {
@@ -32,6 +33,7 @@ export class TwoFactorService {
 		private readonly twofactorRepository: Repository<UsersTwofactorReq>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
+		private readonly usersService: UsersService,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService
 	) {}
@@ -69,23 +71,26 @@ export class TwoFactorService {
 	private async request(uuid: string): Promise<UsersTwofactorReqID> {
 		return await this.twofactorRepository
 			.createQueryBuilder('request')
-			.leftJoinAndMapOne(
-				'request.user',
-				UsersInfos,
-				'users_infos',
-				'users_infos.uuid = request.user_uuid'
-			)
+			.loadAllRelationIds()
 			.where({ uuid })
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose("2FA request doesn't exist " + uuid, e);
-				throw new NotFoundException();
+				throw new NotFoundException(ApiResponseError.TwoFactorInvalidRequest);
 			});
 	}
 
-	async user(uuid: string) {
+	async getUserFromRequest(uuid: string) {
 		const request = await this.request(uuid);
-		return request.user;
+		const user = await this.usersService.findWithRelationsOrNull(
+			{ uuid: request.user_uuid },
+			'Unable to find user ' + request.user_uuid + ' from 2FA request ' + uuid
+		);
+		if (!user) {
+			throw new InternalServerErrorException();
+		}
+
+		return user;
 	}
 
 	// Remove expired requests
@@ -100,7 +105,6 @@ export class TwoFactorService {
 			const now = new Date().valueOf();
 
 			for (const request of exist) {
-				console.log(request.expiration.valueOf(), now);
 				if (request.expiration.valueOf() > now) {
 					continue;
 				}
@@ -166,12 +170,7 @@ export class TwoFactorService {
 		});
 	}
 
-	async remove(uuid: string) {
-		const user = await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
-			this.logger.error('Unable to find user ' + uuid, e); // Should never fail
-			throw new InternalServerErrorException();
-		});
-
+	async remove(user: UsersInfos) {
 		if (!user.twofactor) {
 			throw new ForbiddenException('2FA not set');
 		}
@@ -179,7 +178,7 @@ export class TwoFactorService {
 		user.twofactor = null;
 
 		await this.usersRepository.save(user).catch((e) => {
-			this.logger.error('Unable to remove 2FA from user account ' + uuid, e);
+			this.logger.error('Unable to remove 2FA from user account ' + user.uuid, e);
 			throw new InternalServerErrorException();
 		});
 	}
@@ -203,11 +202,19 @@ export class TwoFactorService {
 					throw new UnauthorizedException();
 				});
 
-			return await hash_verify(request.token_hash, payload.token);
+			const verif = await hash_verify(request.token_hash, payload.token);
+			if (!verif) {
+				return false;
+			}
+
+			return await this.getUserFromRequest(payload.uuid);
 		},
-		code: async (request_uuid: string, code: string): Promise<boolean> => {
+		code: async (user: UsersInfos, request_uuid: string, code: string): Promise<boolean> => {
 			const request = await this.request(request_uuid);
-			const user = request.user;
+
+			if (request.user_uuid !== user.uuid) {
+				throw new InternalServerErrorException();
+			}
 
 			// 2FA set
 			if (user.twofactor) {

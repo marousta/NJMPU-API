@@ -6,4 +6,7 @@ export class UsersPatchProperty {
 
 	@ApiProperty()
 	new_password: string;
+
+	@ApiProperty()
+	confirm: string;
 }

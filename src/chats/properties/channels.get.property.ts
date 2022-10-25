@@ -1,6 +1,6 @@
 import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
+
 import { ChannelType } from '../types';
-import { PassportModule } from '@nestjs/passport';
 
 export class ChannelData {
 	@ApiProperty()

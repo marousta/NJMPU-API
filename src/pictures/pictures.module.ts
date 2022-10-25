@@ -4,11 +4,12 @@ import { MulterModule } from '@nestjs/platform-express';
 import { HttpModule } from '@nestjs/axios';
 import { resolve } from 'path';
 
-import { PicturesService } from './pictures.service';
-import { PicturesUsersController, PicturesChatsController } from './pictures.controller';
-
 import { ChatsModule } from '../chats/chats.module';
 import { UsersModule } from '../users/users.module';
+
+import { PicturesService } from './pictures.service';
+
+import { PicturesUsersController, PicturesChatsController } from './pictures.controller';
 
 @Module({
 	imports: [

@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { readFileSync } from 'fs';
 
+import { UsersService } from '../../users/services/users.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { UsersTokens, UsersTokensID } from './tokens.entity';
@@ -31,6 +32,7 @@ export class TokensService {
 		private readonly configService: ConfigService,
 		@InjectRepository(UsersTokens)
 		private readonly tokensRepository: Repository<UsersTokens>,
+		private readonly usersService: UsersService,
 		private readonly jwtService: JwtService,
 		private readonly wsService: WsService
 	) {}
@@ -61,19 +63,21 @@ export class TokensService {
 	async getUser(id: number): Promise<UsersInfos> {
 		const token: UsersTokensID = await this.tokensRepository
 			.createQueryBuilder('token')
-			.leftJoinAndMapOne(
-				'token.user',
-				UsersInfos,
-				'users_infos',
-				'users_infos.uuid = token.user_uuid'
-			)
 			.where({ id })
+			.loadAllRelationIds()
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.error('Failed to fetch token', e);
 				throw new UnauthorizedException();
 			});
-		return token.user;
+		const user = await this.usersService.findWithRelationsOrNull(
+			{ uuid: token.user_uuid },
+			'Failed to find related user ' + token.user_uuid + ' for token ' + id
+		);
+		if (!user) {
+			throw new InternalServerErrorException();
+		}
+		return user;
 	}
 
 	async update(id: number): Promise<GeneratedTokens> {
@@ -152,6 +156,8 @@ export class TokensService {
 			this.logger.verbose('Token is not trusted');
 			throw new UnauthorizedException();
 		}
+
+		return this.getUser(id);
 	}
 
 	async create(payload: JwtPayload): Promise<GeneratedTokens> {

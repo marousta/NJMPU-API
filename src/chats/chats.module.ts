@@ -1,4 +1,4 @@
-import { forwardRef, Injectable, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { WsModule } from '../websockets/ws.module';

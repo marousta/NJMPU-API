@@ -30,7 +30,6 @@ import {
 } from '../properties/channels.get.property';
 
 import {
-	ChannelAvatarProperty,
 	ChannelModerationPropertyEX,
 	ChannelSettingProperty
 } from '../properties/channels.update.property';
@@ -819,9 +818,9 @@ export class ChannelsService {
 		unmute: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			return await this.blacklist.remove(params, channel);
 		},
-		avatar: async (params: ChannelAvatarProperty, channel: ChatsChannelsID) => {
+		avatar: async (filename: string, channel: ChatsChannelsID) => {
 			const old_avatar = channel.avatar;
-			channel.avatar = params.avatar;
+			channel.avatar = filename;
 
 			await this.save(channel, 'Unable to update avatar for channel ' + channel.uuid);
 
@@ -830,21 +829,21 @@ export class ChannelsService {
 					this.wsService.dispatch.all({
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Avatar,
-						channel: params.channel_uuid,
-						avatar: params.avatar
+						channel: channel.uuid,
+						avatar: filename
 					});
 					break;
 				case ChannelType.Private:
 					this.wsService.dispatch.channel({
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Avatar,
-						channel: params.channel_uuid,
-						avatar: params.avatar
+						channel: channel.uuid,
+						avatar: filename
 					});
 					break;
 			}
 
-			return { new: params.avatar, old: old_avatar };
+			return { new: filename, old: old_avatar };
 		}
 	};
 
@@ -878,21 +877,21 @@ export class ChannelsService {
 			throw new BadRequestException("You can't leave direct channel");
 		}
 
-		if (!this.user.inChannel(channel.usersID, params.current_user_uuid)) {
+		if (!this.user.inChannel(channel.usersID, params.current_user.uuid)) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
-		let remove_user: string = null;
+		let remove_user: UsersInfos = undefined;
 		switch (params.action) {
 			case LeaveAction.Leave:
-				if (this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
+				if (this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
 					channel.administrator = null;
 				}
-				remove_user = params.current_user_uuid;
+				remove_user = params.current_user;
 				break;
 			case LeaveAction.Kick:
 				//  prettier-ignore
-				if (!this.user.hasPermissions(channel, params.current_user_uuid) 		// Check current user permissions
+				if (!this.user.hasPermissions(channel, params.current_user.uuid) 		// Check current user permissions
 				|| this.user.isAdministrator(channel.administratorID, params.user_uuid) // Check if remote user is administrator
 				|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) { 	// Check if remote user is moderator
 					throw new ForbiddenException(ApiResponseError.NotAllowed);
@@ -900,7 +899,12 @@ export class ChannelsService {
 				if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
 					throw new BadRequestException(ApiResponseError.RemoteUserNotFound);
 				}
-				remove_user = params.user_uuid;
+				remove_user = await this.usersRepository
+					.findOneByOrFail({ uuid: params.user_uuid })
+					.catch((e) => {
+						this.logger.verbose('Unable to find user ' + remove_user, e);
+						throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
+					});
 				break;
 			case LeaveAction.Remove:
 				break;
@@ -908,16 +912,9 @@ export class ChannelsService {
 				throw new BadRequestException('Invalid action');
 		}
 
-		if (remove_user) {
-			const user = await this.usersRepository
-				.findOneByOrFail({ uuid: remove_user })
-				.catch((e) => {
-					this.logger.verbose('Unable to find user ' + remove_user, e);
-					throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
-				});
-
-			channel.moderators = channel.moderators.filter((m) => m.uuid !== remove_user);
-			channel.users = channel.users.filter((user) => user.uuid !== remove_user);
+		if (remove_user !== undefined) {
+			channel.moderators = channel.moderators.filter((m) => m.uuid !== remove_user.uuid);
+			channel.users = channel.users.filter((user) => user.uuid !== remove_user.uuid);
 
 			await this.save(
 				channel,
@@ -927,7 +924,7 @@ export class ChannelsService {
 
 		//  prettier-ignore
 		if  (params.action === LeaveAction.Remove
-		&& !this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
+		&& !this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
@@ -958,10 +955,10 @@ export class ChannelsService {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Leave,
 				channel: params.channel_uuid,
-				user: remove_user
+				user: remove_user.uuid
 			});
 		}
-		this.wsService.unsubscribe.channel(remove_user, params.channel_uuid);
+		this.wsService.unsubscribe.channel(remove_user.uuid, params.channel_uuid);
 	}
 	//#endregion
 }

@@ -11,9 +11,10 @@ import { WsService } from '../../websockets/ws.service';
 
 import { UsersTokens } from '../tokens/tokens.entity';
 
-import { SessionData, SessionsGetResponse } from './sessions.property';
+import { SessionData, SessionsGetResponse } from '../properties/sessions.property';
 
 import { UserAction, WsNamespace } from '../../websockets/types';
+import { ApiResponseError } from '../types';
 
 @Injectable()
 export class SessionsService {
@@ -50,14 +51,14 @@ export class SessionsService {
 			.select(['token.id', 'token.platform', 'token.creation_date', 'token.refresh_date'])
 			.where({ user_uuid: uuid })
 			.orderBy('refresh_date', 'DESC')
-			.orderBy('creation_date', 'DESC')
+			.addOrderBy('creation_date', 'DESC')
 			.addOrderBy('id', 'DESC')
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
 			.getManyAndCount();
 
 		let data: SessionData[] = ret[0].map((token) => {
-			let ret = {
+			const ret = {
 				id: token.id,
 				platform: token.platform,
 				creation_date: token.creation_date,
@@ -84,7 +85,7 @@ export class SessionsService {
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose('No session found for ' + uuid + ' with id ' + id, e);
-				throw new NotFoundException();
+				throw new NotFoundException(ApiResponseError.InvalidSession);
 			});
 
 		session.refresh_date = new Date(0);

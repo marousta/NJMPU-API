@@ -8,24 +8,21 @@ import {
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { NotifcationsService } from './notifications.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { UsersInfos, UsersInfosID } from '../entities/users.entity';
 
-import {
-	UsersFriendshipGetResponse,
-	UsersRelationsProperty
-} from '../properties/users.relations.get.property';
+import { UsersFriendshipResponse } from '../properties/users.relations.get.property';
 import { UsersMeResponse } from '../properties/users.get.property';
+
+import { hash_password_config } from '../../auth/config';
+
+import { genIdentifier } from '../../utils';
+import { hash, hash_verify } from '../../auth/utils';
 
 import { UserAction, WsNamespace } from '../../websockets/types';
 import { ApiResponseError, UsersFriendship, NotifcationType } from '../types';
-
-import { genIdentifier } from '../../utils';
-import { NotifcationsService } from './notifications.service';
-import { NotificationsCreateProperty } from '../types';
-import { hash, hash_verify } from 'src/auth/utils';
-import { hash_password_config } from '../../auth/config';
 
 @Injectable()
 export class UsersService {
@@ -58,26 +55,11 @@ export class UsersService {
 		}
 	}
 
-	private async findWithRelationsID(where: object, error_msg: string): Promise<UsersInfosID> {
+	async findWithRelationsOrNull(where: object, error_msg: string): Promise<UsersInfosID | null> {
 		return this.usersRepository
 			.createQueryBuilder('user')
 			.where(where)
-			.loadRelationIdAndMap('user.friendsID', 'user.friends')
-			.getOneOrFail()
-			.catch((e) => {
-				this.logger.verbose(error_msg, e);
-				throw new NotFoundException();
-			});
-	}
-
-	private async findWithRelationsIDorNull(
-		where: object,
-		error_msg: string
-	): Promise<UsersInfosID | null> {
-		return this.usersRepository
-			.createQueryBuilder('user')
-			.where(where)
-			.loadRelationIdAndMap('user.friendsID', 'user.friends')
+			.leftJoinAndSelect('user.friends', 'friends')
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose(error_msg, e);
@@ -85,7 +67,7 @@ export class UsersService {
 			});
 	}
 
-	private async findWithRelations(where: object, error_msg: string): Promise<UsersInfosID> {
+	async findWithRelations(where: object, error_msg: string): Promise<UsersInfosID> {
 		return this.usersRepository
 			.createQueryBuilder('user')
 			.where(where)
@@ -123,13 +105,7 @@ export class UsersService {
 	/**
 	 * Service
 	 */
-
-	async whoami(uuid: string): Promise<UsersMeResponse> {
-		const user = await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
-			this.logger.error('Unable to find user ' + uuid, e);
-			throw new InternalServerErrorException();
-		});
-
+	async whoami(user: UsersInfos): Promise<UsersMeResponse> {
 		return {
 			uuid: user.uuid,
 			identifier: user.identifier,
@@ -140,20 +116,11 @@ export class UsersService {
 		};
 	}
 
-	async get(current_user_uuid: string, remote_user_uuid: string) {
-		const user = await Promise.all([
-			this.findWithRelationsID(
-				{ uuid: remote_user_uuid },
-				"Remote user doesn't exist " + remote_user_uuid
-			),
-			this.findWithRelationsID(
-				{ uuid: current_user_uuid },
-				"Current user doesn't exist " + remote_user_uuid // Should never fail
-			)
-		]);
-
-		const remote_user = user[0];
-		const current_user = user[1];
+	async get(current_user: UsersInfos, remote_user_uuid: string) {
+		const remote_user = await this.findWithRelations(
+			{ uuid: remote_user_uuid },
+			"Remote user doesn't exist " + remote_user_uuid
+		);
 
 		return {
 			uuid: remote_user.uuid,
@@ -165,107 +132,80 @@ export class UsersService {
 		};
 	}
 
-	async avatar(uuid: string, avatar: string) {
-		const user = await this.usersRepository
-			.findOneByOrFail({
-				uuid
-			})
-			.catch((e) => {
-				this.logger.error('Unable to find user ' + uuid, e);
-				throw new InternalServerErrorException();
-			});
-
+	async avatar(user: UsersInfos, filename: string) {
 		const old_avatar = user.avatar;
-		user.avatar = avatar;
+		user.avatar = filename;
 
 		await this.usersRepository.save(user).catch((e) => {
-			this.logger.error('Unable to update avatar for user ' + uuid, e);
+			this.logger.error('Unable to update avatar for user ' + user.uuid, e);
 			throw new InternalServerErrorException();
 		});
 
 		this.wsService.dispatch.all({
 			namespace: WsNamespace.User,
 			action: UserAction.Avatar,
-			user: user.uuid
+			user: user.uuid,
+			avatar: filename
 		});
 
-		return { new: avatar, old: old_avatar };
+		return { new: filename, old: old_avatar };
 	}
 
-	async password(uuid: string, current_password: string, new_password: string) {
-		if (current_password === new_password) {
-			throw new BadRequestException("Passwords can't be identical");
+	async password(
+		user: UsersInfos,
+		current_password: string,
+		new_password: string,
+		new_password_confirm: string
+	) {
+		if (new_password !== new_password_confirm) {
+			throw new BadRequestException(ApiResponseError.Confirmmismatch);
 		}
 
-		const user = await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
-			this.logger.error('Unable to find user ' + uuid, e); // Should never fail
-			throw new InternalServerErrorException();
-		});
+		if (current_password === new_password) {
+			throw new BadRequestException(ApiResponseError.PasswordsIdentical);
+		}
 
 		const verif = await hash_verify(user.password, current_password);
 		if (!verif) {
-			throw new BadRequestException('Password missmatch');
+			throw new BadRequestException(ApiResponseError.Passwordmismatch);
 		}
 
 		user.password = await hash(new_password, hash_password_config);
 
 		await this.usersRepository.save(user).catch((e) => {
-			this.logger.error('Unable to update password for user ' + uuid, e);
+			this.logger.error('Unable to update password for user ' + user.uuid, e);
 			throw new BadRequestException();
 		});
 	}
 
 	public readonly relations = {
-		dispatch: async (params: UsersRelationsProperty) => {
-			if (params.current_user_uuid === params.user_uuid) {
+		dispatch: async (action: string, current_user: UsersInfos, remote_user_uuid: string) => {
+			if (current_user.uuid === remote_user_uuid) {
 				throw new BadRequestException(ApiResponseError.FriendYourself);
 			}
 
-			const request = await Promise.all([
-				this.findWithRelations(
-					{ uuid: params.current_user_uuid },
-					'Unable to find current user ' + params.current_user_uuid // Should never fail
-				),
-				this.findWithRelations(
-					{ uuid: params.user_uuid },
-					'Unable to find remote user ' + params.user_uuid
-				)
-			]);
-			const current_user = request[0];
-			const remote_user = request[1];
+			const remote_user = await this.findWithRelations(
+				{ uuid: remote_user_uuid },
+				'Unable to find remote user ' + remote_user_uuid
+			);
 
-			switch (params.action) {
+			switch (action) {
 				case 'ADD':
 					return await this.relations.friends.add(current_user, remote_user);
 				case 'REMOVE':
 					return await this.relations.friends.remove(current_user, remote_user);
 			}
 		},
-		get: async (uuid: string): Promise<UsersFriendshipGetResponse[]> => {
-			const current_user = await this.findWithRelationsID(
-				{ uuid },
-				'Unable to find user ' + uuid // Should never fail
-			);
+		get: async (user: UsersInfos): Promise<UsersFriendshipResponse[]> => {
+			const users = user.friends;
 
-			let users_promise: Promise<UsersInfosID>[] = [];
-			current_user.friendsID.forEach((uuid) => {
-				users_promise.push(
-					this.findWithRelationsIDorNull(
-						{ uuid },
-						'Unable to find user ' + uuid + ' for relation matching'
-					)
-				);
-			});
-
-			const users = await Promise.all(users_promise);
-
-			let friendship: UsersFriendshipGetResponse[] = [];
+			let friendship: UsersFriendshipResponse[] = [];
 			users.forEach((remote_user) => {
 				if (!remote_user) {
 					return;
 				}
 
-				const friendship_status = this.usersAreFriends(current_user, remote_user);
+				const friendship_status = this.usersAreFriends(user, remote_user);
 				if (!friendship_status) {
 					return;
 				}
@@ -288,34 +228,30 @@ export class UsersService {
 						throw new BadRequestException(ApiResponseError.AlreadyPending);
 				}
 
-				console.log(current_user);
-
 				current_user.addFriends(remote_user);
-				console.log(
-					await this.usersRepository.save(current_user).catch((e) => {
-						this.logger.error(
-							'Unable to update friendship status of user ' + current_user.uuid,
-							e
-						);
-						throw new InternalServerErrorException();
-					})
-				);
+				await this.usersRepository.save(current_user).catch((e) => {
+					this.logger.error(
+						'Unable to update friendship status of user ' + current_user.uuid,
+						e
+					);
+					throw new InternalServerErrorException();
+				});
 
 				friendship_status = this.usersAreFriends(current_user, remote_user);
 				switch (friendship_status) {
 					case UsersFriendship.Pending:
-						this.notifcationsService.add({
-							type: NotifcationType.FriendRequest,
-							notified_user: remote_user.uuid,
-							interact_w_user: current_user.uuid
-						});
+						this.notifcationsService.add(
+							NotifcationType.FriendRequest,
+							current_user,
+							remote_user
+						);
 						break;
 					case UsersFriendship.True:
-						this.notifcationsService.add({
-							type: NotifcationType.AcceptedFriendRequest,
-							notified_user: remote_user.uuid,
-							interact_w_user: current_user.uuid
-						});
+						this.notifcationsService.add(
+							NotifcationType.AcceptedFriendRequest,
+							current_user,
+							remote_user
+						);
 						break;
 				}
 
@@ -348,17 +284,21 @@ export class UsersService {
 		}
 	};
 
-	async invite(params: NotificationsCreateProperty) {
-		const users = await this.usersRepository
-			.findOneByOrFail({ uuid: params.notified_user })
+	async invite(interact_w_user: UsersInfos, notified_user_uuid: string) {
+		if (interact_w_user.uuid === notified_user_uuid) {
+			throw new BadRequestException(ApiResponseError.InteractYourself);
+		}
+
+		const notified_user = await this.usersRepository
+			.findOneByOrFail({ uuid: notified_user_uuid })
 			.catch((e) => {
 				this.logger.verbose(
-					'Unable to find user to interact with ' + params.notified_user,
+					'Unable to find user to interact with ' + notified_user_uuid,
 					e
 				);
 				throw new NotFoundException();
 			});
 
-		this.notifcationsService.add(params);
+		this.notifcationsService.add(NotifcationType.GameInvite, interact_w_user, notified_user);
 	}
 }

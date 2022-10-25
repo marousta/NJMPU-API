@@ -7,6 +7,8 @@ import { readFileSync } from 'fs';
 
 import { TokensService } from '../tokens/tokens.service';
 
+import { Jwt, JwtData } from '../types';
+
 @Injectable()
 export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
 	constructor(
@@ -29,13 +31,16 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
 	}
 
 	// callback after JWT is validated
-	async validate(req: Request, payload: { id: number }) {
-		await this.tokenService.validate(
+	async validate(req: Request, payload: Jwt): Promise<JwtData> {
+		const user = await this.tokenService.validate(
 			payload.id,
 			{ refresh_token: req.cookies['refresh_token'] },
 			req.headers['user-agent'],
 			req.clientIp
 		);
-		return payload;
+		return {
+			token: payload,
+			infos: user
+		};
 	}
 }

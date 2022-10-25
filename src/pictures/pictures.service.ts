@@ -1,10 +1,4 @@
-import {
-	Injectable,
-	Logger,
-	BadRequestException,
-	InternalServerErrorException,
-	Inject
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { extname } from 'path';
@@ -14,10 +8,9 @@ import { ExifTransformer } from './exif-be-gone.fixed';
 import { ChannelsService } from '../chats/services/channels.service';
 import { UsersService } from '../users/services/users.service';
 
-import { ChannelAvatarProperty } from '../chats/properties/channels.update.property';
-
 import { MulterFileLike } from './types';
 import { forwardRef } from '@nestjs/common';
+import { UsersInfos } from '../users/entities/users.entity';
 
 @Injectable()
 export class PicturesService {
@@ -114,20 +107,20 @@ export class PicturesService {
 	}
 
 	readonly update = {
-		channel: async (params: ChannelAvatarProperty) => {
+		channel: async (user: UsersInfos, filename: string, channel_uuid: string) => {
 			const channel = await this.channelsService.user.hasPermissionsGet(
-				params.channel_uuid,
-				params.current_user_uuid
+				channel_uuid,
+				user.uuid
 			);
 
-			const avatar = await this.channelsService.moderation.avatar(params, channel);
+			const avatar = await this.channelsService.moderation.avatar(filename, channel);
 
 			this.remove(avatar.old);
 
 			return { avatar: avatar.new };
 		},
-		user: async (params: ChannelAvatarProperty) => {
-			const avatar = await this.usersService.avatar(params.current_user_uuid, params.avatar);
+		user: async (user: UsersInfos, filename: string) => {
+			const avatar = await this.usersService.avatar(user, filename);
 
 			this.remove(avatar.old);
 

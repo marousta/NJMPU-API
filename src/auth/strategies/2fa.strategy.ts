@@ -5,7 +5,9 @@ import { Strategy, ExtractJwt } from 'passport-jwt';
 import { Request } from 'express';
 import { readFileSync } from 'fs';
 
-import { TwoFactorService } from '../2fa/2fa.service';
+import { TwoFactorService } from '../services/2fa.service';
+
+import { JwtData, Jwt2FA } from '../types';
 
 @Injectable()
 export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
@@ -30,17 +32,19 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
 	}
 
 	// callback after JWT is validated
-	async validate(req: Request, payload: { uuid: string }) {
-		if (
-			await this.twoFactorService.verify.token({
-				uuid: payload.uuid,
-				token: req.cookies['twofactor_token']
-			})
-		) {
-			return payload;
-		} else {
+	async validate(req: Request, payload: Jwt2FA): Promise<JwtData> {
+		const verif = await this.twoFactorService.verify.token({
+			uuid: payload.uuid,
+			token: req.cookies['twofactor_token']
+		});
+		if (!verif) {
 			this.logger.verbose('Invalid 2FA JWT');
 			throw new ForbiddenException();
 		}
+
+		return {
+			token: payload,
+			infos: verif
+		};
 	}
 }

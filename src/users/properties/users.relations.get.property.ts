@@ -1,14 +1,12 @@
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
+
+import { UsersInfos } from '../entities/users.entity';
+
 import { UsersFriendship } from '../types';
 
 export class UsersRelationsProperty {
-	@ApiHideProperty()
-	current_user_uuid: string;
-
-	@ApiHideProperty()
+	current_user: UsersInfos;
 	action: string;
-
-	@ApiProperty()
 	user_uuid: string;
 }
 
@@ -17,7 +15,7 @@ export class UsersRelationsResponse {
 	friendship: UsersFriendship;
 }
 
-export class UsersFriendshipGetResponse {
+export class UsersFriendshipResponse {
 	@ApiProperty()
 	uuid: string;
 

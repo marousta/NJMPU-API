@@ -1,3 +1,4 @@
+import { UsersInfos } from '../users/entities/users.entity';
 export interface PartialUsersInfos {
 	uuid?: string;
 	identifier?: number;
@@ -19,6 +20,21 @@ export interface JwtPayload extends PartialUsersInfos {
 	access_token?: string;
 	refresh_token?: string;
 	fingerprint?: UserFingerprint;
+}
+
+export interface Jwt {
+	id: number;
+	iat: number;
+	exp: number;
+}
+
+export interface Jwt2FA extends Jwt {
+	uuid: string;
+}
+
+export interface JwtData {
+	token: Jwt;
+	infos: UsersInfos;
 }
 
 export interface GeneratedTokens {
@@ -69,4 +85,16 @@ export interface TwoFactorRequest {
 	uuid: string;
 	token: string;
 	image?: string;
+}
+
+export enum ApiResponseError {
+	EmptyFields = 'Empty fields',
+	EmailTaken = 'Email already in use',
+	Passwordmismatch = 'Password mismatch',
+	InvalidCredentials = 'Invalid credentials',
+	TwoFactorInvalidCode = '2FA code is invalid',
+	TwoFactorInvalidRequest = 'No ongoing 2FA request',
+	TwoFactorAlreadySet = '2FA already set',
+	MissingSession = 'Missing session id',
+	InvalidSession = 'Invalid session id'
 }

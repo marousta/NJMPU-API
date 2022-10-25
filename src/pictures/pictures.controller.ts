@@ -23,7 +23,7 @@ import { FileInterceptorBody } from './pictures.property';
 
 import { PicturesResponse } from './types';
 import { ApiResponseError } from '../chats/types';
-import { ChatAction } from '../websockets/types';
+import { JwtData } from '../auth/types';
 
 @UseGuards(AccessAuthGuard)
 @Controller('chats/channels')
@@ -44,7 +44,7 @@ export class PicturesChatsController {
 		@Param('uuid') channel_uuid: string,
 		@UploadedFile() file: Express.Multer.File
 	) {
-		const user_uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
 		let filename: string;
 		try {
@@ -54,12 +54,7 @@ export class PicturesChatsController {
 			throw new InternalServerErrorException();
 		}
 
-		return await this.picturesService.update.channel({
-			action: ChatAction.Avatar,
-			avatar: filename,
-			current_user_uuid: user_uuid,
-			channel_uuid: channel_uuid
-		});
+		return await this.picturesService.update.channel(user, filename, channel_uuid);
 	}
 }
 
@@ -78,7 +73,7 @@ export class PicturesUsersController {
 	@Post()
 	@UseInterceptors(PicturesInterceptor)
 	async userAvatar(@Request() req: Req, @UploadedFile() file: Express.Multer.File) {
-		const user_uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
 		let filename: string;
 		try {
@@ -88,10 +83,6 @@ export class PicturesUsersController {
 			throw new InternalServerErrorException();
 		}
 
-		return await this.picturesService.update.user({
-			action: ChatAction.Avatar,
-			avatar: filename,
-			current_user_uuid: user_uuid
-		});
+		return await this.picturesService.update.user(user, filename);
 	}
 }

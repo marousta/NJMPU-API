@@ -11,16 +11,18 @@ import {
 } from '@nestjs/common';
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
-import { AuthGuard } from '@nestjs/passport';
 
-import { SessionsService } from './sessions.service';
+import { SessionsService } from '../services/sessions.service';
 
-import { SessionsGetResponse } from './sessions.property';
+import { AccessAuthGuard } from '../guards/access.guard';
+
+import { SessionsGetResponse } from '../properties/sessions.property';
 import { GlobalQueryProperty } from '../../app/properties/global.property';
 
 import { parseUnsigned } from '../../utils';
+import { ApiResponseError, JwtData } from '../types';
 
-@UseGuards(AuthGuard('access'))
+@UseGuards(AccessAuthGuard)
 @ApiTags('users · sessions')
 @Controller('users/sessions')
 export class SessionsController {
@@ -40,23 +42,26 @@ export class SessionsController {
 		@Query('limit') limit: any,
 		@Query('offset') offset: any
 	) {
-		const tid = (req.user as any).id;
-		const uuid = (req.user as any).uuid;
+		const jwt = req.user as JwtData;
+		const tid = jwt.token.id;
+		const uuid = jwt.infos.uuid;
+
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
+
 		return await this.sessionsService.get(tid, uuid, page, limit, offset);
 	}
 
-	// @ApiQuery({ type: SessionsDeleteProperty })
-	@ApiResponse({ status: 400, description: 'Missing session id' })
-	@ApiResponse({ status: 404, description: 'Invalid session id' })
+	@ApiResponse({ status: 200, description: 'Session destroyed' })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingSession })
+	@ApiResponse({ status: 404, description: ApiResponseError.InvalidSession })
 	@Delete(':id')
 	@HttpCode(200)
 	async destroy(@Request() req: Req, @Param('id') id: number) {
-		const uuid = (req.user as any).uuid;
+		const uuid = (req.user as JwtData).infos.uuid;
 		if (!id) {
-			throw new BadRequestException('Missing session id');
+			throw new BadRequestException(ApiResponseError.MissingSession);
 		}
 		await this.sessionsService.destroy(uuid, id);
 	}

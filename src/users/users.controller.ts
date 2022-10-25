@@ -11,7 +11,7 @@ import {
 	Body,
 	Query
 } from '@nestjs/common';
-import { ApiBody, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
 
 import { UsersService } from './services/users.service';
@@ -21,16 +21,16 @@ import { AccessAuthGuard } from '../auth/guards/access.guard';
 
 import { UsersGetResponse, UsersMeResponse } from './properties/users.get.property';
 import {
-	UsersFriendshipGetResponse,
-	UsersRelationsProperty,
+	UsersFriendshipResponse,
 	UsersRelationsResponse
 } from './properties/users.relations.get.property';
 import { NotificationsGetResponse } from './properties/notifications.get.property';
 import { GlobalQueryProperty } from '../app/properties/global.property';
+import { UsersPatchProperty } from './properties/users.patch.property';
 
 import { parseUnsigned } from '../utils';
-import { ApiResponseError, NotifcationType } from './types';
-import { UsersPatchProperty } from './properties/users.patch.property';
+import { ApiResponseError } from './types';
+import { JwtData } from '../auth/types';
 
 @UseGuards(AccessAuthGuard)
 @Controller('users')
@@ -48,9 +48,9 @@ export class UsersController {
 	@HttpCode(200)
 	@Get('whoami')
 	async me(@Request() req: Req) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.whoami(uuid);
+		return await this.usersService.whoami(user);
 	}
 
 	@ApiTags('users · infos')
@@ -59,9 +59,9 @@ export class UsersController {
 	@Get('profile/:uuid')
 	@HttpCode(200)
 	async get(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.get(uuid, remote_user_uuid);
+		return await this.usersService.get(user, remote_user_uuid);
 	}
 
 	/**
@@ -69,14 +69,20 @@ export class UsersController {
 	 */
 	@ApiTags('users · account')
 	@ApiResponse({ status: 200, description: 'Password changed' })
-	@ApiResponse({ status: 400.1, description: "Passwords can't be identical" })
-	@ApiResponse({ status: 400.2, description: 'Password missmatch' })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.Confirmmismatch })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.PasswordsIdentical })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.Passwordmismatch })
 	@Patch()
 	@HttpCode(200)
 	async changePassword(@Request() req: Req, @Body() body: UsersPatchProperty) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		await this.usersService.password(uuid, body.current_password, body.new_password);
+		await this.usersService.password(
+			user,
+			body.current_password,
+			body.new_password,
+			body.confirm
+		);
 	}
 
 	//TODO
@@ -92,14 +98,14 @@ export class UsersController {
 	@ApiResponse({
 		status: 200,
 		description: 'Friendship infos',
-		type: [UsersFriendshipGetResponse]
+		type: [UsersFriendshipResponse]
 	})
 	@HttpCode(200)
 	@Get('relations')
 	async getRelations(@Request() req: Req) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.get(uuid);
+		return await this.usersService.relations.get(user);
 	}
 
 	@ApiTags('users · relations')
@@ -111,13 +117,9 @@ export class UsersController {
 	@Post('friendship/:uuid')
 	@HttpCode(200)
 	async updateRelations(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.dispatch({
-			action: 'ADD',
-			current_user_uuid: uuid,
-			user_uuid: remote_user_uuid
-		});
+		return await this.usersService.relations.dispatch('ADD', user, remote_user_uuid);
 	}
 
 	@ApiTags('users · relations')
@@ -129,13 +131,9 @@ export class UsersController {
 	@Delete('friendship/:uuid')
 	@HttpCode(200)
 	async removeRelations(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.dispatch({
-			action: 'REMOVE',
-			current_user_uuid: uuid,
-			user_uuid: remote_user_uuid
-		});
+		return await this.usersService.relations.dispatch('REMOVE', user, remote_user_uuid);
 	}
 
 	/**
@@ -156,13 +154,13 @@ export class UsersController {
 		@Query('limit') limit: any,
 		@Query('offset') offset: any
 	) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
 
-		return await this.notifcationsService.get(uuid, page, limit, offset);
+		return await this.notifcationsService.get(user, page, limit, offset);
 	}
 
 	@ApiTags('users · notifications')
@@ -173,12 +171,9 @@ export class UsersController {
 	@HttpCode(200)
 	@Delete('notifications/:uuid')
 	async readNotifications(@Request() req: Req, @Param('uuid') notification_uuid: string) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		return await this.notifcationsService.delete({
-			current_user_uuid: uuid,
-			notification_uuid
-		});
+		return await this.notifcationsService.delete(user, notification_uuid);
 	}
 
 	/**
@@ -191,12 +186,8 @@ export class UsersController {
 	@Post('invite/:uuid')
 	@HttpCode(200)
 	async invite(@Request() req: Req, @Param('uuid') remote_uuid: string) {
-		const uuid = (req.user as any).uuid;
+		const user = (req.user as JwtData).infos;
 
-		await this.usersService.invite({
-			type: NotifcationType.GameInvite,
-			notified_user: remote_uuid,
-			interact_w_user: uuid
-		});
+		await this.usersService.invite(user, remote_uuid);
 	}
 }
