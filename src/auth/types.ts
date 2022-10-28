@@ -84,7 +84,11 @@ export interface TwoFactorRequest {
 	interface: 'TwoFactorRequest';
 	uuid: string;
 	token: string;
-	image?: string;
+}
+
+export interface TwoFactorSetupRequest extends TwoFactorRequest {
+	image: string;
+	text: string;
 }
 
 export enum ApiResponseError {

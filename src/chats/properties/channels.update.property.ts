@@ -1,5 +1,7 @@
 import { ApiHideProperty, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+import { UsersInfos } from '../../users/entities/users.entity';
+
 import { ChatAction } from '../../websockets/types';
 
 export class ChannelSettingProperty {
@@ -26,7 +28,7 @@ export class ChannelModerationProperty {
 
 export interface ChannelModerationPropertyEX extends ChannelModerationProperty {
 	action: ChatAction;
-	current_user_uuid: string;
+	current_user: UsersInfos;
 	user_uuid: string;
 	channel_uuid: string;
 	avatar: string;
@@ -34,7 +36,7 @@ export interface ChannelModerationPropertyEX extends ChannelModerationProperty {
 
 export interface ChannelAvatarProperty {
 	action: ChatAction;
-	current_user_uuid: string;
+	current_user: UsersInfos;
 	channel_uuid?: string;
 	avatar: string;
 }

@@ -88,7 +88,9 @@ export class AuthController {
 	@HttpCode(200)
 	@Post('logout')
 	async logoutLocal(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
-		this.authService.user.disconnect(req.user);
+		const jwt = req.user as JwtData;
+
+		this.authService.user.disconnect(jwt);
 		this.authService.cookie.delete(res, 'access_token');
 		this.authService.cookie.delete(res, 'refresh_token');
 		// TODO: Dispatch to admin user log out

@@ -147,14 +147,14 @@ export class ChannelsService {
 
 	//  prettier-ignore
 	private validateChannelType(params: ChannelsCreateProperty): ChatsGroupPublic | ChatsGroupPrivate | ChatsDirect {
-		if ((params.current_user_uuid // Join channel public request
+		if ((params.current_user // Join channel public request
 			&& params.channel_uuid
 			&& !params.type
 			&& !params.identifier
 			&& !params.name
 			&& !params.user_uuid)
 		|| (params.type === ChannelType.Public // Create channel public request
-			&& params.current_user_uuid
+			&& params.current_user
 			&& params.name
 			&& !params.identifier
 			&& !params.channel_uuid
@@ -164,20 +164,20 @@ export class ChannelsService {
 				type: ChannelType.Public,
 				name: params.name,
 				password: params.password,
-				current_user_uuid: params.current_user_uuid,
+				current_user: params.current_user,
 				channel_uuid: params.channel_uuid
 			}
 		}
 		if ((params.identifier // Join private channel request
 			&& params.name
 			&& params.password
-			&& params.current_user_uuid
+			&& params.current_user
 			&& !params.channel_uuid
 			&& !params.user_uuid)
 		|| (params.type === ChannelType.Private // Create private channel request
 			&& params.name
 			&& params.password
-			&& params.current_user_uuid
+			&& params.current_user
 			&& !params.channel_uuid
 			&& !params.user_uuid))
 		{
@@ -186,11 +186,11 @@ export class ChannelsService {
 				identifier: params.identifier,
 				name: params.name,
 				password: params.password,
-				current_user_uuid: params.current_user_uuid,
+				current_user: params.current_user,
 				channel_uuid: params.channel_uuid
 			}
 		}
-		if (params.current_user_uuid  // Create direct channel request
+		if (params.current_user  // Create direct channel request
 		&& params.user_uuid
 		&& !params.type
 		&& !params.identifier
@@ -200,7 +200,7 @@ export class ChannelsService {
 		{
 			return {
 				type: ChannelType.Direct,
-				current_user_uuid: params.current_user_uuid,
+				current_user: params.current_user,
 				user_uuid: params.user_uuid
 			}
 		}
@@ -461,14 +461,7 @@ export class ChannelsService {
 
 	private readonly create = {
 		channel: async (params: ChatsGroupPublic | ChatsGroupPrivate) => {
-			// Get current user
-			// Should never fail
-			const user = await this.usersRepository
-				.findOneByOrFail({ uuid: params.current_user_uuid })
-				.catch((e) => {
-					this.logger.error('Unable to find user ' + params.current_user_uuid, e);
-					throw new InternalServerErrorException();
-				});
+			const user = params.current_user;
 
 			// Hash password
 			let password = null;
@@ -516,31 +509,17 @@ export class ChannelsService {
 			};
 		},
 		direct: async (params: ChatsDirect) => {
-			if (params.current_user_uuid === params.user_uuid) {
+			if (params.current_user.uuid === params.user_uuid) {
 				throw new BadRequestException("You can't DM yourself");
 			}
 
-			const users: UsersInfos[] = await Promise.all([
-				// Get current user
-				// Should never fail
-				this.usersRepository
-					.findOneByOrFail({ uuid: params.current_user_uuid })
-					.catch((e) => {
-						this.logger.error(
-							'Unable to find current user ' + params.current_user_uuid,
-							e
-						);
-						throw new InternalServerErrorException();
-					}),
-				// Get remote user
-				this.usersRepository.findOneByOrFail({ uuid: params.user_uuid }).catch((e) => {
+			const current_user = params.current_user;
+			const remote_user = await this.usersRepository
+				.findOneByOrFail({ uuid: params.user_uuid })
+				.catch((e) => {
 					this.logger.error('Unable to find relatiom user ' + params.user_uuid, e);
 					throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
-				})
-			]);
-
-			const current_user = users[0];
-			const remote_user = users[1];
+				});
 
 			const name = current_user.uuid + '+' + remote_user.uuid;
 			const rev_name = remote_user.uuid + '+' + current_user.uuid;
@@ -639,13 +618,13 @@ export class ChannelsService {
 
 		const isBanned = await this.blacklistService.isBanned(
 			channel.uuid,
-			params.current_user_uuid
+			params.current_user.uuid
 		);
 		if (isBanned) {
 			throw new ForbiddenException(ApiResponseError.Banned);
 		}
 
-		if (this.user.inChannel(channel.usersID, parsed.current_user_uuid)) {
+		if (this.user.inChannel(channel.usersID, parsed.current_user.uuid)) {
 			throw new BadRequestException(ApiResponseError.AlreadyInChannel);
 		}
 
@@ -663,7 +642,7 @@ export class ChannelsService {
 		// Update database relation
 		const { channelObj, userObj } = await this.updateRelation(
 			channel,
-			parsed.current_user_uuid
+			parsed.current_user.uuid
 		);
 
 		// Subscribe user to channel
@@ -681,7 +660,7 @@ export class ChannelsService {
 	readonly blacklist = {
 		add: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			//  prettier-ignore
-			if (!this.user.hasPermissions(channel, params.current_user_uuid)			// Check permissions
+			if (!this.user.hasPermissions(channel, params.current_user.uuid)			// Check permissions
 			|| this.user.isAdministrator(channel.administratorID, params.user_uuid)		// Check if remote user is administrator
 			|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) {			// Check if remote user is moderator) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
@@ -692,7 +671,7 @@ export class ChannelsService {
 			return channel;
 		},
 		remove: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
-			if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
+			if (!this.user.hasPermissions(channel, params.current_user.uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -703,7 +682,7 @@ export class ChannelsService {
 		get: async (params: BlacklistGetProperty) => {
 			const channel = await this.findOne.WithRelationsID(params.channel_uuid);
 
-			if (!this.user.hasPermissions(channel, params.current_user_uuid)) {
+			if (!this.user.hasPermissions(channel, params.current_user.uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -761,7 +740,7 @@ export class ChannelsService {
 		},
 		promote: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			// Check administrator permissions
-			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
+			if (!this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -789,7 +768,7 @@ export class ChannelsService {
 		},
 		demote: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			// Check administrator permissions
-			if (!this.user.isAdministrator(channel.administratorID, params.current_user_uuid)) {
+			if (!this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 

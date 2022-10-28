@@ -1,3 +1,5 @@
+import { UsersInfos } from '../users/entities/users.entity';
+
 export enum ChannelType {
 	Public,
 	Private,
@@ -13,7 +15,7 @@ export interface ChatsGroupPublic {
 	type: ChannelType.Public;
 	name: string;
 	password?: string;
-	current_user_uuid: string;
+	current_user: UsersInfos;
 	channel_uuid: string;
 }
 
@@ -22,13 +24,13 @@ export interface ChatsGroupPrivate {
 	identifier: number;
 	name: string;
 	password?: string;
-	current_user_uuid: string;
+	current_user: UsersInfos;
 	channel_uuid: string;
 }
 
 export interface ChatsDirect {
 	type: ChannelType.Direct;
-	current_user_uuid: string;
+	current_user: UsersInfos;
 	user_uuid: string;
 }
 

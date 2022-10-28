@@ -48,7 +48,10 @@ export class TwoFactorController {
 		const request = await this.authService.twoFactor.demand(user);
 		this.authService.cookie.create(res, { twofactor_token: request.token });
 
-		return request.image;
+		return {
+			image: request.image,
+			text: request.text
+		};
 	}
 
 	@UseGuards(TwoFactorAuthGuard)

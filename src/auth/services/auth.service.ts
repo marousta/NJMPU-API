@@ -32,9 +32,11 @@ import {
 	Intra42User,
 	UserFingerprint,
 	TwoFactorRequest,
-	ApiResponseError
+	ApiResponseError,
+	TwoFactorSetupRequest
 } from '../types';
 import { UserAction, WsNamespace } from '../../websockets/types';
+import { JwtData } from '../types';
 
 @Injectable()
 export class AuthService {
@@ -68,7 +70,7 @@ export class AuthService {
 		byPassword: async (
 			user: UsersInfos,
 			fingerprint: UserFingerprint
-		): Promise<GeneratedTokens | TwoFactorRequest> => {
+		): Promise<GeneratedTokens | TwoFactorSetupRequest | TwoFactorRequest> => {
 			if (user.twofactor) {
 				return await this.twoFactorService.demand(user);
 			}
@@ -81,7 +83,7 @@ export class AuthService {
 		byAPI: async (
 			user: Intra42User | DiscordUser,
 			fingerprint: UserFingerprint
-		): Promise<GeneratedTokens | TwoFactorRequest> => {
+		): Promise<GeneratedTokens | TwoFactorSetupRequest | TwoFactorRequest> => {
 			const parital_user = getPartialUser(user);
 
 			const exist = await this.usersRepository
@@ -192,18 +194,18 @@ export class AuthService {
 				this.logger.debug('User profile picture set for ' + new_user.uuid);
 			}
 		},
-		disconnect: async (payload: any) => {
-			const user = await this.tokensService.getUser(payload.id).catch((e) => null);
+		disconnect: async (payload: JwtData) => {
+			const user = await this.tokensService.getUser(payload.token.id).catch((e) => null);
 			if (!user) {
 				return;
 			}
 
-			await this.tokensService.delete(payload.id);
+			await this.tokensService.delete(payload.token.id);
 
 			this.wsService.dispatch.user(user.uuid, {
 				namespace: WsNamespace.User,
 				action: UserAction.Session,
-				id: payload.id,
+				id: payload.token.id,
 				active: false
 			});
 		}
@@ -216,12 +218,11 @@ export class AuthService {
 		const fingerprint = getFingerprint(http.req, http.headers);
 
 		const ret = await this.login.byAPI(user, fingerprint);
+		// prettier-ignore
 		if (!ret) {
 			const partial_user = getPartialUser(user);
 
-			http.res.redirect(
-				`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&avatar=${partial_user.avatar}`
-			);
+			http.res.redirect(`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&avatar=${partial_user.avatar}`);
 		} else if (ret.interface === 'TwoFactorRequest') {
 			this.cookie.create(http.res, { twofactor_token: ret.token });
 
@@ -236,13 +237,13 @@ export class AuthService {
 	}
 
 	public readonly twoFactor = {
-		demand: async (user: UsersInfos): Promise<TwoFactorRequest> => {
+		demand: async (user: UsersInfos): Promise<TwoFactorSetupRequest> => {
 			if (user.twofactor) {
 				this.logger.verbose('User already have 2FA enabled ' + user.uuid);
 				throw new BadRequestException(ApiResponseError.TwoFactorAlreadySet);
 			}
 
-			return await this.twoFactorService.demand(user);
+			return (await this.twoFactorService.demand(user)) as TwoFactorSetupRequest;
 		},
 		login: async (request_uuid: string, fingerprint: UserFingerprint) => {
 			this.logger.debug('2FA request is valid ' + request_uuid);

@@ -22,7 +22,7 @@ import { hash_token_config } from '../config';
 import { hash, hash_verify } from '../utils';
 import { dateFromOffset } from '../../utils';
 
-import { ApiResponseError, TwoFactorRequest } from '../types';
+import { ApiResponseError, TwoFactorRequest, TwoFactorSetupRequest } from '../types';
 import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
@@ -132,7 +132,7 @@ export class TwoFactorService {
 
 		const new_request = this.twofactorRepository.create({
 			user_uuid: uuid,
-			secret, // undefined for login reauest
+			secret, // undefined for login request
 			expiration: dateFromOffset(60 * 4)
 		});
 		const request = await this.twofactorRepository.save(new_request).catch((e) => {
@@ -144,7 +144,7 @@ export class TwoFactorService {
 		return { interface: 'TwoFactorRequest', uuid: request.uuid, token };
 	}
 
-	private async create(user: UsersInfos): Promise<TwoFactorRequest> {
+	private async create(user: UsersInfos): Promise<TwoFactorSetupRequest> {
 		const token = TwoFactor.generateSecret({
 			name: 'NEW SHINJI MEGA PONG ULTIMATE',
 			account: user.email
@@ -160,7 +160,11 @@ export class TwoFactorService {
 
 		this.logger.debug('Created 2FA request ' + request.uuid);
 
-		return { ...request, image: qr };
+		return {
+			...request,
+			image: qr,
+			text: token.secret
+		};
 	}
 
 	async delete(uuid: string) {
@@ -183,11 +187,10 @@ export class TwoFactorService {
 		});
 	}
 
-	async demand(user: UsersInfos): Promise<TwoFactorRequest> {
+	async demand(user: UsersInfos): Promise<TwoFactorSetupRequest | TwoFactorRequest> {
 		if (user.twofactor) {
 			// Create 2FA login request
-			const request = await this.requestCreator(user.uuid);
-			return { ...request, image: null };
+			return await this.requestCreator(user.uuid);
 		}
 		// Create 2FA setup request
 		return await this.create(user);

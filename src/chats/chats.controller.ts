@@ -205,14 +205,14 @@ export class ChatsController {
 		@Response({ passthrough: true }) res: Res,
 		@Body() body: ChannelsCreateProperty
 	) {
-		const uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		const params: ChannelsCreateProperty = {
 			type: body.type,
 			identifier: body.identifier,
 			name: body.name,
 			password: body.password,
-			current_user_uuid: uuid,
+			current_user: user,
 			user_uuid: body.user_uuid,
 			channel_uuid: body.channel_uuid
 		};
@@ -286,10 +286,10 @@ export class ChatsController {
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@Get(':uuid/blacklist')
 	async getBlacklist(@Request() req: Req, @Param('uuid') channel_uuid: string) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		return await this.channelsService.blacklist.get({
-			current_user_uuid: user_uuid,
+			current_user: user,
 			channel_uuid
 		});
 	}
@@ -320,11 +320,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Promote,
-			current_user_uuid: user_uuid,
+			current_user: user,
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
@@ -358,11 +358,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Demote,
-			current_user_uuid: user_uuid,
+			current_user: user,
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
@@ -397,11 +397,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Ban,
-			current_user_uuid: user_uuid,
+			current_user: user,
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
@@ -434,11 +434,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Unban,
-			current_user_uuid: user_uuid,
+			current_user: user,
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
@@ -472,11 +472,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Mute,
-			current_user_uuid: user_uuid,
+			current_user: user,
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
@@ -514,11 +514,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.moderation.dispatch({
 			action: ChatAction.Unmute,
-			current_user_uuid: user_uuid,
+			current_user: user,
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,

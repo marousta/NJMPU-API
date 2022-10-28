@@ -67,6 +67,7 @@ export class TokensService {
 			.loadAllRelationIds()
 			.getOneOrFail()
 			.catch((e) => {
+				console.log(id);
 				this.logger.error('Failed to fetch token', e);
 				throw new UnauthorizedException();
 			});

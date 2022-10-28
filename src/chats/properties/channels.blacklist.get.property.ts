@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { UsersInfos } from '../../users/entities/users.entity';
 
 export class BlacklistEntry {
 	@ApiProperty()
@@ -17,6 +18,6 @@ export class BlacklistGetResponse {
 }
 
 export interface BlacklistGetProperty {
-	current_user_uuid: string;
+	current_user: UsersInfos;
 	channel_uuid: string;
 }
