@@ -47,7 +47,14 @@ import { AppController } from './app.controller';
 	controllers: [AppController]
 })
 export class AppModule {
+	constructor(private readonly config: ConfigService) {}
+
 	configure(consumer: MiddlewareConsumer) {
+		if (this.config.get<string>('DOMAIN') === 'localhost') {
+			HelmetMiddleware.configure({
+				hsts: false
+			});
+		}
 		consumer.apply(HelmetMiddleware).forRoutes('*');
 		consumer.apply(ResponseTimeMiddleware).forRoutes('*');
 	}
