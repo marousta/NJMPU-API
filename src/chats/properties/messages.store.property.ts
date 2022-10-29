@@ -1,8 +1,9 @@
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { UsersInfos } from '../../users/entities/users.entity';
 
 export class MessageStoreProperty {
 	@ApiHideProperty()
-	user_uuid: string;
+	current_user: UsersInfos;
 
 	@ApiHideProperty()
 	channel_uuid: string;

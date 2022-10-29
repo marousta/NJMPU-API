@@ -11,7 +11,11 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
 		super({
 			clientID: configService.get<string>('DISCORD_ID'),
 			clientSecret: configService.get<string>('DISCORD_SECRET'),
-			callbackURL: configService.get<string>('DISCORD_CALLBACK'),
+			callbackURL:
+				configService.get<string>('PROTOCOL') +
+				'://' +
+				configService.get<string>('DOMAIN') +
+				'/api/auth/oauth2/discord/callback',
 			scope: ['identify', 'email']
 		});
 	}

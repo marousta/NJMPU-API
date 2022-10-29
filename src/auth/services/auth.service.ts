@@ -1,15 +1,8 @@
-import {
-	BadRequestException,
-	Injectable,
-	InternalServerErrorException,
-	UnauthorizedException,
-	Logger
-} from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Request, Response } from 'express';
-import { createHash } from 'crypto';
 
 import { UsersService } from '../../users/services/users.service';
 import { TokensService } from '../tokens/tokens.service';
@@ -21,10 +14,8 @@ import { SignupProperty } from '../properties/signup.property';
 
 import { UsersInfos } from '../../users/entities/users.entity';
 
-import { hash_password_config } from '../config';
-
 import { getPartialUser, isEmpty, getFingerprint } from '../../utils';
-import { hash, hash_verify } from '../utils';
+import { hash_verify } from '../utils';
 
 import {
 	DiscordUser,
@@ -48,7 +39,6 @@ export class AuthService {
 		private readonly usersService: UsersService,
 		private readonly tokensService: TokensService,
 		private readonly twoFactorService: TwoFactorService,
-		private readonly pictureService: PicturesService,
 		private readonly wsService: WsService
 	) {}
 
@@ -154,45 +144,10 @@ export class AuthService {
 			}
 
 			if (params.password !== params.confirm) {
-				throw new BadRequestException(ApiResponseError.Passwordmismatch);
+				throw new BadRequestException(ApiResponseError.PasswordMismatch);
 			}
 
-			const requests = await Promise.all([
-				this.usersService.getIdentfier(params.username),
-				hash(params.password, hash_password_config)
-			]);
-			const new_user = this.usersRepository.create({
-				identifier: requests[0],
-				username: params.username,
-				email: params.email,
-				password: requests[1]
-			});
-
-			const created_user = await this.usersRepository.save(new_user).catch((e) => {
-				if (/email|exists/.test(e.detail)) {
-					throw new BadRequestException(ApiResponseError.EmailTaken);
-				} else {
-					this.logger.error('Failed to insert user', e);
-					throw new InternalServerErrorException();
-				}
-			});
-			this.logger.debug('User created ' + new_user.uuid);
-
-			if (params.avatar) {
-				const hash = createHash('sha1').update(created_user.uuid).digest('hex');
-				const avatar: string = await this.pictureService
-					.download(hash, params.avatar)
-					.catch((e) => {
-						this.logger.error('Profile picture download failed', e);
-						return null;
-					});
-
-				await this.usersRepository.save({ ...new_user, avatar }).catch((e) => {
-					this.logger.error('Failed to update user profile picture', e);
-					throw new InternalServerErrorException();
-				});
-				this.logger.debug('User profile picture set for ' + new_user.uuid);
-			}
+			await this.usersService.create(params);
 		},
 		disconnect: async (payload: JwtData) => {
 			const user = await this.tokensService.getUser(payload.token.id).catch((e) => null);

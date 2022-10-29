@@ -25,4 +25,7 @@ export class ChannelsCreateProperty {
 
 	@ApiPropertyOptional()
 	channel_uuid?: string;
+
+	@ApiPropertyOptional()
+	default?: boolean;
 }

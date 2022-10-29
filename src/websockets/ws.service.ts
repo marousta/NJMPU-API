@@ -20,7 +20,7 @@ import {
 	WsChatSend,
 	WsNamespace,
 	WsUserRefresh,
-	WsChaBan,
+	WsChatBan,
 	WsChatUnban,
 	WsChatMute,
 	WsChatUnmute,
@@ -48,17 +48,6 @@ export class WsService {
 	 * Utils
 	 */
 	//#region  Utils
-	private wsHasUUID(uuid: string) {
-		const client = this.ws.clients.values();
-		let c = null;
-		while ((c = client.next().value)) {
-			if (c['user_uuid'] === uuid) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	private tokenHasExpired(exp: number) {
 		return exp * 1000 < new Date().valueOf();
 	}
@@ -70,7 +59,7 @@ export class WsService {
 				action: UserAction.Expired
 			};
 			client.send(JSON.stringify(expired));
-			this.logger.verbose(`Token for client with user ${client['user_uuid']} has expired`);
+			this.logger.verbose(`Token for client with user ${client['user'].uuid} has expired`);
 			return false;
 		}
 
@@ -161,7 +150,7 @@ export class WsService {
 			let c: WebSocket = null;
 			let i = 0;
 			while ((c = client.next().value)) {
-				if (c['user_uuid'] === uuid) {
+				if (c['user'].uuid === uuid) {
 					i += this.send(c, data) ? 1 : 0;
 				}
 			}
@@ -206,7 +195,7 @@ export class WsService {
 				| WsChatDelete
 				| WsChatPromote
 				| WsChatDemote
-				| WsChaBan
+				| WsChatBan
 				| WsChatUnban
 				| WsChatMute
 				| WsChatUnmute
@@ -219,7 +208,7 @@ export class WsService {
 			let c: WebSocket = null;
 			let i = 0;
 			while ((c = client.next().value)) {
-				if (this.subscribed_channels[c['user_uuid']]?.includes(channel_uuid)) {
+				if (this.subscribed_channels[c['user'].uuid]?.includes(channel_uuid)) {
 					i += this.send(c, data) ? 1 : 0;
 				}
 			}
@@ -344,14 +333,11 @@ export class WsService {
 	}
 
 	disconnected(uuid: string) {
-		if (this.wsHasUUID(uuid)) {
-			return;
-		}
 		if (this.subscribed_channels && this.subscribed_channels[uuid]) {
 			delete this.subscribed_channels[uuid];
 			this.logger.verbose('No more connected client with user ' + uuid);
 		}
-		this.logger.verbose('Disconnected ' + uuid ? uuid : 'unauthenticated client');
+		this.logger.verbose('Disconnected ' + uuid);
 	}
 	//#endregion
 }

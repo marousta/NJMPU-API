@@ -15,6 +15,8 @@ import { ChatsModule } from '../chats/chats.module';
 
 import { AppController } from './app.controller';
 
+import { AppService } from './services/app.service';
+
 @Module({
 	imports: [
 		HttpModule,
@@ -39,11 +41,12 @@ import { AppController } from './app.controller';
 			})
 		}),
 		WsModule,
-		PicturesModule,
 		AuthModule,
 		UsersModule,
-		ChatsModule
+		ChatsModule,
+		PicturesModule
 	],
+	providers: [AppService],
 	controllers: [AppController]
 })
 export class AppModule {

@@ -7,6 +7,9 @@ export class UsersInfos {
 	@PrimaryGeneratedColumn('uuid')
 	uuid: string;
 
+	@Column({ nullable: false, default: false })
+	adam: boolean;
+
 	@Column()
 	identifier: number;
 

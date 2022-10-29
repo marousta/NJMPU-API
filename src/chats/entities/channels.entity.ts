@@ -19,6 +19,9 @@ export class ChatsChannels {
 	@PrimaryGeneratedColumn('uuid')
 	uuid: string;
 
+	@Column({ nullable: false, default: false })
+	default: boolean;
+
 	@Column({
 		type: 'enum',
 		enum: ChannelType,

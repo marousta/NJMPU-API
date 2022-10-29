@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { UsersFriendship } from '../types';
 
@@ -20,6 +20,9 @@ export class UsersMeResponse {
 
 	@ApiProperty()
 	avatar: string;
+
+	@ApiPropertyOptional()
+	adam: boolean;
 }
 
 export class UsersGetResponse {

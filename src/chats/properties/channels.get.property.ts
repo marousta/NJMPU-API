@@ -4,6 +4,9 @@ import { ChannelType } from '../types';
 
 export class ChannelData {
 	@ApiProperty()
+	default: boolean;
+
+	@ApiProperty()
 	uuid: string;
 
 	@ApiProperty()

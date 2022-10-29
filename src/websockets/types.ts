@@ -86,7 +86,7 @@ export interface WsChatDemote extends WsChat {
 	user: string;
 }
 
-export interface WsChaBan extends WsChat {
+export interface WsChatBan extends WsChat {
 	action: ChatAction.Ban;
 	user: string;
 	expiration: Date | null;

@@ -488,7 +488,7 @@ export class ChatsController {
 	 * Unmute
 	 */
 	@ApiTags('chats · moderation')
-	@ApiResponse({ status: 200, description: 'User muted' })
+	@ApiResponse({ status: 200, description: 'User unmuted' })
 	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
@@ -504,11 +504,6 @@ export class ChatsController {
 		}
 	})
 	@Delete(':uuid/unmute')
-	@ApiResponse({ status: 200, description: 'User unmuted' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.RemoteUserNotFound })
-	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
-	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	async unmute(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
@@ -558,11 +553,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelSettingProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.password({
 			channel_uuid,
-			user_uuid,
+			current_user: user,
 			password: body.password
 		});
 	}
@@ -592,13 +587,13 @@ export class ChatsController {
 		@Query('limit') limit: any,
 		@Query('offset') offset: any
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
 
-		return await this.messagesService.get(channel_uuid, user_uuid, page, limit, offset);
+		return await this.messagesService.get(channel_uuid, user, page, limit, offset);
 	}
 
 	/**
@@ -617,14 +612,14 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: MessageStoreProperty
 	) {
-		const user_uuid = (req.user as JwtData).infos.uuid;
+		const user = (req.user as JwtData).infos;
 
 		if (isEmpty(body.message)) {
 			throw new BadRequestException(ApiResponseError.EmptyMessage);
 		}
 
 		await this.messagesService.store({
-			user_uuid,
+			current_user: user,
 			channel_uuid,
 			message: body.message
 		});

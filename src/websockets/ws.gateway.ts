@@ -20,6 +20,7 @@ import { WsService } from './ws.service';
 import { TokensService } from '../auth/tokens/tokens.service';
 
 import { UserAction, WsNamespace } from './types';
+import { UsersService } from '../users/services/users.service';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -31,6 +32,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService,
 		private readonly tokensService: TokensService,
+		private readonly usersService: UsersService,
 		private readonly wsService: WsService
 	) {}
 
@@ -94,8 +96,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		const valid_token = await Promise.all([
 			this.tokensService
 				.validate(valid_jwt_token[0].id, { access_token: cookies['access_token'] }, ua, ip)
-				.catch((e) => false)
-				.then((r) => true),
+				.then((r) => true)
+				.catch((e) => false),
 			this.tokensService
 				.validate(
 					valid_jwt_token[1].id,
@@ -103,8 +105,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 					ua,
 					ip
 				)
-				.catch((e) => false)
 				.then((r) => true)
+				.catch((e) => false)
 		]);
 
 		return valid_token[0] && valid_token[1];
@@ -140,15 +142,26 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 			this.logger.error('Cannot get user uuid, this should not happen');
 			throw new InternalServerErrorException();
 		}
-		client['user_uuid'] = uuid;
+		const user = await this.usersService.findWithRelationsOrNull(
+			{ uuid },
+			'Cannot get user, this should not happen'
+		);
+		if (!user) {
+			throw new InternalServerErrorException();
+		}
+		client['user'] = user;
 		client['refresh_token_exp'] = parsed_cookies.refresh_token.exp;
 
 		await this.wsService.connected(uuid);
 	}
 
 	handleDisconnect(client: WebSocket) {
-		const uuid = client['user_uuid'];
-		this.wsService.disconnected(uuid);
+		const user = client['user'];
+		if (!user) {
+			this.logger.verbose('Disconnected unauthenticated client');
+			return;
+		}
+		this.wsService.disconnected(user.uuid);
 	}
 
 	afterInit(server: Server) {

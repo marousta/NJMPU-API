@@ -23,6 +23,9 @@ import { hash, hash_verify } from '../../auth/utils';
 
 import { UserAction, WsNamespace } from '../../websockets/types';
 import { ApiResponseError, UsersFriendship, NotifcationType } from '../types';
+import { SignupProperty } from 'src/auth/properties/signup.property';
+import { createHash } from 'crypto';
+import { PicturesService } from '../../pictures/pictures.service';
 
 @Injectable()
 export class UsersService {
@@ -30,6 +33,7 @@ export class UsersService {
 	constructor(
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
+		private readonly picturesService: PicturesService,
 		private readonly notifcationsService: NotifcationsService,
 		private readonly wsService: WsService
 	) {}
@@ -63,6 +67,7 @@ export class UsersService {
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose(error_msg, e);
+				this.logger.verbose(where);
 				return null;
 			});
 	}
@@ -75,6 +80,7 @@ export class UsersService {
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose(error_msg, e);
+				this.logger.verbose(where);
 				throw new NotFoundException();
 			});
 	}
@@ -105,6 +111,49 @@ export class UsersService {
 	/**
 	 * Service
 	 */
+	async create(params: SignupProperty) {
+		const requests = await Promise.all([
+			this.getIdentfier(params.username),
+			hash(params.password, hash_password_config)
+		]);
+		const new_user = this.usersRepository.create({
+			adam: params.adam ? true : false,
+			identifier: params.identifier !== undefined ? params.identifier : requests[0],
+			username: params.username,
+			email: params.email,
+			password: requests[1],
+			twofactor: params.twofactor
+		});
+
+		let created_user = await this.usersRepository.save(new_user).catch((e) => {
+			if (/email|exists/.test(e.detail)) {
+				throw new BadRequestException(ApiResponseError.EmailTaken);
+			} else {
+				this.logger.error('Failed to insert user', e);
+				throw new InternalServerErrorException();
+			}
+		});
+		this.logger.debug('User created ' + new_user.uuid);
+
+		if (params.avatar) {
+			const hash = createHash('sha1').update(created_user.uuid).digest('hex');
+			const avatar: string = await this.picturesService
+				.download(hash, params.avatar)
+				.catch((e) => {
+					this.logger.error('Profile picture download failed', e);
+					return null;
+				});
+
+			created_user = await this.usersRepository.save({ ...new_user, avatar }).catch((e) => {
+				this.logger.error('Failed to update user profile picture', e);
+				throw new InternalServerErrorException();
+			});
+			this.logger.debug('User profile picture set for ' + new_user.uuid);
+		}
+
+		return created_user;
+	}
+
 	async whoami(user: UsersInfos): Promise<UsersMeResponse> {
 		return {
 			uuid: user.uuid,
@@ -112,7 +161,8 @@ export class UsersService {
 			username: user.username,
 			email: user.email,
 			twofactor: user.twofactor !== null,
-			avatar: user.avatar
+			avatar: user.avatar,
+			adam: user.adam ? true : undefined
 		};
 	}
 

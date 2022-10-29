@@ -46,7 +46,7 @@ export class MessagesService {
 
 	async get(
 		channel_uuid: string,
-		user_uuid: string,
+		current_user: UsersInfos,
 		page: number = 1,
 		limit: number = 0,
 		offset: number = 0
@@ -55,12 +55,14 @@ export class MessagesService {
 			page = 1;
 		}
 
-		const userInChannel = await this.channelsService.user.inChannelFind(
-			channel_uuid,
-			user_uuid
-		);
-		if (!userInChannel) {
-			throw new ForbiddenException(ApiResponseError.NotAllowed);
+		if (!current_user.adam) {
+			const userInChannel = await this.channelsService.user.inChannelFind(
+				channel_uuid,
+				current_user.uuid
+			);
+			if (!userInChannel) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
 		}
 
 		const ret = await this.messageRepository
@@ -81,19 +83,19 @@ export class MessagesService {
 
 	async store(params: MessageStoreProperty) {
 		const requests = await Promise.all([
-			this.channelsService.user.inChannelFind(params.channel_uuid, params.user_uuid),
-			this.blacklistService.isMuted(params.channel_uuid, params.user_uuid)
+			this.channelsService.user.inChannelFind(params.channel_uuid, params.current_user.uuid),
+			this.blacklistService.isMuted(params.channel_uuid, params.current_user.uuid)
 		]);
 
 		const userInChannel = requests[0];
 		const muted = requests[1];
 
-		if (!userInChannel || muted) {
+		if (!params.current_user.adam && (!userInChannel || muted)) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
 		const request = this.messageRepository.create({
-			user: params.user_uuid,
+			user: params.current_user.uuid,
 			channel: params.channel_uuid,
 			creation_date: new Date(),
 			message: params.message
@@ -130,10 +132,12 @@ export class MessagesService {
 
 		const message = requests[0];
 		const channel = requests[1];
+		const user = message.user as any as UsersInfos;
 
 		//  prettier-ignore
-		if (!this.channelsService.user.hasPermissions(channel, user_uuid) //User is not administrator or moderator
-		&& (message.user as any as UsersInfos).uuid !== user_uuid) { //User is not the message owner
+		if (!user.adam
+		&& !this.channelsService.user.hasPermissions(channel, user_uuid)	//User is not administrator or moderator
+		&& user.uuid !== user_uuid) {										//User is not the message owner
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 

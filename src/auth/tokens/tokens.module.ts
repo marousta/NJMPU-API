@@ -12,9 +12,9 @@ import { WsModule } from '../../websockets/ws.module';
 @Module({
 	imports: [
 		JwtModule,
-		forwardRef(() => UsersModule),
+		TypeOrmModule.forFeature([UsersTokens]),
 		forwardRef(() => WsModule),
-		TypeOrmModule.forFeature([UsersTokens])
+		forwardRef(() => UsersModule)
 	],
 	providers: [TokensService, JwtService],
 	exports: [TokensService]

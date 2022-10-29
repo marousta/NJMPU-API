@@ -15,7 +15,7 @@ export class ChannelSettingProperty {
 	channel_uuid: string;
 
 	@ApiHideProperty()
-	user_uuid: string;
+	current_user: UsersInfos;
 }
 
 export class ChannelModerationProperty {

@@ -93,8 +93,7 @@ export interface TwoFactorSetupRequest extends TwoFactorRequest {
 
 export enum ApiResponseError {
 	EmptyFields = 'Empty fields',
-	EmailTaken = 'Email already in use',
-	Passwordmismatch = 'Password mismatch',
+	PasswordMismatch = 'Password mismatch',
 	InvalidCredentials = 'Invalid credentials',
 	TwoFactorInvalidCode = '2FA code is invalid',
 	TwoFactorInvalidRequest = 'No ongoing 2FA request',

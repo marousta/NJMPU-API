@@ -18,6 +18,7 @@ export interface NotificationsCreateProperty {
 }
 
 export enum ApiResponseError {
+	EmailTaken = 'Email already in use',
 	AlreadyFriends = 'Already friends',
 	AlreadyPending = 'Already sended a friend request',
 	FriendYourself = "You can't be friend with yourself",

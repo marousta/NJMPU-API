@@ -95,6 +95,7 @@ export class ChannelsService {
 				.getOneOrFail()
 				.catch((e) => {
 					this.logger.verbose(error_msg, e);
+					this.logger.verbose(where);
 					throw new NotFoundException(ApiResponseError.ChannelNotFound);
 				});
 		},
@@ -113,6 +114,7 @@ export class ChannelsService {
 				.getOneOrFail()
 				.catch((e) => {
 					this.logger.verbose(error_msg, e);
+					this.logger.verbose(where);
 					throw new NotFoundException(ApiResponseError.ChannelNotFound);
 				});
 		},
@@ -315,6 +317,7 @@ export class ChannelsService {
 
 			data.push({
 				uuid: channel.uuid,
+				default: channel.default,
 				type: channel.type,
 				identifier: channel.identifier,
 				name: channel.name,
@@ -374,6 +377,7 @@ export class ChannelsService {
 			} else {
 				data.push({
 					uuid: channel.uuid,
+					default: channel.default,
 					type: channel.type,
 					identifier: channel.identifier,
 					name: channel.name,
@@ -475,7 +479,8 @@ export class ChannelsService {
 			// Save to database
 			const request = this.channelRepository.create({
 				type: params.type,
-				identifier: await this.getIdentifier(params.name),
+				default: params.current_user.adam,
+				identifier: params.current_user.adam ? 0 : await this.getIdentifier(params.name),
 				name: params.name,
 				password,
 				administrator: user
@@ -660,9 +665,10 @@ export class ChannelsService {
 	readonly blacklist = {
 		add: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
 			//  prettier-ignore
-			if (!this.user.hasPermissions(channel, params.current_user.uuid)			// Check permissions
+			if (!params.current_user.adam												// Check administrator
+			&& (!this.user.hasPermissions(channel, params.current_user.uuid)			// Check permissions
 			|| this.user.isAdministrator(channel.administratorID, params.user_uuid)		// Check if remote user is administrator
-			|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) {			// Check if remote user is moderator) {
+			|| this.user.isModerator(channel.moderatorsID, params.user_uuid))) {		// Check if remote user is moderator) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -671,7 +677,9 @@ export class ChannelsService {
 			return channel;
 		},
 		remove: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
-			if (!this.user.hasPermissions(channel, params.current_user.uuid)) {
+			//  prettier-ignore
+			if (!params.current_user.adam
+			&& !this.user.hasPermissions(channel, params.current_user.uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -682,7 +690,9 @@ export class ChannelsService {
 		get: async (params: BlacklistGetProperty) => {
 			const channel = await this.findOne.WithRelationsID(params.channel_uuid);
 
-			if (!this.user.hasPermissions(channel, params.current_user.uuid)) {
+			//  prettier-ignore
+			if (!params.current_user.adam
+			&& !this.user.hasPermissions(channel, params.current_user.uuid)) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -739,42 +749,52 @@ export class ChannelsService {
 			});
 		},
 		promote: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
-			// Check administrator permissions
-			if (!this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
-				throw new ForbiddenException(ApiResponseError.NotAllowed);
-			}
+			// Check administrator
+			if (!params.current_user.adam) {
+				// Check administrator permissions
+				if (!this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
+					throw new ForbiddenException(ApiResponseError.NotAllowed);
+				}
 
-			// Check if remote user is the current channel administrator
-			if (this.user.isAdministrator(channel.administratorID, params.user_uuid)) {
-				throw new BadRequestException(ApiResponseError.isAdministrator);
-			}
+				// Check if remote user is the current channel administrator
+				if (this.user.isAdministrator(channel.administratorID, params.user_uuid)) {
+					throw new BadRequestException(ApiResponseError.isAdministrator);
+				}
 
-			// Check if remote user is already a channel moderator
-			if (this.user.isModerator(channel.moderatorsID, params.user_uuid)) {
-				throw new BadRequestException(ApiResponseError.AlreadyModerator);
-			}
+				// Check if remote user is already a channel moderator
+				if (this.user.isModerator(channel.moderatorsID, params.user_uuid)) {
+					throw new BadRequestException(ApiResponseError.AlreadyModerator);
+				}
 
-			// Check if remote user is in channel
-			if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
-				throw new BadRequestException(ApiResponseError.NotAllowed);
+				// Check if remote user is in channel
+				if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
+					throw new BadRequestException(ApiResponseError.NotAllowed);
+				}
 			}
 
 			// Get remote user
-			// Should never fail
-			const user = await this.user.find500(params.user_uuid);
+			const user = await this.usersRepository
+				.findOneByOrFail({ uuid: params.user_uuid })
+				.catch((e) => {
+					this.logger.verbose('Unable to find remote user ' + params.user_uuid, e);
+					throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
+				});
 			channel.addModerator(user);
 
 			return channel;
 		},
 		demote: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
-			// Check administrator permissions
-			if (!this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
-				throw new ForbiddenException(ApiResponseError.NotAllowed);
-			}
+			// Check administrator
+			if (!params.current_user.adam) {
+				// Check administrator permissions
+				if (!this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
+					throw new ForbiddenException(ApiResponseError.NotAllowed);
+				}
 
-			// Check if remote user is a channel moderator
-			if (!this.user.isModerator(channel.moderatorsID, params.user_uuid)) {
-				throw new BadRequestException(ApiResponseError.ModeratorNotFound);
+				// Check if remote user is a channel moderator
+				if (!this.user.isModerator(channel.moderatorsID, params.user_uuid)) {
+					throw new BadRequestException(ApiResponseError.ModeratorNotFound);
+				}
 			}
 
 			channel.moderators = channel.moderators.filter((m) => m.uuid !== params.user_uuid);
@@ -829,7 +849,10 @@ export class ChannelsService {
 	async password(params: ChannelSettingProperty) {
 		const channel = await this.findOne.WithRelationsID(params.channel_uuid);
 
-		if (!this.user.hasPermissions(channel, params.user_uuid)) {
+		//  prettier-ignore
+		if (channel.default
+		|| (!params.current_user.adam
+		&& !this.user.hasPermissions(channel, params.current_user.uuid))) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
@@ -856,7 +879,10 @@ export class ChannelsService {
 			throw new BadRequestException("You can't leave direct channel");
 		}
 
-		if (!this.user.inChannel(channel.usersID, params.current_user.uuid)) {
+		//  prettier-ignore
+		if (channel.default
+		|| (!params.current_user.adam
+		&& !this.user.inChannel(channel.usersID, params.current_user.uuid))) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
@@ -869,14 +895,16 @@ export class ChannelsService {
 				remove_user = params.current_user;
 				break;
 			case LeaveAction.Kick:
-				//  prettier-ignore
-				if (!this.user.hasPermissions(channel, params.current_user.uuid) 		// Check current user permissions
-				|| this.user.isAdministrator(channel.administratorID, params.user_uuid) // Check if remote user is administrator
-				|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) { 	// Check if remote user is moderator
-					throw new ForbiddenException(ApiResponseError.NotAllowed);
-				}
-				if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
-					throw new BadRequestException(ApiResponseError.RemoteUserNotFound);
+				if (!params.current_user.adam) {
+					//  prettier-ignore
+					if (!this.user.hasPermissions(channel, params.current_user.uuid) 		// Check current user permissions
+					|| this.user.isAdministrator(channel.administratorID, params.user_uuid) // Check if remote user is administrator
+					|| this.user.isModerator(channel.moderatorsID, params.user_uuid)) { 	// Check if remote user is moderator
+						throw new ForbiddenException(ApiResponseError.NotAllowed);
+					}
+					if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
+						throw new BadRequestException(ApiResponseError.RemoteUserNotFound);
+					}
 				}
 				remove_user = await this.usersRepository
 					.findOneByOrFail({ uuid: params.user_uuid })
@@ -886,6 +914,11 @@ export class ChannelsService {
 					});
 				break;
 			case LeaveAction.Remove:
+				//  prettier-ignore
+				if  (!params.current_user.adam
+				&& !this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
+					throw new ForbiddenException(ApiResponseError.NotAllowed);
+				}
 				break;
 			default:
 				throw new BadRequestException('Invalid action');
@@ -897,15 +930,11 @@ export class ChannelsService {
 
 			await this.save(
 				channel,
-				'Unable to remove user ' + remove_user + ' from channel ' + channel.uuid
+				'Unable to remove user ' + remove_user.uuid + ' from channel ' + channel.uuid
 			);
 		}
 
-		//  prettier-ignore
-		if  (params.action === LeaveAction.Remove
-		&& !this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
-			throw new ForbiddenException(ApiResponseError.NotAllowed);
-		}
+		const removed_user_uuid = params.user_uuid ? params.user_uuid : params.current_user.uuid;
 
 		if (!channel.users.length || params.action === LeaveAction.Remove) {
 			await this.channelRepository.delete(channel.uuid).catch((e) => {
@@ -934,10 +963,10 @@ export class ChannelsService {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Leave,
 				channel: params.channel_uuid,
-				user: remove_user.uuid
+				user: removed_user_uuid
 			});
 		}
-		this.wsService.unsubscribe.channel(remove_user.uuid, params.channel_uuid);
+		this.wsService.unsubscribe.channel(removed_user_uuid, params.channel_uuid);
 	}
 	//#endregion
 }

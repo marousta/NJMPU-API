@@ -18,6 +18,7 @@ export class ChatsMessages {
 	 * Relation Message -> Users
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
+		// onDelete: 'CASCADE',
 		nullable: false
 	})
 	user: string;

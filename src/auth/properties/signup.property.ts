@@ -1,6 +1,12 @@
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 
 export class SignupProperty {
+	@ApiHideProperty()
+	adam: boolean;
+
+	@ApiHideProperty()
+	identifier: number;
+
 	@ApiProperty()
 	username: string;
 
@@ -15,4 +21,7 @@ export class SignupProperty {
 
 	@ApiHideProperty()
 	avatar: string;
+
+	@ApiHideProperty()
+	twofactor: string;
 }

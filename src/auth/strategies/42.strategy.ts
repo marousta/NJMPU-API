@@ -11,7 +11,11 @@ export class Intra42Strategy extends PassportStrategy(Strategy, '42') {
 		super({
 			clientID: configService.get<string>('INTRA42_ID'),
 			clientSecret: configService.get<string>('INTRA42_SECRET'),
-			callbackURL: configService.get<string>('INTRA42_CALLBACK')
+			callbackURL:
+				configService.get<string>('PROTOCOL') +
+				'://' +
+				configService.get<string>('DOMAIN') +
+				'/api/auth/oauth2/42/callback'
 		});
 	}
 

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MulterModule } from '@nestjs/platform-express';
 import { HttpModule } from '@nestjs/axios';
@@ -24,8 +24,8 @@ import { PicturesUsersController, PicturesChatsController } from './pictures.con
 				limits: { fileSize: 1024 * 1024 * configService.get<number>('IMG_MAX_SIZE') }
 			})
 		}),
-		UsersModule,
-		ChatsModule
+		forwardRef(() => UsersModule),
+		forwardRef(() => ChatsModule)
 	],
 	providers: [PicturesService],
 	controllers: [PicturesUsersController, PicturesChatsController],

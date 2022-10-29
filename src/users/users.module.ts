@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Module, forwardRef } from '@nestjs/common';
+import { ConfigService, ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtService } from '@nestjs/jwt';
+import { JwtModule } from '@nestjs/jwt';
 
 import { WsModule } from '../websockets/ws.module';
 
@@ -16,18 +16,18 @@ import { AccessStrategy } from '../auth/strategies/access.strategy';
 import { UsersInfos } from './entities/users.entity';
 import { UsersNotifications } from './entities/notifications.entity';
 import { UsersTokens } from '../auth/tokens/tokens.entity';
+import { PicturesModule } from '../pictures/pictures.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersNotifications]), WsModule],
-	controllers: [UsersController],
-	providers: [
-		UsersService,
-		NotifcationsService,
-		ConfigService,
-		AccessStrategy,
-		TokensService,
-		JwtService
+	imports: [
+		JwtModule,
+		ConfigModule,
+		forwardRef(() => WsModule),
+		forwardRef(() => PicturesModule),
+		TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersNotifications])
 	],
+	controllers: [UsersController],
+	providers: [UsersService, NotifcationsService, ConfigService, AccessStrategy, TokensService],
 	exports: [UsersService]
 })
 export class UsersModule {}
