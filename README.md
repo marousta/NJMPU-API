@@ -7,8 +7,11 @@
 ## Installation
 
 ```bash
-# Generate JWT key file
+# Generate JWT Private file
 $ ssh-keygen -t rsa -m PEM -b 4096 -Z chacha20-poly1305@openssh.com -f jwt.pem -q -N ""
+# Create public key in PEM format
+$ openssl rsa -in jwt.pem -pubout -out jwt.pem.pub
+
 
 # Install node modules
 $ yarn install

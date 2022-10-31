@@ -41,7 +41,7 @@ export class TokensService {
 		return this.jwtService.sign(payload, {
 			algorithm: 'RS256',
 			privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-				encoding: 'ascii'
+				encoding: 'utf8'
 			}),
 			expiresIn: '20m'
 		});
@@ -53,7 +53,7 @@ export class TokensService {
 			{
 				algorithm: 'RS256',
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-					encoding: 'ascii'
+					encoding: 'utf8'
 				}),
 				expiresIn: '3d'
 			}

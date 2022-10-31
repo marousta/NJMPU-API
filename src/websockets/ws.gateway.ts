@@ -77,7 +77,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		const config = {
 			algorithms: ['RS256'],
 			secret: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-				encoding: 'ascii'
+				encoding: 'utf8'
 			})
 		};
 

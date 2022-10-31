@@ -20,6 +20,7 @@ async function bootstrap() {
 	env.check('IMG_PATH', 'string');
 	env.check('IMG_MAX_SIZE', 0);
 	env.check('JWT_PRIVATE', 'string');
+	env.check('JWT_PUBLIC', 'string');
 	env.check('PSQL_HOST', 'string');
 	env.check('PSQL_PORT', 0);
 	env.check('PSQL_USERNAME', 'string');

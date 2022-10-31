@@ -22,8 +22,8 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
 				}
 			]),
 			ignoreExpiration: false,
-			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
-				encoding: 'ascii'
+			secretOrKey: readFileSync(configService.get<string>('JWT_PUBLIC'), {
+				encoding: 'utf8'
 			}),
 			algorithms: 'RS256',
 			passReqToCallback: true

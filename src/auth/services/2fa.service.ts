@@ -47,7 +47,7 @@ export class TwoFactorService {
 			{
 				algorithm: 'RS256',
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-					encoding: 'ascii'
+					encoding: 'utf8'
 				}),
 				expiresIn: '4m'
 			}

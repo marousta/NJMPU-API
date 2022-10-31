@@ -24,7 +24,7 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
 			]),
 			ignoreExpiration: false,
 			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
-				encoding: 'ascii'
+				encoding: 'utf8'
 			}),
 			algorithms: 'RS256',
 			passReqToCallback: true
