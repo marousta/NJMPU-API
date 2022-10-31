@@ -46,13 +46,7 @@ export class PicturesChatsController {
 	) {
 		const user = (req.user as JwtData).infos;
 
-		let filename: string;
-		try {
-			filename = this.picturesService.stripExif(file);
-		} catch (e) {
-			this.logger.error('Unable to create image file', e);
-			throw new InternalServerErrorException();
-		}
+		const filename = await this.picturesService.processImage(file);
 
 		return await this.picturesService.update.channel(user, filename, channel_uuid);
 	}
@@ -75,13 +69,7 @@ export class PicturesUsersController {
 	async userAvatar(@Request() req: Req, @UploadedFile() file: Express.Multer.File) {
 		const user = (req.user as JwtData).infos;
 
-		let filename: string;
-		try {
-			filename = this.picturesService.stripExif(file);
-		} catch (e) {
-			this.logger.error('Unable to create image file', e);
-			throw new InternalServerErrorException();
-		}
+		const filename = await this.picturesService.processImage(file);
 
 		return await this.picturesService.update.user(user, filename);
 	}

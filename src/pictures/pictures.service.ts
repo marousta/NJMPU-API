@@ -1,16 +1,25 @@
-import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common';
+import {
+	Injectable,
+	Logger,
+	BadRequestException,
+	Inject,
+	forwardRef,
+	InternalServerErrorException
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { extname } from 'path';
 import * as fs from 'fs';
 import { ExifTransformer } from './exif-be-gone.fixed';
+const ffmpeg = require('fluent-ffmpeg');
+import { FfprobeData } from 'fluent-ffmpeg';
 
 import { ChannelsService } from '../chats/services/channels.service';
 import { UsersService } from '../users/services/users.service';
 
-import { MulterFileLike } from './types';
-import { forwardRef } from '@nestjs/common';
 import { UsersInfos } from '../users/entities/users.entity';
+
+import { MulterFileLike } from './types';
 
 @Injectable()
 export class PicturesService {
@@ -50,18 +59,22 @@ export class PicturesService {
 		}
 	}
 
-	stripExif(file: MulterFileLike) {
+	private stripExif(file: MulterFileLike) {
+		// No file, nothing to do, return null to clear avatar
 		if (!file) {
 			return null;
 		}
 
+		// Alias
 		const file_path = this.folder + '/' + file.filename;
 		const renamed = file.filename + extname(file.originalname);
 		const renamed_path = this.folder + '/' + renamed;
 
+		// Init
 		const reader = fs.createReadStream(file_path);
 		const writer = fs.createWriteStream(renamed_path);
 
+		// Strip Exifs
 		reader
 			.pipe(new ExifTransformer())
 			.pipe(writer)
@@ -69,7 +82,72 @@ export class PicturesService {
 				fs.rmSync(file_path, { force: true });
 			});
 
+		// Return final filename
 		return renamed;
+	}
+
+	private async resize(file: MulterFileLike) {
+		// No file, nothing to do, return null to clear avatar
+		if (!file) {
+			return null;
+		}
+
+		// Alias
+		const file_path = this.folder + '/' + file.filename;
+		let ext = extname(file.originalname);
+
+		// Get Metadata
+		const metadata_promise = new Promise((resolve, reject) => {
+			ffmpeg.ffprobe(file_path, (err, metadata) => {
+				if (err) {
+					reject(err);
+				}
+				resolve(metadata);
+			});
+		});
+		const metadata = (await metadata_promise.then((r) => r)) as FfprobeData;
+
+		// Check if resize isn't needed
+		if (metadata.streams[0].width < 500 || metadata.streams[0].height < 500) {
+			return file;
+		}
+
+		// Workaround for animated png
+		if (metadata.streams[0].codec_name === 'apng') {
+			ext = '.apng';
+		}
+
+		// Resize
+		const promise = new Promise((resolve, reject) => {
+			ffmpeg(file_path)
+				.videoFilter(`crop=w='min(iw\,ih)':h='min(iw\,ih)',scale=500:500,setsar=1`)
+				.save(file_path + '_resize' + ext)
+				.on('end', () => {
+					resolve(true);
+				})
+				.on('error', (e) => {
+					reject(e);
+				});
+		});
+		await promise.then((r) => r);
+
+		// Rename to original param file name
+		fs.renameSync(file_path + '_resize' + ext, file_path);
+
+		// Return param
+		return file;
+	}
+
+	async processImage(file: MulterFileLike) {
+		let filename: string = null;
+		try {
+			file = await this.resize(file);
+			filename = this.stripExif(file);
+		} catch (e) {
+			this.logger.error('Unable to create image file', e);
+			throw new InternalServerErrorException();
+		}
+		return filename;
 	}
 
 	private async fetch(path: string) {

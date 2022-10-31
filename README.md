@@ -4,6 +4,18 @@
 
 ## Description
 
+### Dependency
+
+<ul>
+<li><a href="https://ffmpeg.org/">FFmpeg</a></li>
+</ul>
+
+### Optional dependency
+
+<ul>
+<li><a href="https://fukuchi.org/works/qrencode/index.html.en">qrencode</a></li>
+</ul>
+
 ## Installation
 
 ```bash
@@ -12,15 +24,9 @@ $ ssh-keygen -t rsa -m PEM -b 4096 -Z chacha20-poly1305@openssh.com -f jwt.pem -
 # Create public key in PEM format
 $ openssl rsa -in jwt.pem -pubout -out jwt.pem.pub
 
-
 # Install node modules
 $ yarn install
-
 ```
-
-### Optional dependency
-
-<a href="https://fukuchi.org/works/qrencode/index.html.en">qrencode</a>
 
 ## Running the app
 
