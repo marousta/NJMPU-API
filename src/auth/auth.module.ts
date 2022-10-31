@@ -16,6 +16,7 @@ import { SessionsController } from './controllers/sessions.controller';
 import { AuthSignInController } from './controllers/methods/auth.signin.controller';
 import { OAuth2Intra42Controller } from './controllers/methods/oauth2.42.controller';
 import { OAuth2DiscordController } from './controllers/methods/oauth2.discord.controller';
+import { OAuth2TwitterController } from './controllers/methods/oauth2.twitter.controller';
 
 import { AuthService } from './services/auth.service';
 import { TwoFactorService } from './services/2fa.service';
@@ -26,6 +27,7 @@ import { AccessStrategy } from './strategies/access.strategy';
 import { RefreshStrategy } from './strategies/refresh.strategy';
 import { Intra42Strategy } from './strategies/42.strategy';
 import { DiscordStrategy } from './strategies/discord.strategy';
+import { TwitterStrategy } from './strategies/twitter.strategy';
 import { TwoFactorStrategy } from './strategies/2fa.strategy';
 
 import { UsersInfos } from '../users/entities/users.entity';
@@ -67,6 +69,13 @@ if (!isEmpty(config.get<string>('DISCORD_ID'))
 && !isEmpty(config.get<string>('DISCORD_SECRET'))) {
 	providers.push(DiscordStrategy);
 	controllers.push(OAuth2DiscordController);
+}
+
+// prettier-ignore
+if (!isEmpty(config.get<string>('TWITTER_ID'))
+&& !isEmpty(config.get<string>('TWITTER_SECRET'))) {
+	providers.push(TwitterStrategy);
+	controllers.push(OAuth2TwitterController);
 }
 
 if (!providers.length || !controllers.length) {

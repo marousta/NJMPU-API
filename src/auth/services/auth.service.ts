@@ -27,7 +27,7 @@ import {
 	TwoFactorSetupRequest
 } from '../types';
 import { UserAction, WsNamespace } from '../../websockets/types';
-import { JwtData } from '../types';
+import { JwtData, TwitterUser } from '../types';
 
 @Injectable()
 export class AuthService {
@@ -71,7 +71,7 @@ export class AuthService {
 			});
 		},
 		byAPI: async (
-			user: Intra42User | DiscordUser,
+			user: Intra42User | DiscordUser | TwitterUser,
 			fingerprint: UserFingerprint
 		): Promise<GeneratedTokens | TwoFactorSetupRequest | TwoFactorRequest> => {
 			const parital_user = getPartialUser(user);
@@ -167,7 +167,7 @@ export class AuthService {
 	};
 
 	async APIHandler(
-		user: Intra42User | DiscordUser,
+		user: Intra42User | DiscordUser | TwitterUser,
 		http: { req: Request; headers: Headers; res: Response }
 	) {
 		const fingerprint = getFingerprint(http.req, http.headers);

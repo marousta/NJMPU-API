@@ -62,6 +62,12 @@ export class AuthController {
 			methods.push("Discord");
 		}
 
+		// prettier-ignore
+		if (!isEmpty(this.configService.get<string>('TWITTER_ID'))
+		&& !isEmpty(this.configService.get<string>('TWITTER_SECRET'))) {
+			methods.push("Twitter");
+		}
+
 		return methods;
 	}
 

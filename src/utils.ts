@@ -2,7 +2,13 @@ import { BadRequestException, InternalServerErrorException, Logger } from '@nest
 import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
 
-import { DiscordUser, Intra42User, PartialUsersInfos, UserFingerprint } from './auth/types';
+import {
+	DiscordUser,
+	Intra42User,
+	PartialUsersInfos,
+	UserFingerprint,
+	TwitterUser
+} from './auth/types';
 
 export function getPlatform(headers: Headers): string {
 	const ua = new UAParser(headers['user-agent']);
@@ -19,7 +25,7 @@ export function getFingerprint(req: Request, headers: Headers): UserFingerprint 
 	};
 }
 
-export function getPartialUser(user: Intra42User | DiscordUser): PartialUsersInfos {
+export function getPartialUser(user: Intra42User | DiscordUser | TwitterUser): PartialUsersInfos {
 	switch (user.interface) {
 		case 'Intra42User':
 			return {
@@ -32,6 +38,12 @@ export function getPartialUser(user: Intra42User | DiscordUser): PartialUsersInf
 				username: user.username,
 				email: user.email,
 				avatar: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}?size=256`
+			};
+		case 'TwitterUser':
+			return {
+				username: user.username,
+				email: user.emails[0].value,
+				avatar: user.photos[0].value.replace('_normal', '')
 			};
 		default:
 			new Logger('getPartialUser').error('unknown user type ', user);
