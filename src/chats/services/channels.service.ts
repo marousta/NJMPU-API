@@ -880,15 +880,17 @@ export class ChannelsService {
 		}
 
 		//  prettier-ignore
-		if (channel.default
-		|| (!params.current_user.adam
-		&& !this.user.inChannel(channel.usersID, params.current_user.uuid))) {
+		if (!params.current_user.adam
+		&& !this.user.inChannel(channel.usersID, params.current_user.uuid)) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
 		let remove_user: UsersInfos = undefined;
 		switch (params.action) {
 			case LeaveAction.Leave:
+				if (params.current_user.adam && channel.default) {
+					throw new ForbiddenException(ApiResponseError.NotAllowed);
+				}
 				if (this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
 					channel.administrator = null;
 				}
@@ -915,8 +917,9 @@ export class ChannelsService {
 				break;
 			case LeaveAction.Remove:
 				//  prettier-ignore
-				if  (!params.current_user.adam
-				&& !this.user.isAdministrator(channel.administratorID, params.current_user.uuid)) {
+				if  (channel.default
+				|| (!params.current_user.adam
+				&& !this.user.isAdministrator(channel.administratorID, params.current_user.uuid))) {
 					throw new ForbiddenException(ApiResponseError.NotAllowed);
 				}
 				break;
@@ -936,7 +939,7 @@ export class ChannelsService {
 
 		const removed_user_uuid = params.user_uuid ? params.user_uuid : params.current_user.uuid;
 
-		if (!channel.users.length || params.action === LeaveAction.Remove) {
+		if ((!channel.users.length && !channel.default) || params.action === LeaveAction.Remove) {
 			await this.channelRepository.delete(channel.uuid).catch((e) => {
 				this.logger.error('Unable to delete channel ' + channel.uuid, e);
 				throw new InternalServerErrorException();

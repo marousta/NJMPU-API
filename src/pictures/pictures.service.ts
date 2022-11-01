@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { extname } from 'path';
 import * as fs from 'fs';
-import { ExifTransformer } from './exif-be-gone.fixed';
+const ExifTransformer = require('exif-be-gone');
 const ffmpeg = require('fluent-ffmpeg');
 import { FfprobeData } from 'fluent-ffmpeg';
 
@@ -106,14 +106,20 @@ export class PicturesService {
 			});
 		});
 		const metadata = (await metadata_promise.then((r) => r)) as FfprobeData;
+		const transparency = metadata.streams[0].pix_fmt.includes('a');
+		const codec = metadata.streams[0].codec_name;
 
 		// Check if resize isn't needed
-		if (metadata.streams[0].width < 500 || metadata.streams[0].height < 500) {
+		if (metadata.streams[0].width <= 500 && metadata.streams[0].height <= 500) {
 			return file;
 		}
 
+		// Compress file
+		if (!transparency) {
+			ext = '.jpeg';
+		}
 		// Workaround for animated png
-		if (metadata.streams[0].codec_name === 'apng') {
+		else if (codec === 'apng' || codec === 'webp') {
 			ext = '.apng';
 		}
 
@@ -133,6 +139,12 @@ export class PicturesService {
 
 		// Rename to original param file name
 		fs.renameSync(file_path + '_resize' + ext, file_path);
+
+		// Setup for next function
+		if (ext === '.apng') {
+			ext = '.png';
+		}
+		file.originalname = file.originalname.replace(/\.[a-z]{3,4}$/gim, ext);
 
 		// Return param
 		return file;
