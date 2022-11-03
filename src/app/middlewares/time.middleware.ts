@@ -1,10 +1,15 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import * as responseTime from 'response-time';
+import { FastifyRequest, FastifyReply } from 'fastify';
 
 @Injectable()
-export class ResponseTimeMiddleware implements NestMiddleware {
+export class ResponseTimeMiddleware {
 	private times: number[] = [];
 	private nbr: number = 0;
+
+	static readonly instance = new ResponseTimeMiddleware();
+
+	private constructor() {}
 
 	private calcAverage() {
 		let total = 0;
@@ -15,7 +20,7 @@ export class ResponseTimeMiddleware implements NestMiddleware {
 		return total / length;
 	}
 
-	getTimes() {
+	private getTimes() {
 		return {
 			count: this.nbr,
 			average: this.calcAverage() || -1,
@@ -23,25 +28,28 @@ export class ResponseTimeMiddleware implements NestMiddleware {
 		};
 	}
 
-	use(req: any, res: any, next: any) {
+	static fn(req: any, res: any, next: any) {
+		const instance = ResponseTimeMiddleware.instance;
+
 		// Exclude avatar upload from api speed counter
-		if (req.params[0] === 'api/avatar') {
+		if (req.url === '/api/avatar') {
 			next();
 			return;
 		}
 
 		// Set times in request object for accessing api speed counter in controller function
-		if (req.params[0] === 'api/stats') {
-			req['times'] = this.getTimes();
+		if (req.url === '/api/stats') {
+			req.headers['times'] = instance.getTimes();
 			next();
 			return;
 		}
-		responseTime((req, res, time) => {
-			this.times.push(time);
-			this.nbr++;
 
-			if (this.times.length > 1000) {
-				this.times.shift();
+		responseTime((req, res, time) => {
+			instance.times.push(time);
+			instance.nbr++;
+
+			if (instance.times.length > 1000) {
+				instance.times.shift();
 			}
 		})(req, res, next);
 	}

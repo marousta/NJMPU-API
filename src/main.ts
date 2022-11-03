@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { ConfigService } from '@nestjs/config';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -12,6 +13,9 @@ import { AppModule } from './app/app.module';
 import { DisabledLogger } from './app/services/disabledLogger.service';
 
 import { ValidateEnv } from './validateEnv';
+
+import { fastifyHelmet } from '@fastify/helmet';
+import { ResponseTimeMiddleware } from './app/middlewares/time.middleware';
 
 async function bootstrap() {
 	const env = new ValidateEnv();
@@ -29,9 +33,15 @@ async function bootstrap() {
 	env.check('PSQL_SYNC', false);
 	env.result();
 
-	const app = await NestFactory.create(AppModule, {
-		logger: process.env['PRODUCTION'] ? new DisabledLogger() : undefined
-	});
+	const app = await NestFactory.create<NestFastifyApplication>(
+		AppModule,
+		new FastifyAdapter({ logger: true }),
+		{
+			logger: process.env['PRODUCTION'] ? new DisabledLogger() : undefined
+		}
+	);
+
+	app.register(fastifyHelmet);
 
 	app.setGlobalPrefix('api');
 
@@ -39,6 +49,8 @@ async function bootstrap() {
 
 	app.use(cookieParser());
 	app.use(requestIp.mw());
+
+	app.use(ResponseTimeMiddleware.fn);
 
 	app.useWebSocketAdapter(new WsAdapter(app));
 
@@ -62,6 +74,6 @@ async function bootstrap() {
 		});
 	}
 
-	await app.listen(3000);
+	await app.listen(3000, '0.0.0.0');
 }
 bootstrap();
