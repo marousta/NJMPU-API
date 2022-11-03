@@ -7,8 +7,8 @@ import { AuthService } from '../services/auth.service';
 import { UsersInfos } from '../../users/entities/users.entity';
 
 @Injectable()
-export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
-	private readonly logger = new Logger(LocalStrategy.name);
+export class EmailStrategy extends PassportStrategy(Strategy, 'local') {
+	private readonly logger = new Logger(EmailStrategy.name);
 
 	constructor(private readonly authService: AuthService) {
 		super({

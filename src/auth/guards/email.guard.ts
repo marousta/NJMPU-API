@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
-export class LocalAuthGuard extends AuthGuard('local') {
+export class EmailAuthGuard extends AuthGuard('local') {
 	handleRequest(err: any, user: any, info: any, context: any, status: any) {
 		if (err || !user) {
 			switch (status) {

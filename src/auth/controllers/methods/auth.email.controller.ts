@@ -4,7 +4,7 @@ import { Response as Res, Request as Req } from 'express';
 
 import { AuthService } from '../../services/auth.service';
 
-import { LocalAuthGuard } from '../../guards/local.guard';
+import { EmailAuthGuard } from '../../guards/email.guard';
 
 import { UsersInfos } from '../../../users/entities/users.entity';
 
@@ -15,10 +15,10 @@ import { ApiResponseError } from '../../types';
 
 @ApiTags('auth · Email')
 @Controller('auth')
-export class AuthSignInController {
+export class AuthEmailController {
 	constructor(private readonly authService: AuthService) {}
 
-	@UseGuards(LocalAuthGuard)
+	@UseGuards(EmailAuthGuard)
 	@ApiBody({ type: SigninProperty })
 	@ApiResponse({ status: 200, description: 'User logged in' })
 	@ApiResponse({ status: 202, description: 'User as 2FA' })
