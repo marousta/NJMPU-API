@@ -19,7 +19,8 @@ import { RefreshAuthGuard } from '../guards/refresh.guard';
 
 import { SignupProperty } from '../properties/signup.property';
 
-import { isEmpty } from '../../utils';
+import { authMethods } from '../authMethods';
+
 import { JwtData, ApiResponseError } from '../types';
 import { ApiResponseError as ApiUsersResponseError } from '../../users/types';
 
@@ -44,34 +45,9 @@ export class AuthController {
 	})
 	@HttpCode(200)
 	authMethods() {
-		const methods: Array<string> = [];
+		const methods = authMethods();
 
-		if (this.configService.get<boolean>('EMAIL_LOGIN')) {
-			methods.push('Email');
-		}
-
-		if (
-			!isEmpty(this.configService.get<string>('INTRA42_ID')) &&
-			!isEmpty(this.configService.get<string>('INTRA42_SECRET'))
-		) {
-			methods.push('Intra42');
-		}
-
-		if (
-			!isEmpty(this.configService.get<string>('DISCORD_ID')) &&
-			!isEmpty(this.configService.get<string>('DISCORD_SECRET'))
-		) {
-			methods.push('Discord');
-		}
-
-		if (
-			!isEmpty(this.configService.get<string>('TWITTER_ID')) &&
-			!isEmpty(this.configService.get<string>('TWITTER_SECRET'))
-		) {
-			methods.push('Twitter');
-		}
-
-		return methods;
+		return methods[0].map((m) => m.name.replace('Strategy', ''));
 	}
 
 	/**
