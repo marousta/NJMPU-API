@@ -7,8 +7,8 @@ import { BlacklistType } from '../types';
 
 @Entity()
 export class ChatsChannelsBlacklist {
-	@PrimaryGeneratedColumn('increment')
-	id: number;
+	@PrimaryGeneratedColumn('uuid')
+	uuid: string;
 
 	@Column({
 		type: 'enum',

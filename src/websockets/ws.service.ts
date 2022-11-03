@@ -235,7 +235,7 @@ export class WsService {
 					case ChatAction.Delete:
 						return this.logger.verbose(
 							`Deleted message id ${
-								data.id
+								data.uuid
 							} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 						);
 					case ChatAction.Remove:

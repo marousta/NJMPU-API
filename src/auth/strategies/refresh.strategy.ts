@@ -33,7 +33,7 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
 	// callback after JWT is validated
 	async validate(req: Request, payload: Jwt): Promise<JwtData> {
 		const user = await this.tokenService.validate(
-			payload.id,
+			payload.tuuid,
 			{ refresh_token: req.cookies['refresh_token'] },
 			req.headers['user-agent'],
 			req.clientIp

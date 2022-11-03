@@ -43,14 +43,14 @@ export class SessionsController {
 		@Query('offset') offset: any
 	) {
 		const jwt = req.user as JwtData;
-		const tid = jwt.token.id;
-		const uuid = jwt.infos.uuid;
+		const tuuid = jwt.token.tuuid;
+		const uuuid = jwt.infos.uuid;
 
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
 		offset = parseUnsigned({ offset });
 
-		return await this.sessionsService.get(tid, uuid, page, limit, offset);
+		return await this.sessionsService.get(tuuid, uuuid, page, limit, offset);
 	}
 
 	@ApiResponse({ status: 200, description: 'Session destroyed' })
@@ -58,11 +58,11 @@ export class SessionsController {
 	@ApiResponse({ status: 404, description: ApiResponseError.InvalidSession })
 	@Delete(':id')
 	@HttpCode(200)
-	async destroy(@Request() req: Req, @Param('id') id: number) {
-		const uuid = (req.user as JwtData).infos.uuid;
-		if (!id) {
+	async destroy(@Request() req: Req, @Param('id') tuuid: string) {
+		const uuuid = (req.user as JwtData).infos.uuid;
+		if (!tuuid) {
 			throw new BadRequestException(ApiResponseError.MissingSession);
 		}
-		await this.sessionsService.destroy(uuid, id);
+		await this.sessionsService.destroy(tuuid, uuuid);
 	}
 }

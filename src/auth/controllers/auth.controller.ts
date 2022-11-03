@@ -111,7 +111,7 @@ export class AuthController {
 	@Post('refresh')
 	async refresh(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
 		const { access_token, refresh_token } = await this.tokensService.update(
-			(req.user as JwtData).token.id
+			(req.user as JwtData).token.tuuid
 		);
 		this.authService.cookie.create(res, { access_token });
 		this.authService.cookie.create(res, { refresh_token });

@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class SessionData {
 	@ApiProperty()
-	id: number;
+	uuid: string;
 
 	@ApiProperty()
 	platform: string;
@@ -36,5 +36,5 @@ export class SessionsGetResponse {
 
 export class SessionsDeleteProperty {
 	@ApiProperty()
-	id: number;
+	uuid: string;
 }

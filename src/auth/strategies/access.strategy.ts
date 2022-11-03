@@ -33,7 +33,7 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 	// callback after JWT is validated
 	async validate(req: Request, payload: Jwt): Promise<JwtData> {
 		const user = await this.tokenService.validate(
-			payload.id,
+			payload.tuuid,
 			{ access_token: req.cookies['access_token'] },
 			req.headers['user-agent'],
 			req.clientIp

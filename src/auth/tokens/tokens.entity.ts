@@ -5,7 +5,7 @@ import { UsersInfos } from '../../users/entities/users.entity';
 @Entity()
 export class UsersTokens {
 	@PrimaryColumn()
-	id: number;
+	uuid: string;
 
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',

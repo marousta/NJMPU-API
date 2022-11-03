@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { readFileSync } from 'fs';
+import { randomUUID } from 'crypto';
 
 import { UsersService } from '../../users/services/users.service';
 import { WsService } from '../../websockets/ws.service';
@@ -37,19 +38,22 @@ export class TokensService {
 		private readonly wsService: WsService
 	) {}
 
-	private accessToken(payload: { id: number; uuid: string }): string {
-		return this.jwtService.sign(payload, {
-			algorithm: 'RS256',
-			privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-				encoding: 'utf8'
-			}),
-			expiresIn: '20m'
-		});
+	private accessToken(tuuid: string, uuuid: string): string {
+		return this.jwtService.sign(
+			{ tuuid, uuuid },
+			{
+				algorithm: 'RS256',
+				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
+					encoding: 'utf8'
+				}),
+				expiresIn: '20m'
+			}
+		);
 	}
 
-	private refreshToken(id: number): string {
+	private refreshToken(tuuid: string): string {
 		return this.jwtService.sign(
-			{ id },
+			{ tuuid },
 			{
 				algorithm: 'RS256',
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
@@ -60,20 +64,20 @@ export class TokensService {
 		);
 	}
 
-	async getUser(id: number): Promise<UsersInfos> {
+	async getUser(uuid: string): Promise<UsersInfos> {
 		const token: UsersTokensID = await this.tokensRepository
 			.createQueryBuilder('token')
-			.where({ id })
+			.where({ uuid })
 			.loadAllRelationIds()
 			.getOneOrFail()
 			.catch((e) => {
-				console.log(id);
+				console.log(uuid);
 				this.logger.error('Failed to fetch token', e);
 				throw new UnauthorizedException();
 			});
 		const user = await this.usersService.findWithRelationsOrNull(
 			{ uuid: token.user_uuid },
-			'Failed to find related user ' + token.user_uuid + ' for token ' + id
+			'Failed to find related user ' + token.user_uuid + ' for token ' + uuid
 		);
 		if (!user) {
 			throw new InternalServerErrorException();
@@ -81,11 +85,11 @@ export class TokensService {
 		return user;
 	}
 
-	async update(id: number): Promise<GeneratedTokens> {
-		const user = await this.getUser(id);
+	async update(uuid: string): Promise<GeneratedTokens> {
+		const user = await this.getUser(uuid);
 
-		const access_token = this.accessToken({ id, uuid: user.uuid });
-		const refresh_token = this.refreshToken(id);
+		const access_token = this.accessToken(uuid, user.uuid);
+		const refresh_token = this.refreshToken(uuid);
 
 		const hashs = await Promise.all([
 			hash(access_token, hash_token_config),
@@ -94,7 +98,7 @@ export class TokensService {
 
 		await this.tokensRepository
 			.save({
-				id,
+				uuid,
 				refresh_date: new Date(),
 				access_token_hash: hashs[0],
 				refresh_token_hash: hashs[1]
@@ -108,10 +112,10 @@ export class TokensService {
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
 
-	async delete(id: number) {
+	async delete(uuid: string) {
 		await this.tokensRepository
 			.save({
-				id,
+				uuid,
 				access_token_hash: null,
 				refresh_token_hash: null,
 				ua_hash: null,
@@ -122,18 +126,18 @@ export class TokensService {
 				throw new BadRequestException();
 			});
 
-		this.logger.debug('Token destroyed ' + id);
+		this.logger.debug('Token destroyed ' + uuid);
 	}
 
 	async validate(
-		id: number,
+		uuid: string,
 		token: { access_token: string } | { refresh_token: string },
 		ua: string,
 		ip: string
 	) {
 		const token_type = Object.keys(token)[0];
 
-		const user_token = await this.tokensRepository.findOneByOrFail({ id }).catch((e) => {
+		const user_token = await this.tokensRepository.findOneByOrFail({ uuid }).catch((e) => {
 			this.logger.verbose('Token not found', e);
 			throw new UnauthorizedException();
 		});
@@ -158,15 +162,14 @@ export class TokensService {
 			throw new UnauthorizedException();
 		}
 
-		return this.getUser(id);
+		return this.getUser(uuid);
 	}
 
 	async create(payload: JwtPayload): Promise<GeneratedTokens> {
-		const tokens = await this.tokensRepository.find({ order: { id: 'ASC' } });
-		const id = tokens.length ? tokens[tokens.length - 1].id + 1 : 1;
+		const tuuid = randomUUID();
 
-		const access_token = this.accessToken({ id, uuid: payload.uuid });
-		const refresh_token = this.refreshToken(id);
+		const access_token = this.accessToken(tuuid, payload.uuid);
+		const refresh_token = this.refreshToken(tuuid);
 
 		const hashs = await Promise.all([
 			hash(access_token, hash_token_config),
@@ -177,7 +180,7 @@ export class TokensService {
 
 		const date = new Date();
 		const new_tokens = this.tokensRepository.create({
-			id: id,
+			uuid: tuuid,
 			user_uuid: payload.uuid,
 			creation_date: date,
 			platform: payload.fingerprint.platform,
@@ -187,16 +190,20 @@ export class TokensService {
 			ip_hash: hashs[3]
 		});
 
-		await this.tokensRepository.save(new_tokens).catch((e) => {
+		await this.tokensRepository.save(new_tokens).catch(async (e) => {
 			this.logger.error('Failed to insert token', e);
-			throw new InternalServerErrorException();
+			// fallback
+			new_tokens.uuid = randomUUID();
+			return await this.tokensRepository.save(new_tokens).catch((e) => {
+				throw new InternalServerErrorException();
+			});
 		});
 
 		this.logger.debug('User as sign in ' + payload.uuid);
 		this.wsService.dispatch.user(payload.uuid, {
 			namespace: WsNamespace.User,
 			action: UserAction.Session,
-			id,
+			uuid: tuuid,
 			platform: payload.fingerprint.platform,
 			creation_date: date,
 			active: true

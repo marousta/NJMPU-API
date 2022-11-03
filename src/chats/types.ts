@@ -42,7 +42,7 @@ export enum ApiResponseError {
 	AlreadyDirect = 'Direct message with this user already exist',
 	NotAllowed = 'Not allowed',
 	MissingChannelUUID = 'Missing channel uuid',
-	MissingID = 'Missing id',
+	MissingUUID = 'Missing uuid',
 	RemoteUserNotFound = 'User not found',
 	ChannelNotFound = 'Channel not found',
 	MessageNotFound = 'Message not found',

@@ -631,7 +631,7 @@ export class ChatsController {
 	@ApiTags('chats · messages')
 	@ApiBody({ type: MessageDeleteProperty })
 	@ApiResponse({ status: 200, description: 'Deleted' })
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingID })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingUUID })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.MessageNotFound })
 	@HttpCode(200)
@@ -639,16 +639,15 @@ export class ChatsController {
 	async deleteMessage(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: { id: any }
+		@Body() body: { uuid: string }
 	) {
 		const user_uuid = (req.user as JwtData).infos.uuid;
 
-		const id = parseUnsigned({ id: body.id });
-		if (!id) {
-			throw new BadRequestException(ApiResponseError.MissingID);
+		if (isEmpty(body.uuid)) {
+			throw new BadRequestException(ApiResponseError.MissingUUID);
 		}
 
-		await this.messagesService.delete(channel_uuid, user_uuid, id);
+		await this.messagesService.delete(channel_uuid, user_uuid, body.uuid);
 	}
 	//#endregion
 }

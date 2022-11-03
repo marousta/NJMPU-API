@@ -13,7 +13,7 @@ export class MessagesGetProperty {
 
 class MessageData {
 	@ApiProperty()
-	id: number;
+	uuid: string;
 
 	@ApiProperty()
 	user: string;

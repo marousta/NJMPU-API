@@ -64,9 +64,9 @@ export class ChannelsBlacklistService {
 
 		if (isExpired) {
 			await this.remove(
-				entry.id,
+				entry.uuid,
 				('Unable to delete entry ' +
-					entry.id +
+					entry.uuid +
 					' in blacklist for channel ' +
 					entry.channel) as string
 			);
@@ -101,8 +101,8 @@ export class ChannelsBlacklistService {
 		return !isExpired;
 	}
 
-	async remove(id: number, error_msg: string) {
-		await this.blacklistRepository.delete(id).catch((e) => {
+	async remove(uuid: string, error_msg: string) {
+		await this.blacklistRepository.delete(uuid).catch((e) => {
 			this.logger.error(error_msg, e);
 			throw new InternalServerErrorException();
 		});
@@ -176,8 +176,8 @@ export class ChannelsBlacklistService {
 			});
 
 		await this.remove(
-			entry.id,
-			'Unable to delete entry ' + entry.id + ' in blacklist for channel ' + channel.uuid
+			entry.uuid,
+			'Unable to delete entry ' + entry.uuid + ' in blacklist for channel ' + channel.uuid
 		);
 
 		return channel;

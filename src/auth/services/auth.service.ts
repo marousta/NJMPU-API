@@ -150,17 +150,17 @@ export class AuthService {
 			await this.usersService.create(params);
 		},
 		disconnect: async (payload: JwtData) => {
-			const user = await this.tokensService.getUser(payload.token.id).catch((e) => null);
+			const user = await this.tokensService.getUser(payload.token.tuuid).catch((e) => null);
 			if (!user) {
 				return;
 			}
 
-			await this.tokensService.delete(payload.token.id);
+			await this.tokensService.delete(payload.token.tuuid);
 
 			this.wsService.dispatch.user(user.uuid, {
 				namespace: WsNamespace.User,
 				action: UserAction.Session,
-				id: payload.token.id,
+				uuid: payload.token.tuuid,
 				active: false
 			});
 		}

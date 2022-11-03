@@ -36,7 +36,7 @@ export class SessionsService {
 	 * Service
 	 */
 	async get(
-		tid: number,
+		tuuid: string,
 		uuid: string,
 		page: number = 1,
 		limit: number = 0,
@@ -48,18 +48,17 @@ export class SessionsService {
 
 		const ret = await this.tokenRepository
 			.createQueryBuilder('token')
-			.select(['token.id', 'token.platform', 'token.creation_date', 'token.refresh_date'])
+			.select(['token.uuid', 'token.platform', 'token.creation_date', 'token.refresh_date'])
 			.where({ user_uuid: uuid })
 			.orderBy('refresh_date', 'DESC')
 			.addOrderBy('creation_date', 'DESC')
-			.addOrderBy('id', 'DESC')
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
 			.getManyAndCount();
 
 		let data: SessionData[] = ret[0].map((token) => {
 			const ret = {
-				id: token.id,
+				uuid: token.uuid,
 				platform: token.platform,
 				creation_date: token.creation_date,
 				active: this.isActive(
@@ -67,7 +66,7 @@ export class SessionsService {
 				),
 				current: false
 			};
-			if (token.id === tid) {
+			if (token.uuid === tuuid) {
 				ret.current = true;
 			}
 			return ret;
@@ -78,13 +77,13 @@ export class SessionsService {
 		return { data, count, total, page, page_count };
 	}
 
-	async destroy(uuid: string, id: number) {
+	async destroy(tuuid: string, uuuid: string) {
 		let session = await this.tokenRepository
 			.createQueryBuilder('token')
-			.where({ id, user_uuid: uuid })
+			.where({ uuid: tuuid, user_uuid: uuuid })
 			.getOneOrFail()
 			.catch((e) => {
-				this.logger.verbose('No session found for ' + uuid + ' with id ' + id, e);
+				this.logger.verbose('No session found for ' + uuuid + ' with id ' + tuuid, e);
 				throw new NotFoundException(ApiResponseError.InvalidSession);
 			});
 
@@ -95,11 +94,11 @@ export class SessionsService {
 		session.ip_hash = '';
 
 		await this.tokenRepository.save(session).catch((e) => {
-			this.logger.debug('Unable to destroy session ' + id, e);
+			this.logger.debug('Unable to destroy session ' + tuuid, e);
 			throw new InternalServerErrorException();
 		});
 
-		this.wsService.dispatch.user(uuid, {
+		this.wsService.dispatch.user(uuuid, {
 			namespace: WsNamespace.User,
 			action: UserAction.Refresh
 		});

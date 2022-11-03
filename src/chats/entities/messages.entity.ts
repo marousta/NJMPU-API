@@ -5,8 +5,8 @@ import { ChatsChannels } from './channels.entity';
 
 @Entity()
 export class ChatsMessages {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@PrimaryGeneratedColumn('uuid')
+	uuid: string;
 
 	@Column()
 	creation_date: Date;

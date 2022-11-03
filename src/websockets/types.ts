@@ -60,7 +60,7 @@ export interface WsChatRemove extends WsChat {
 }
 
 export interface WsMessage {
-	id: number;
+	uuid: string;
 	text: string;
 	time: Date;
 }
@@ -73,7 +73,7 @@ export interface WsChatSend extends WsChat {
 
 export interface WsChatDelete extends WsChat {
 	action: ChatAction.Delete;
-	id: number;
+	uuid: string;
 }
 
 export interface WsChatPromote extends WsChat {
@@ -148,7 +148,7 @@ export interface WsUserAvatar extends WsUser {
 
 export interface WsUserUpdateSession extends WsUser {
 	action: UserAction.Session;
-	id: number;
+	uuid: string;
 	active: boolean;
 }
 

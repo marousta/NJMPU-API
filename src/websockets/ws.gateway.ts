@@ -66,11 +66,11 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		return ret;
 	}
 
-	private getUUID(parsed_cookies: any): string | null {
+	private getUUUID(parsed_cookies: any): string | null {
 		if (!parsed_cookies) {
 			return null;
 		}
-		return parsed_cookies.access_token.uuid;
+		return parsed_cookies.access_token.uuuid;
 	}
 
 	async validate(cookies: any, ua: string, ip: string): Promise<boolean> {
@@ -95,12 +95,17 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 
 		const valid_token = await Promise.all([
 			this.tokensService
-				.validate(valid_jwt_token[0].id, { access_token: cookies['access_token'] }, ua, ip)
+				.validate(
+					valid_jwt_token[0].tuuid,
+					{ access_token: cookies['access_token'] },
+					ua,
+					ip
+				)
 				.then((r) => true)
 				.catch((e) => false),
 			this.tokensService
 				.validate(
-					valid_jwt_token[1].id,
+					valid_jwt_token[1].tuuid,
 					{ refresh_token: cookies['refresh_token'] },
 					ua,
 					ip
@@ -137,7 +142,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 
 		// Post validation
 		const parsed_cookies: any = this.parseCookies(cookies);
-		const uuid = this.getUUID(parsed_cookies);
+		const uuid = this.getUUUID(parsed_cookies);
 		if (!uuid) {
 			this.logger.error('Cannot get user uuid, this should not happen');
 			throw new InternalServerErrorException();

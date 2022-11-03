@@ -112,19 +112,19 @@ export class MessagesService {
 			channel: new_message.channel,
 			user: new_message.user,
 			message: {
-				id: new_message.id,
+				uuid: new_message.uuid,
 				text: new_message.message,
 				time: new_message.creation_date
 			}
 		});
 	}
 
-	async delete(channel_uuid: string, user_uuid: string, id: number) {
+	async delete(channel_uuid: string, user_uuid: string, uuid: string) {
 		const requests = await Promise.all([
 			this.messageRepository
-				.findOneOrFail({ where: { id }, relations: ['user', 'channel'] })
+				.findOneOrFail({ where: { uuid }, relations: ['user', 'channel'] })
 				.catch((e) => {
-					this.logger.verbose('Unable to find message ' + id, e);
+					this.logger.verbose('Unable to find message ' + uuid, e);
 					throw new NotFoundException(ApiResponseError.MessageNotFound);
 				}),
 			this.channelsService.findOne.WithRelationsID(channel_uuid)
@@ -148,7 +148,7 @@ export class MessagesService {
 			action: ChatAction.Delete,
 			user: user_uuid,
 			channel: channel_uuid,
-			id: message.id
+			uuid: message.uuid
 		});
 	}
 }
