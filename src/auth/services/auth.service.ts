@@ -173,11 +173,12 @@ export class AuthService {
 		const fingerprint = getFingerprint(http.req, http.headers);
 
 		const ret = await this.login.byAPI(user, fingerprint);
-		// prettier-ignore
 		if (!ret) {
 			const partial_user = getPartialUser(user);
 
-			http.res.redirect(`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&avatar=${partial_user.avatar}`);
+			http.res.redirect(
+				`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&avatar=${partial_user.avatar}`
+			);
 		} else if (ret.interface === 'TwoFactorRequest') {
 			this.cookie.create(http.res, { twofactor_token: ret.token });
 

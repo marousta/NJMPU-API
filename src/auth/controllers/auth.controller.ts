@@ -50,22 +50,25 @@ export class AuthController {
 			methods.push('Email');
 		}
 
-		// prettier-ignore
-		if (!isEmpty(this.configService.get<string>('INTRA42_ID'))
-		&& !isEmpty(this.configService.get<string>('INTRA42_SECRET'))) {
-			methods.push("Intra42");
+		if (
+			!isEmpty(this.configService.get<string>('INTRA42_ID')) &&
+			!isEmpty(this.configService.get<string>('INTRA42_SECRET'))
+		) {
+			methods.push('Intra42');
 		}
 
-		// prettier-ignore
-		if (!isEmpty(this.configService.get<string>('DISCORD_ID'))
-		&& !isEmpty(this.configService.get<string>('DISCORD_SECRET'))) {
-			methods.push("Discord");
+		if (
+			!isEmpty(this.configService.get<string>('DISCORD_ID')) &&
+			!isEmpty(this.configService.get<string>('DISCORD_SECRET'))
+		) {
+			methods.push('Discord');
 		}
 
-		// prettier-ignore
-		if (!isEmpty(this.configService.get<string>('TWITTER_ID'))
-		&& !isEmpty(this.configService.get<string>('TWITTER_SECRET'))) {
-			methods.push("Twitter");
+		if (
+			!isEmpty(this.configService.get<string>('TWITTER_ID')) &&
+			!isEmpty(this.configService.get<string>('TWITTER_SECRET'))
+		) {
+			methods.push('Twitter');
 		}
 
 		return methods;

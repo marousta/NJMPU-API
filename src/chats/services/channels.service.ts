@@ -269,9 +269,10 @@ export class ChannelsService {
 				'Unable to find channel ' + channel_uuid
 			);
 
-			//  prettier-ignore
-			if (channel.type === ChannelType.Direct
-			|| !this.user.hasPermissions(channel, user_uuid)) {
+			if (
+				channel.type === ChannelType.Direct ||
+				!this.user.hasPermissions(channel, user_uuid)
+			) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -412,8 +413,10 @@ export class ChannelsService {
 				throw new NotFoundException(ApiResponseError.ChannelNotFound);
 			});
 
-		//  prettier-ignore
-		if (channel.type === ChannelType.Private && !this.user.inChannel(channel.usersID, user_uuid)) {
+		if (
+			channel.type === ChannelType.Private &&
+			!this.user.inChannel(channel.usersID, user_uuid)
+		) {
 			throw new NotFoundException(ApiResponseError.ChannelNotFound);
 		}
 
@@ -677,9 +680,10 @@ export class ChannelsService {
 			return channel;
 		},
 		remove: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
-			//  prettier-ignore
-			if (!params.current_user.adam
-			&& !this.user.hasPermissions(channel, params.current_user.uuid)) {
+			if (
+				!params.current_user.adam &&
+				!this.user.hasPermissions(channel, params.current_user.uuid)
+			) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -690,9 +694,10 @@ export class ChannelsService {
 		get: async (params: BlacklistGetProperty) => {
 			const channel = await this.findOne.WithRelationsID(params.channel_uuid);
 
-			//  prettier-ignore
-			if (!params.current_user.adam
-			&& !this.user.hasPermissions(channel, params.current_user.uuid)) {
+			if (
+				!params.current_user.adam &&
+				!this.user.hasPermissions(channel, params.current_user.uuid)
+			) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
 			}
 
@@ -851,8 +856,7 @@ export class ChannelsService {
 
 		//  prettier-ignore
 		if (channel.default
-		|| (!params.current_user.adam
-		&& !this.user.hasPermissions(channel, params.current_user.uuid))) {
+		|| (!params.current_user.adam && !this.user.hasPermissions(channel, params.current_user.uuid))) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
@@ -879,9 +883,10 @@ export class ChannelsService {
 			throw new BadRequestException("You can't leave direct channel");
 		}
 
-		//  prettier-ignore
-		if (!params.current_user.adam
-		&& !this.user.inChannel(channel.usersID, params.current_user.uuid)) {
+		if (
+			!params.current_user.adam &&
+			!this.user.inChannel(channel.usersID, params.current_user.uuid)
+		) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 
@@ -918,8 +923,7 @@ export class ChannelsService {
 			case LeaveAction.Remove:
 				//  prettier-ignore
 				if  (channel.default
-				|| (!params.current_user.adam
-				&& !this.user.isAdministrator(channel.administratorID, params.current_user.uuid))) {
+				|| (!params.current_user.adam && !this.user.isAdministrator(channel.administratorID, params.current_user.uuid))) {
 					throw new ForbiddenException(ApiResponseError.NotAllowed);
 				}
 				break;

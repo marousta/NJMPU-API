@@ -134,10 +134,12 @@ export class MessagesService {
 		const channel = requests[1];
 		const user = message.user as any as UsersInfos;
 
-		//  prettier-ignore
-		if (!user.adam
-		&& !this.channelsService.user.hasPermissions(channel, user_uuid)	//User is not administrator or moderator
-		&& user.uuid !== user_uuid) {										//User is not the message owner
+		if (
+			!user.adam &&
+			!this.channelsService.user.hasPermissions(channel, user_uuid) && //User is not administrator or moderator
+			user.uuid !== user_uuid
+		) {
+			//User is not the message owner
 			throw new ForbiddenException(ApiResponseError.NotAllowed);
 		}
 

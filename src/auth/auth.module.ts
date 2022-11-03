@@ -50,30 +50,22 @@ if (config.get<boolean>('EMAIL_LOGIN')) {
 	controllers.push(AuthSignInController);
 }
 
-// prettier-ignore
-if (!isEmpty(config.get<string>('INTRA42_ID'))
-&& !isEmpty(config.get<string>('INTRA42_SECRET'))) {
+if (!isEmpty(config.get<string>('INTRA42_ID')) && !isEmpty(config.get<string>('INTRA42_SECRET'))) {
 	providers.push(Intra42Strategy);
 	controllers.push(OAuth2Intra42Controller);
 }
 
-// prettier-ignore
-if (!isEmpty(config.get<string>('INTRA42_ID'))
-&& !isEmpty(config.get<string>('INTRA42_SECRET'))) {
+if (!isEmpty(config.get<string>('INTRA42_ID')) && !isEmpty(config.get<string>('INTRA42_SECRET'))) {
 	providers.push(Intra42Strategy);
 	controllers.push(OAuth2Intra42Controller);
 }
 
-// prettier-ignore
-if (!isEmpty(config.get<string>('DISCORD_ID'))
-&& !isEmpty(config.get<string>('DISCORD_SECRET'))) {
+if (!isEmpty(config.get<string>('DISCORD_ID')) && !isEmpty(config.get<string>('DISCORD_SECRET'))) {
 	providers.push(DiscordStrategy);
 	controllers.push(OAuth2DiscordController);
 }
 
-// prettier-ignore
-if (!isEmpty(config.get<string>('TWITTER_ID'))
-&& !isEmpty(config.get<string>('TWITTER_SECRET'))) {
+if (!isEmpty(config.get<string>('TWITTER_ID')) && !isEmpty(config.get<string>('TWITTER_SECRET'))) {
 	providers.push(TwitterStrategy);
 	controllers.push(OAuth2TwitterController);
 }
