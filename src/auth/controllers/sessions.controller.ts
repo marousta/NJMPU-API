@@ -19,7 +19,7 @@ import { AccessAuthGuard } from '../guards/access.guard';
 import { SessionsGetResponse } from '../properties/sessions.property';
 import { GlobalQueryProperty } from '../../app/properties/global.property';
 
-import { parseUnsigned } from '../../utils';
+import { parseUnsigned, isEmpty } from '../../utils';
 import { ApiResponseError, JwtData } from '../types';
 
 @UseGuards(AccessAuthGuard)
@@ -56,11 +56,11 @@ export class SessionsController {
 	@ApiResponse({ status: 200, description: 'Session destroyed' })
 	@ApiResponse({ status: 400, description: ApiResponseError.MissingSession })
 	@ApiResponse({ status: 404, description: ApiResponseError.InvalidSession })
-	@Delete(':id')
+	@Delete(':uuid')
 	@HttpCode(200)
-	async destroy(@Request() req: Req, @Param('id') tuuid: string) {
+	async destroy(@Request() req: Req, @Param('uuid') tuuid: string) {
 		const uuuid = (req.user as JwtData).infos.uuid;
-		if (!tuuid) {
+		if (!tuuid || tuuid === 'undefined') {
 			throw new BadRequestException(ApiResponseError.MissingSession);
 		}
 		await this.sessionsService.destroy(tuuid, uuuid);

@@ -23,6 +23,8 @@ import { authMethods } from '../authMethods';
 
 import { JwtData, ApiResponseError } from '../types';
 import { ApiResponseError as ApiUsersResponseError } from '../../users/types';
+import { isEmpty } from '../../utils';
+import { BadRequestException } from '@nestjs/common';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -61,6 +63,15 @@ export class AuthController {
 	@HttpCode(201)
 	@Post('signup')
 	async registerLocal(@Body() params: SignupProperty) {
+		if (
+			isEmpty(params.username) ||
+			isEmpty(params.email) ||
+			isEmpty(params.password) ||
+			isEmpty(params.confirm)
+		) {
+			throw new BadRequestException(ApiResponseError.EmptyFields);
+		}
+
 		await this.authService.user.create(params);
 		// TODO: Dispatch to admin new user created
 	}

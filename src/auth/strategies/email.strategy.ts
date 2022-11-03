@@ -5,9 +5,10 @@ import { Strategy } from 'passport-local';
 import { AuthService } from '../services/auth.service';
 
 import { UsersInfos } from '../../users/entities/users.entity';
+import { isEmpty } from '../../utils';
 
 @Injectable()
-export class EmailStrategy extends PassportStrategy(Strategy, 'local') {
+export class EmailStrategy extends PassportStrategy(Strategy, 'email') {
 	private readonly logger = new Logger(EmailStrategy.name);
 
 	constructor(private readonly authService: AuthService) {
@@ -17,7 +18,7 @@ export class EmailStrategy extends PassportStrategy(Strategy, 'local') {
 	}
 
 	async validate(email: string, password: string): Promise<UsersInfos> {
-		if (!email || !password) {
+		if (isEmpty(email) || isEmpty(password)) {
 			this.logger.verbose('Missing credentials');
 			throw new BadRequestException('Missing credentials');
 		}

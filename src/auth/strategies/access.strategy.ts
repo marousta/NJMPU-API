@@ -8,6 +8,7 @@ import { readFileSync } from 'fs';
 import { TokensService } from '../tokens/tokens.service';
 
 import { Jwt, JwtData } from '../types';
+import { isEmpty } from '../../utils';
 
 @Injectable()
 export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
@@ -38,6 +39,10 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 			req.headers['user-agent'],
 			req.clientIp
 		);
+		if (!user) {
+			console.log(user);
+			throw new Error();
+		}
 		return {
 			token: payload,
 			infos: user

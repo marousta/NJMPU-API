@@ -28,9 +28,10 @@ import { NotificationsGetResponse } from './properties/notifications.get.propert
 import { GlobalQueryProperty } from '../app/properties/global.property';
 import { UsersPatchProperty } from './properties/users.patch.property';
 
-import { parseUnsigned } from '../utils';
+import { parseUnsigned, isEmpty } from '../utils';
 import { ApiResponseError } from './types';
 import { JwtData } from '../auth/types';
+import { BadRequestException } from '@nestjs/common';
 
 @UseGuards(AccessAuthGuard)
 @Controller('users')
@@ -55,10 +56,15 @@ export class UsersController {
 
 	@ApiTags('users · infos')
 	@ApiResponse({ status: 200, description: 'User details', type: UsersGetResponse })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
 	@Get('profile/:uuid')
 	@HttpCode(200)
 	async get(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
 		const user = (req.user as JwtData).infos;
 
 		return await this.usersService.get(user, remote_user_uuid);
@@ -69,9 +75,10 @@ export class UsersController {
 	 */
 	@ApiTags('users · account')
 	@ApiResponse({ status: 200, description: 'Password changed' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.Confirmmismatch })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.PasswordsIdentical })
-	@ApiResponse({ status: 400.3, description: ApiResponseError.Passwordmismatch })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.ConfirmMismatch })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.PasswordsIdentical })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.Passwordmismatch })
 	@Patch()
 	@HttpCode(200)
 	async changePassword(@Request() req: Req, @Body() body: UsersPatchProperty) {
@@ -110,13 +117,18 @@ export class UsersController {
 
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Friendship status', type: UsersRelationsResponse })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.FriendYourself })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyFriends })
-	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyPending })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.FriendYourself })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyFriends })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyPending })
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
 	@Post('friendship/:uuid')
 	@HttpCode(200)
 	async updateRelations(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
 		const user = (req.user as JwtData).infos;
 
 		return await this.usersService.relations.dispatch('ADD', user, remote_user_uuid);
@@ -124,13 +136,18 @@ export class UsersController {
 
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Friendship status', type: UsersRelationsResponse })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.FriendYourself })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyFriends })
-	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyPending })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.FriendYourself })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyFriends })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyPending })
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
 	@Delete('friendship/:uuid')
 	@HttpCode(200)
 	async removeRelations(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
 		const user = (req.user as JwtData).infos;
 
 		return await this.usersService.relations.dispatch('REMOVE', user, remote_user_uuid);
@@ -170,7 +187,12 @@ export class UsersController {
 	})
 	@HttpCode(200)
 	@Delete('notifications/:uuid')
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingParameters })
 	async readNotifications(@Request() req: Req, @Param('uuid') notification_uuid: string) {
+		if (isEmpty(notification_uuid) || notification_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
 		const user = (req.user as JwtData).infos;
 
 		return await this.notifcationsService.delete(user, notification_uuid);
@@ -181,11 +203,16 @@ export class UsersController {
 	 */
 	@ApiTags('users · invite')
 	@ApiResponse({ status: 200, description: 'User notified' })
-	@ApiResponse({ status: 400, description: ApiResponseError.BadRequest })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.BadRequest })
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
 	@Post('invite/:uuid')
 	@HttpCode(200)
 	async invite(@Request() req: Req, @Param('uuid') remote_uuid: string) {
+		if (isEmpty(remote_uuid) || remote_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
 		const user = (req.user as JwtData).infos;
 
 		await this.usersService.invite(user, remote_uuid);

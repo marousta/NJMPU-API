@@ -773,7 +773,7 @@ export class ChannelsService {
 
 				// Check if remote user is in channel
 				if (!this.user.inChannel(channel.usersID, params.user_uuid)) {
-					throw new BadRequestException(ApiResponseError.NotAllowed);
+					throw new BadRequestException(ApiResponseError.AlreadyInChannel);
 				}
 			}
 

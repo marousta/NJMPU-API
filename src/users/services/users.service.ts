@@ -208,7 +208,7 @@ export class UsersService {
 		new_password_confirm: string
 	) {
 		if (new_password !== new_password_confirm) {
-			throw new BadRequestException(ApiResponseError.Confirmmismatch);
+			throw new BadRequestException(ApiResponseError.ConfirmMismatch);
 		}
 
 		if (current_password === new_password) {

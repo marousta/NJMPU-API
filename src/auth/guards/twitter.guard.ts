@@ -7,8 +7,7 @@ export class TwitterAuthGuard extends AuthGuard('twitter') {
 
 	handleRequest(err: any, user: any, info: any, context: any, status: any) {
 		if (err || !user) {
-			console.log(err);
-			this.logger.verbose('Invalid Twitter token');
+			this.logger.verbose('Invalid Twitter token: ' + JSON.stringify(info));
 			// context.getResponse().redirect('/'); // TODO
 			throw new BadRequestException('The provided authorization is invalid or expired');
 		}

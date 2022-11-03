@@ -25,7 +25,8 @@ export enum ApiResponseError {
 	InteractYourself = "You can't interact with yourself",
 	NotFound = "User doesn't exist",
 	BadRequest = 'Bad request format',
-	Confirmmismatch = 'New password mismatch confirmation input',
+	ConfirmMismatch = 'New password mismatch confirmation input',
 	PasswordsIdentical = "Passwords can't be identical",
-	Passwordmismatch = 'Password mismatch'
+	Passwordmismatch = 'Password mismatch',
+	MissingParameters = 'Invalid or missing parameters'
 }

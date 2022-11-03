@@ -22,7 +22,7 @@ import { TwoFactorAuthGuard } from '../guards/2fa.guard';
 
 import { TwoFactorProperty } from '../properties/2fa.property';
 
-import { getFingerprint } from '../../utils';
+import { getFingerprint, isEmpty } from '../../utils';
 import { ApiResponseError, JwtData } from '../types';
 
 @ApiTags('auth · 2FA')
@@ -67,6 +67,10 @@ export class TwoFactorController {
 		@Response({ passthrough: true }) res: Res,
 		@Body() body: TwoFactorProperty
 	) {
+		if (isEmpty(body.code)) {
+			throw new HttpException(ApiResponseError.TwoFactorInvalidCode, 417);
+		}
+
 		const jwt = req.user as any;
 		const uuid = jwt.token.uuid;
 		const user = jwt.infos;

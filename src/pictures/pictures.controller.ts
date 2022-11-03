@@ -8,7 +8,7 @@ import {
 	Request,
 	Param,
 	HttpCode,
-	InternalServerErrorException
+	BadRequestException
 } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
@@ -20,6 +20,8 @@ import { PicturesInterceptor } from './pictures.interceptor';
 import { AccessAuthGuard } from '../auth/guards/access.guard';
 
 import { FileInterceptorBody } from './pictures.property';
+
+import { isEmpty } from '../utils';
 
 import { PicturesResponse } from './types';
 import { ApiResponseError } from '../chats/types';
@@ -35,6 +37,7 @@ export class PicturesChatsController {
 	@ApiConsumes('multipart/form-data')
 	@ApiBody(FileInterceptorBody)
 	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesResponse })
+	@ApiResponse({ status: 400, description: ApiResponseError.MissingParameters })
 	@ApiResponse({ status: 413, description: ApiResponseError.ImgTooLarge })
 	@HttpCode(200)
 	@Post(':uuid/avatar')
@@ -44,6 +47,10 @@ export class PicturesChatsController {
 		@Param('uuid') channel_uuid: string,
 		@UploadedFile() file: Express.Multer.File
 	) {
+		if (isEmpty(channel_uuid) || channel_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
 		const user = (req.user as JwtData).infos;
 
 		const filename = await this.picturesService.processImage(file);

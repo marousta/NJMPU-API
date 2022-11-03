@@ -6,8 +6,8 @@ export class AccessAuthGuard extends AuthGuard('access') {
 	private readonly logger = new Logger(AccessAuthGuard.name);
 
 	handleRequest(err: any, user: any, info: any, context: any, status: any) {
-		if (err || info?.name === 'JsonWebTokenError' || info?.name === 'Error') {
-			this.logger.verbose('Invalid ACCESS JWT');
+		if (err || !user) {
+			this.logger.verbose('Invalid ACCESS JWT: ' + JSON.stringify(info));
 			throw new UnauthorizedException();
 		}
 		return user;
