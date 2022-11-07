@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { WsModule } from '../websockets/ws.module';
+import { UsersModule } from '../users/users.module';
 
 import { ChannelsService } from './services/channels.service';
 import { ChannelsBlacklistService } from './services/channels.blacklist.service';
@@ -22,7 +23,8 @@ import { UsersInfos } from '../users/entities/users.entity';
 			ChatsChannelsBlacklist,
 			UsersInfos
 		]),
-		WsModule
+		WsModule,
+		forwardRef(() => UsersModule)
 	],
 	controllers: [ChatsController],
 	providers: [ChannelsService, ChannelsBlacklistService, MessagesService],

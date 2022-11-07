@@ -164,6 +164,16 @@ export interface WsUserNotification extends WsUser {
 	creation_date: Date;
 }
 
+export interface WsUserBlock extends WsUser {
+	action: UserAction.Block;
+	user: string;
+}
+
+export interface WsUserUnblock extends WsUser {
+	action: UserAction.Unblock;
+	user: string;
+}
+
 /**
  * Game
  */

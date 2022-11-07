@@ -70,6 +70,25 @@ export class UsersInfos {
 		}
 		this.friends.push(user);
 	}
+
+	/**
+	 * Relation user -> blocklist
+	 */
+	@ManyToMany((type) => UsersInfos, (user) => user.uuid, {
+		onDelete: 'CASCADE',
+		nullable: true
+	})
+	@JoinTable({
+		name: 'users_infos_blocklist'
+	})
+	blocklist: UsersInfos[];
+
+	addBlocklist(user: UsersInfos) {
+		if (this.blocklist === undefined) {
+			this.blocklist = new Array<UsersInfos>();
+		}
+		this.blocklist.push(user);
+	}
 }
 
 export interface UsersInfosID extends UsersInfos {

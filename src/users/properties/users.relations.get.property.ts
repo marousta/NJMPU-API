@@ -10,15 +10,18 @@ export class UsersRelationsProperty {
 	user_uuid: string;
 }
 
-export class UsersRelationsResponse {
-	@ApiProperty()
-	friendship: UsersFriendship;
-}
-
 export class UsersFriendshipResponse {
 	@ApiProperty()
 	uuid: string;
 
 	@ApiProperty()
 	friendship: UsersFriendship;
+}
+
+export class UsersRelationsResponse {
+	@ApiProperty({ isArray: true, type: UsersFriendshipResponse })
+	friendship: Array<UsersFriendshipResponse>;
+
+	@ApiProperty({ isArray: true, type: String })
+	blocklist: Array<string>;
 }

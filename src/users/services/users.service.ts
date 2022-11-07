@@ -13,7 +13,10 @@ import { WsService } from '../../websockets/ws.service';
 
 import { UsersInfos, UsersInfosID } from '../entities/users.entity';
 
-import { UsersFriendshipResponse } from '../properties/users.relations.get.property';
+import {
+	UsersFriendshipResponse,
+	UsersRelationsResponse
+} from '../properties/users.relations.get.property';
 import { UsersMeResponse } from '../properties/users.get.property';
 
 import { hash_password_config } from '../../auth/config';
@@ -22,7 +25,13 @@ import { genIdentifier } from '../../utils';
 import { hash, hash_verify } from '../../auth/utils';
 
 import { UserAction, WsNamespace } from '../../websockets/types';
-import { ApiResponseError, UsersFriendship, NotifcationType } from '../types';
+import {
+	ApiResponseError,
+	UsersFriendship,
+	NotifcationType,
+	RelationType,
+	RelationDispatch
+} from '../types';
 import { SignupProperty } from 'src/auth/properties/signup.property';
 import { createHash } from 'crypto';
 import { PicturesService } from '../../pictures/pictures.service';
@@ -64,6 +73,7 @@ export class UsersService {
 			.createQueryBuilder('user')
 			.where(where)
 			.leftJoinAndSelect('user.friends', 'friends')
+			.leftJoinAndSelect('user.blocklist', 'blocklist')
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose(error_msg, e);
@@ -73,16 +83,11 @@ export class UsersService {
 	}
 
 	async findWithRelations(where: object, error_msg: string): Promise<UsersInfosID> {
-		return this.usersRepository
-			.createQueryBuilder('user')
-			.where(where)
-			.leftJoinAndSelect('user.friends', 'friends')
-			.getOneOrFail()
-			.catch((e) => {
-				this.logger.verbose(error_msg, e);
-				this.logger.verbose(where);
-				throw new NotFoundException();
-			});
+		const user = await this.findWithRelationsOrNull(where, error_msg);
+		if (!user) {
+			throw new NotFoundException();
+		}
+		return user;
 	}
 
 	usersAreFriends(current_user: UsersInfos, remote_user: UsersInfos): UsersFriendship {
@@ -106,6 +111,20 @@ export class UsersService {
 		}
 
 		return UsersFriendship.False;
+	}
+
+	isCurrentlyBlocked(current_user: UsersInfos, remote_user: UsersInfos) {
+		return current_user.blocklist.map((user) => user.uuid).includes(remote_user.uuid);
+	}
+
+	isRemotelyBlocked(current_user: UsersInfos, remote_user: UsersInfos) {
+		return remote_user.blocklist.map((user) => user.uuid).includes(current_user.uuid);
+	}
+
+	isBlocked(current_user: UsersInfos, remote_user: UsersInfos) {
+		const isCurrentlyBlocked = this.isCurrentlyBlocked(current_user, remote_user);
+		const isRemotelyBlocked = this.isRemotelyBlocked(current_user, remote_user);
+		return isCurrentlyBlocked || isRemotelyBlocked;
 	}
 
 	/**
@@ -229,25 +248,46 @@ export class UsersService {
 	}
 
 	public readonly relations = {
-		dispatch: async (action: string, current_user: UsersInfos, remote_user_uuid: string) => {
+		dispatch: async (
+			type: RelationType,
+			action: RelationDispatch,
+			current_user: UsersInfos,
+			remote_user_uuid: string
+		) => {
 			if (current_user.uuid === remote_user_uuid) {
-				throw new BadRequestException(ApiResponseError.FriendYourself);
+				switch (type) {
+					case RelationType.friends:
+						throw new BadRequestException(ApiResponseError.FriendYourself);
+					case RelationType.blocklist:
+						throw new BadRequestException(ApiResponseError.BlockYourself);
+				}
 			}
 
 			const remote_user = await this.findWithRelations(
 				{ uuid: remote_user_uuid },
-				'Unable to find remote user ' + remote_user_uuid
+				'Unable to find remote user in relation' + remote_user_uuid
 			);
 
-			switch (action) {
-				case 'ADD':
-					return await this.relations.friends.add(current_user, remote_user);
-				case 'REMOVE':
-					return await this.relations.friends.remove(current_user, remote_user);
+			switch (type) {
+				case RelationType.friends:
+					switch (action) {
+						case RelationDispatch.add:
+							return await this.relations.friends.add(current_user, remote_user);
+						case RelationDispatch.remove:
+							return await this.relations.friends.remove(current_user, remote_user);
+					}
+				case RelationType.blocklist:
+					switch (action) {
+						case RelationDispatch.add:
+							return await this.relations.blocklist.add(current_user, remote_user);
+						case RelationDispatch.remove:
+							return await this.relations.blocklist.remove(current_user, remote_user);
+					}
 			}
 		},
-		get: async (user: UsersInfos): Promise<UsersFriendshipResponse[]> => {
+		get: (user: UsersInfos): UsersRelationsResponse => {
 			const users = user.friends;
+			const blocked = user.blocklist;
 
 			let friendship: UsersFriendshipResponse[] = [];
 			users.forEach((remote_user) => {
@@ -266,7 +306,19 @@ export class UsersService {
 				});
 			});
 
-			return friendship;
+			let blocklist: Array<string>;
+			blocked.forEach((remote_user) => {
+				if (!remote_user) {
+					return;
+				}
+
+				blocklist.push(remote_user.uuid);
+			});
+
+			return {
+				friendship,
+				blocklist
+			};
 		},
 		friends: {
 			add: async (current_user: UsersInfos, remote_user: UsersInfos) => {
@@ -329,6 +381,63 @@ export class UsersService {
 						e
 					);
 					throw new InternalServerErrorException();
+				});
+			}
+		},
+		blocklist: {
+			add: async (current_user: UsersInfos, remote_user: UsersInfos) => {
+				if (this.isCurrentlyBlocked(current_user, remote_user)) {
+					throw new BadRequestException(ApiResponseError.AlreadyBlocked);
+				}
+
+				await this.relations.friends.remove(current_user, remote_user);
+
+				current_user.addBlocklist(remote_user);
+				await this.usersRepository.save(current_user).catch((e) => {
+					this.logger.error('Unable to update blocklist of user ' + current_user.uuid, e);
+					throw new InternalServerErrorException();
+				});
+
+				this.wsService.dispatch.user(current_user.uuid, {
+					namespace: WsNamespace.User,
+					action: UserAction.Block,
+					user: remote_user.uuid
+				});
+				this.wsService.dispatch.user(remote_user.uuid, {
+					namespace: WsNamespace.User,
+					action: UserAction.Block,
+					user: current_user.uuid
+				});
+			},
+			remove: async (current_user: UsersInfos, remote_user: UsersInfos) => {
+				if (!this.isCurrentlyBlocked(current_user, remote_user)) {
+					throw new BadRequestException(ApiResponseError.NotBlocked);
+				}
+
+				current_user.blocklist = current_user.blocklist.filter(
+					(user) => user.uuid !== remote_user.uuid
+				);
+
+				await this.usersRepository.save(current_user).catch((e) => {
+					this.logger.error(
+						'Unable to remove block of users ' +
+							remote_user.uuid +
+							' for ' +
+							current_user.uuid,
+						e
+					);
+					throw new InternalServerErrorException();
+				});
+
+				this.wsService.dispatch.user(current_user.uuid, {
+					namespace: WsNamespace.User,
+					action: UserAction.Unblock,
+					user: remote_user.uuid
+				});
+				this.wsService.dispatch.user(remote_user.uuid, {
+					namespace: WsNamespace.User,
+					action: UserAction.Unblock,
+					user: current_user.uuid
 				});
 			}
 		}

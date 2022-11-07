@@ -12,6 +12,7 @@ import { Repository } from 'typeorm';
 
 import { ChannelsService } from './channels.service';
 import { WsService } from '../../websockets/ws.service';
+import { UsersService } from '../../users/services/users.service';
 
 import { UsersInfos } from '../../users/entities/users.entity';
 import { ChatsMessages } from '../entities/messages.entity';
@@ -19,7 +20,7 @@ import { ChatsMessages } from '../entities/messages.entity';
 import { MessageStoreProperty } from '../properties/messages.store.property';
 import { MessagesGetResponse } from '../properties/messages.get.propoerty';
 
-import { ApiResponseError } from '../types';
+import { ApiResponseError, ChannelType } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
 import { ChannelsBlacklistService } from './channels.blacklist.service';
 
@@ -32,6 +33,8 @@ export class MessagesService {
 		@Inject(forwardRef(() => ChannelsService))
 		private readonly channelsService: ChannelsService,
 		private readonly blacklistService: ChannelsBlacklistService,
+		@Inject(forwardRef(() => UsersService))
+		private readonly usersService: UsersService,
 		private readonly wsService: WsService
 	) {}
 
@@ -84,11 +87,31 @@ export class MessagesService {
 	async store(params: MessageStoreProperty) {
 		const requests = await Promise.all([
 			this.channelsService.user.inChannelFind(params.channel_uuid, params.current_user.uuid),
-			this.blacklistService.isMuted(params.channel_uuid, params.current_user.uuid)
+			this.blacklistService.isMuted(params.channel_uuid, params.current_user.uuid),
+			this.channelsService.findOne.WithUsersAndRelationsID(
+				{ uuid: params.channel_uuid },
+				'Unable to find channel ' + params.channel_uuid
+			)
 		]);
 
 		const userInChannel = requests[0];
 		const muted = requests[1];
+		const channel = requests[2];
+
+		if (channel.type === ChannelType.Direct) {
+			const remote_user_uuid = channel.users.filter(
+				(user) => user.uuid !== params.current_user.uuid
+			)[0].uuid;
+			const remote_user = await this.usersService.findWithRelations(
+				{ uuid: remote_user_uuid },
+				'Unable to find remote user for blocklist compare ' + remote_user_uuid
+			);
+
+			const isBlocked = this.usersService.isBlocked(params.current_user, remote_user);
+			if (isBlocked) {
+				throw new ForbiddenException(ApiResponseError.NotAllowed);
+			}
+		}
 
 		if (!params.current_user.adam && (!userInChannel || muted)) {
 			throw new ForbiddenException(ApiResponseError.NotAllowed);

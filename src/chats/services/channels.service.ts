@@ -15,6 +15,7 @@ import * as argon2 from 'argon2';
 import { ChannelsBlacklistService } from './channels.blacklist.service';
 import { MessagesService } from './messages.service';
 import { WsService } from '../../websockets/ws.service';
+import { UsersService } from '../../users/services/users.service';
 
 import { ChatsChannels, ChatsChannelsID } from '../entities/channels.entity';
 import { UsersInfos } from '../../users/entities/users.entity';
@@ -60,6 +61,8 @@ export class ChannelsService {
 		@Inject(forwardRef(() => MessagesService))
 		private readonly messagesService: MessagesService,
 		private readonly blacklistService: ChannelsBlacklistService,
+		@Inject(forwardRef(() => UsersService))
+		private readonly usersService: UsersService,
 		private readonly wsService: WsService
 	) {}
 
@@ -518,16 +521,19 @@ export class ChannelsService {
 		},
 		direct: async (params: ChatsDirect) => {
 			if (params.current_user.uuid === params.user_uuid) {
-				throw new BadRequestException("You can't DM yourself");
+				throw new BadRequestException(ApiResponseError.DirectYourseft);
 			}
 
 			const current_user = params.current_user;
-			const remote_user = await this.usersRepository
-				.findOneByOrFail({ uuid: params.user_uuid })
-				.catch((e) => {
-					this.logger.error('Unable to find relatiom user ' + params.user_uuid, e);
-					throw new NotFoundException(ApiResponseError.RemoteUserNotFound);
-				});
+			const remote_user = await this.usersService.findWithRelations(
+				{ uuid: params.user_uuid },
+				'Unable to find relatiom user ' + params.user_uuid
+			);
+
+			const isBlocked = this.usersService.isBlocked(current_user, remote_user);
+			if (isBlocked) {
+				throw new BadRequestException(ApiResponseError.NotAllowed);
+			}
 
 			const name = current_user.uuid + '+' + remote_user.uuid;
 			const rev_name = remote_user.uuid + '+' + current_user.uuid;
@@ -544,7 +550,7 @@ export class ChannelsService {
 					return null;
 				});
 			if (exist) {
-				throw new BadRequestException('Direct message with this user already exist');
+				throw new BadRequestException(ApiResponseError.AlreadyDirect);
 			}
 
 			// Save to database

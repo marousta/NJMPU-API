@@ -29,7 +29,7 @@ import { GlobalQueryProperty } from '../app/properties/global.property';
 import { UsersPatchProperty } from './properties/users.patch.property';
 
 import { parseUnsigned, isEmpty } from '../utils';
-import { ApiResponseError } from './types';
+import { ApiResponseError, RelationType, RelationDispatch } from './types';
 import { JwtData } from '../auth/types';
 import { BadRequestException } from '@nestjs/common';
 
@@ -124,14 +124,19 @@ export class UsersController {
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
 	@Post('friendship/:uuid')
 	@HttpCode(200)
-	async updateRelations(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+	async updateFriendship(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
 		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.dispatch('ADD', user, remote_user_uuid);
+		return await this.usersService.relations.dispatch(
+			RelationType.friends,
+			RelationDispatch.add,
+			user,
+			remote_user_uuid
+		);
 	}
 
 	@ApiTags('users · relations')
@@ -143,14 +148,65 @@ export class UsersController {
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
 	@Delete('friendship/:uuid')
 	@HttpCode(200)
-	async removeRelations(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+	async removeFriendship(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
 		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.dispatch('REMOVE', user, remote_user_uuid);
+		return await this.usersService.relations.dispatch(
+			RelationType.friends,
+			RelationDispatch.remove,
+			user,
+			remote_user_uuid
+		);
+	}
+
+	@ApiTags('users · relations')
+	@ApiResponse({ status: 200, description: 'Block status', type: UsersRelationsResponse })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.BlockYourself })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyBlocked })
+	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
+	@Post('blocklist/:uuid')
+	@HttpCode(200)
+	async updateBlocklist(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
+		const user = (req.user as JwtData).infos;
+
+		return await this.usersService.relations.dispatch(
+			RelationType.blocklist,
+			RelationDispatch.add,
+			user,
+			remote_user_uuid
+		);
+	}
+
+	@ApiTags('users · relations')
+	@ApiResponse({ status: 200, description: 'Block status', type: UsersRelationsResponse })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.BlockYourself })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.NotBlocked })
+	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
+	@Delete('blocklist/:uuid')
+	@HttpCode(200)
+	async removeBlocklist(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+			throw new BadRequestException(ApiResponseError.MissingParameters);
+		}
+
+		const user = (req.user as JwtData).infos;
+
+		return await this.usersService.relations.dispatch(
+			RelationType.blocklist,
+			RelationDispatch.remove,
+			user,
+			remote_user_uuid
+		);
 	}
 
 	/**

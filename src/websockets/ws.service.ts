@@ -30,7 +30,9 @@ import {
 	WsUserExpired,
 	WsUserNotification,
 	WsUserSession,
-	WsUserUpdateSession
+	WsUserUpdateSession,
+	WsUserBlock,
+	WsUserUnblock
 } from './types';
 
 @Injectable()
@@ -156,6 +158,8 @@ export class WsService {
 				| WsUserSession
 				| WsUserUpdateSession
 				| WsUserNotification
+				| WsUserBlock
+				| WsUserUnblock
 		) => {
 			const client = this.ws.clients.values();
 			let c: WebSocket = null;
@@ -190,6 +194,20 @@ export class WsService {
 					case UserAction.Notification:
 						this.logger.verbose(
 							`New notification for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
+								i
+							)}`
+						);
+						break;
+					case UserAction.Block:
+						this.logger.verbose(
+							`Blocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
+								i
+							)}`
+						);
+						break;
+					case UserAction.Unblock:
+						this.logger.verbose(
+							`Unblocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
 								i
 							)}`
 						);
