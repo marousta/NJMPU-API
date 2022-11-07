@@ -67,6 +67,17 @@ export class WsService {
 		return true;
 	}
 
+	private wsHasUUID(uuid: string) {
+		const client = this.ws.clients.values();
+		let c = null;
+		while ((c = client.next().value)) {
+			if (c['user'].uuid === uuid) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * Serivce
 	 */
@@ -333,7 +344,7 @@ export class WsService {
 	}
 
 	disconnected(uuid: string) {
-		if (this.subscribed_channels && this.subscribed_channels[uuid]) {
+		if (!this.wsHasUUID(uuid) && this.subscribed_channels && this.subscribed_channels[uuid]) {
 			delete this.subscribed_channels[uuid];
 			this.logger.verbose('No more connected client with user ' + uuid);
 		}
