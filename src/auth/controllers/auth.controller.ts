@@ -19,7 +19,7 @@ import { RefreshAuthGuard } from '../guards/refresh.guard';
 
 import { SignupProperty } from '../properties/signup.property';
 
-import { authMethods } from '../authMethods';
+import { getMethods } from '../authMethods';
 
 import { JwtData, ApiResponseError } from '../types';
 import { ApiResponseError as ApiUsersResponseError } from '../../users/types';
@@ -47,9 +47,7 @@ export class AuthController {
 	})
 	@HttpCode(200)
 	authMethods() {
-		const methods = authMethods();
-
-		return methods[0].map((m) => m.name.replace('Strategy', ''));
+		return getMethods();
 	}
 
 	/**

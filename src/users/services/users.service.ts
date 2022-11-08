@@ -90,6 +90,10 @@ export class UsersService {
 		return user;
 	}
 
+	save(user: UsersInfos) {
+		return this.usersRepository.save(user);
+	}
+
 	usersAreFriends(current_user: UsersInfos, remote_user: UsersInfos): UsersFriendship {
 		const current_friend = current_user.friends
 			.map((user) => user.uuid)

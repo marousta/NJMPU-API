@@ -1,4 +1,5 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { SessionModule } from 'nestjs-session';
 
 import { AuthEmailController } from './controllers/methods/auth.email.controller';
 import { OAuth2Intra42Controller } from './controllers/methods/oauth2.42.controller';
@@ -13,6 +14,7 @@ import { TwitterStrategy } from './strategies/twitter.strategy';
 import { colors } from '../types';
 
 import { isEmpty } from '../utils';
+import { randomBytes } from 'crypto';
 
 export function authMethods(config: ConfigService = undefined) {
 	if (!config) {
@@ -24,6 +26,7 @@ export function authMethods(config: ConfigService = undefined) {
 
 	const providers: Array<any> = [];
 	const controllers: Array<any> = [];
+	const modules: Array<any> = [];
 
 	if (config.get<boolean>('EMAIL_LOGIN')) {
 		providers.push(EmailStrategy);
@@ -52,6 +55,16 @@ export function authMethods(config: ConfigService = undefined) {
 	) {
 		providers.push(TwitterStrategy);
 		controllers.push(OAuth2TwitterController);
+		modules.push(
+			SessionModule.forRoot({
+				session: {
+					secret: randomBytes(4096).toString('base64'),
+					name: 'twitter_session',
+					unset: 'destroy'
+				},
+				forRoutes: ['/auth/oauth2/twitter']
+			})
+		);
 	}
 
 	if (!providers.length || !controllers.length) {
@@ -59,5 +72,11 @@ export function authMethods(config: ConfigService = undefined) {
 		process.exit(1);
 	}
 
-	return [providers, controllers];
+	return [providers, controllers, modules];
+}
+
+export function getMethods() {
+	const methods = authMethods();
+
+	return methods[0].map((m) => m.name.replace('Strategy', ''));
 }

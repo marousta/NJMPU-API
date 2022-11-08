@@ -31,9 +31,11 @@ import { authMethods } from './authMethods';
 const methods = authMethods();
 const providers: Array<any> = methods[0];
 const controllers: Array<any> = methods[1];
+const modules: Array<any> = methods[2];
 
 @Module({
 	imports: [
+		...modules,
 		ConfigModule,
 		PassportModule,
 		HttpModule,

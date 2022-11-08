@@ -61,12 +61,18 @@ export class AppService {
 			return;
 		}
 
-		const exist = await this.usersService.findWithRelationsOrNull(
-			{ adam: true, email },
-			'ignored'
-		);
+		const exist = await this.usersService.findWithRelationsOrNull({ email }, 'ignored');
 		if (exist) {
 			this.logger.log('Root user is present');
+
+			if (!exist.adam) {
+				exist.adam = true;
+				await this.usersService.save(exist).catch((e) => {
+					this.logger.error(e);
+					process.exit(1);
+				});
+				this.logger.debug('hotfixed');
+			}
 			return;
 		}
 

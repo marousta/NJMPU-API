@@ -17,14 +17,9 @@ import { AppController } from './app.controller';
 
 import { AppService } from './services/app.service';
 
-import { SessionModule } from 'nestjs-session';
-
 @Module({
 	imports: [
 		HttpModule,
-		SessionModule.forRoot({
-			session: { secret: 'keyboard cat' }
-		}),
 		ConfigModule.forRoot({
 			isGlobal: true
 		}),
