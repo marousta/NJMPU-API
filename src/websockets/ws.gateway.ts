@@ -9,17 +9,18 @@ import {
 } from '@nestjs/websockets';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
-import { Server, WebSocket } from 'ws';
+import { Server } from 'ws';
 import { Request as Req } from 'express';
 import * as getHeaders from 'get-headers';
 import * as cookie from 'cookie';
 import { getClientIp } from 'request-ip';
 import { readFileSync } from 'fs';
+import { randomUUID } from 'crypto';
 
 import { WsService } from './ws.service';
 import { TokensService } from '../auth/tokens/tokens.service';
 
-import { UserAction, WsNamespace } from './types';
+import { UserAction, WebSocketUser, WsNamespace } from './types';
 import { UsersService } from '../users/services/users.service';
 
 @WebSocketGateway({
@@ -123,7 +124,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	// 	console.log('onMessage ' + data);
 	// }
 
-	async handleConnection(@ConnectedSocket() client: WebSocket, @Request() req: Req) {
+	async handleConnection(@ConnectedSocket() client: WebSocketUser, @Request() req: Req) {
 		// Validation
 		const headers = getHeaders.array(req.rawHeaders);
 		const ip = getClientIp(req);
@@ -154,23 +155,23 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		if (!user) {
 			throw new InternalServerErrorException();
 		}
-		client['user'] = user;
-		client['refresh_token_exp'] = parsed_cookies.refresh_token.exp;
+		client.uuid = randomUUID();
+		client.user = user;
+		client.refresh_token_exp = parsed_cookies.refresh_token.exp;
 
-		await this.wsService.connected(uuid);
+		await this.wsService.connected(client);
 	}
 
-	handleDisconnect(client: WebSocket) {
-		const user = client['user'];
+	handleDisconnect(client: WebSocketUser) {
+		const user = client.user;
 		if (!user) {
 			this.logger.verbose('Disconnected unauthenticated client');
 			return;
 		}
-		this.wsService.disconnected(user.uuid);
+		this.wsService.disconnected(client);
 	}
 
 	afterInit(server: Server) {
-		this.wsService.ws = server;
 		this.logger.log('Websocket is live');
 	}
 }

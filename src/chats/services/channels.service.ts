@@ -49,6 +49,7 @@ import {
 	ApiResponseError
 } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
+import { channel } from 'diagnostics_channel';
 
 @Injectable()
 export class ChannelsService {
@@ -71,16 +72,17 @@ export class ChannelsService {
 	 */
 	//#region  Utils
 	readonly findOne = {
-		WithRelationsID: async (channel_uuid: string): Promise<ChatsChannelsID> => {
+		WithRelationsID: async (where: object, error_msg: string): Promise<ChatsChannelsID> => {
 			return await this.channelRepository
 				.createQueryBuilder('channels')
-				.where({ uuid: channel_uuid })
+				.where(where)
 				.loadRelationIdAndMap('channels.administratorID', 'channels.administrator')
 				.loadRelationIdAndMap('channels.moderatorsID', 'channels.moderators')
 				.loadRelationIdAndMap('channels.usersID', 'channels.users')
 				.getOneOrFail()
 				.catch((e) => {
-					this.logger.verbose('Unable to find channel ' + channel_uuid, e);
+					this.logger.verbose(error_msg, e);
+					this.logger.verbose(where);
 					throw new NotFoundException(ApiResponseError.ChannelNotFound);
 				});
 		},
@@ -244,7 +246,10 @@ export class ChannelsService {
 			});
 		},
 		inChannelFind: async (channel_uuid: string, user_uuid: string): Promise<boolean> => {
-			const channel = await this.findOne.WithRelationsID(channel_uuid);
+			const channel = await this.findOne.WithRelationsID(
+				{ uuid: channel_uuid },
+				'Unable to find channel ' + channel_uuid
+			);
 			return this.user.inChannel(channel.usersID, user_uuid);
 		},
 		inChannel: (usersID: string[], user_uuid: string) => {
@@ -504,11 +509,8 @@ export class ChannelsService {
 				});
 			}
 
-			// Subscribe user to channel
-			this.wsService.subscribe.channel(user.uuid, new_channel.uuid);
-
 			// Dispatch joined message
-			this.wsService.dispatch.channel({
+			this.wsService.dispatch.channel([user.uuid], {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Join,
 				channel: new_channel.uuid,
@@ -562,10 +564,6 @@ export class ChannelsService {
 			request.addUser(current_user);
 			request.addUser(remote_user);
 			const new_direct = await this.save(request, 'Unable to create channel');
-
-			// Subscribe user to channel
-			this.wsService.subscribe.channel(current_user.uuid, new_direct.uuid);
-			this.wsService.subscribe.channel(remote_user.uuid, new_direct.uuid);
 
 			// Dispatch joined message
 			this.wsService.dispatch.user(current_user.uuid, {
@@ -659,16 +657,16 @@ export class ChannelsService {
 			parsed.current_user.uuid
 		);
 
-		// Subscribe user to channel
-		this.wsService.subscribe.channel(userObj.uuid, channelObj.uuid);
-
 		// Dispatch user joined to all members of channel
-		this.wsService.dispatch.channel({
-			namespace: WsNamespace.Chat,
-			action: ChatAction.Join,
-			channel: channelObj.uuid,
-			user: userObj.uuid
-		});
+		this.wsService.dispatch.channel(
+			channelObj.users.map((user) => user.uuid),
+			{
+				namespace: WsNamespace.Chat,
+				action: ChatAction.Join,
+				channel: channelObj.uuid,
+				user: userObj.uuid
+			}
+		);
 	}
 
 	readonly blacklist = {
@@ -698,7 +696,10 @@ export class ChannelsService {
 			return channel;
 		},
 		get: async (params: BlacklistGetProperty) => {
-			const channel = await this.findOne.WithRelationsID(params.channel_uuid);
+			const channel = await this.findOne.WithRelationsID(
+				{ uuid: params.channel_uuid },
+				'Unable to find channel ' + params.channel_uuid
+			);
 
 			if (
 				!params.current_user.adam &&
@@ -751,7 +752,7 @@ export class ChannelsService {
 			await this.save(channel, error_msg);
 
 			const expiration = params.expiration !== 0 ? dateFromOffset(params.expiration) : null;
-			this.wsService.dispatch.channel({
+			this.wsService.dispatch.channel(channel.usersID, {
 				namespace: WsNamespace.Chat,
 				action: params.action,
 				user: params.user_uuid,
@@ -844,7 +845,7 @@ export class ChannelsService {
 					});
 					break;
 				case ChannelType.Private:
-					this.wsService.dispatch.channel({
+					this.wsService.dispatch.channel(channel.usersID, {
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Avatar,
 						channel: channel.uuid,
@@ -858,7 +859,10 @@ export class ChannelsService {
 	};
 
 	async password(params: ChannelSettingProperty) {
-		const channel = await this.findOne.WithRelationsID(params.channel_uuid);
+		const channel = await this.findOne.WithRelationsID(
+			{ uuid: params.channel_uuid },
+			'Unable to find channel ' + params.channel_uuid
+		);
 
 		//  prettier-ignore
 		if (channel.default
@@ -964,7 +968,7 @@ export class ChannelsService {
 					});
 					break;
 				case ChannelType.Private:
-					this.wsService.dispatch.channel({
+					this.wsService.dispatch.channel(channel.usersID, {
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Remove,
 						channel: params.channel_uuid
@@ -972,14 +976,13 @@ export class ChannelsService {
 					break;
 			}
 		} else {
-			this.wsService.dispatch.channel({
+			this.wsService.dispatch.channel(channel.usersID, {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Leave,
 				channel: params.channel_uuid,
 				user: removed_user_uuid
 			});
 		}
-		this.wsService.unsubscribe.channel(removed_user_uuid, params.channel_uuid);
 	}
 	//#endregion
 }

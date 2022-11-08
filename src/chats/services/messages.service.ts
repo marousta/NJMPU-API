@@ -86,22 +86,24 @@ export class MessagesService {
 
 	async store(params: MessageStoreProperty) {
 		const requests = await Promise.all([
-			this.channelsService.user.inChannelFind(params.channel_uuid, params.current_user.uuid),
-			this.blacklistService.isMuted(params.channel_uuid, params.current_user.uuid),
-			this.channelsService.findOne.WithUsersAndRelationsID(
+			this.channelsService.findOne.WithRelationsID(
 				{ uuid: params.channel_uuid },
 				'Unable to find channel ' + params.channel_uuid
-			)
+			),
+			this.blacklistService.isMuted(params.channel_uuid, params.current_user.uuid)
 		]);
 
-		const userInChannel = requests[0];
+		const channel = requests[0];
 		const muted = requests[1];
-		const channel = requests[2];
+		const userInChannel = this.channelsService.user.inChannel(
+			channel.usersID,
+			params.current_user.uuid
+		);
 
 		if (channel.type === ChannelType.Direct) {
-			const remote_user_uuid = channel.users.filter(
-				(user) => user.uuid !== params.current_user.uuid
-			)[0].uuid;
+			const remote_user_uuid = channel.usersID.filter(
+				(uuid) => uuid !== params.current_user.uuid
+			)[0];
 			const remote_user = await this.usersService.findWithRelations(
 				{ uuid: remote_user_uuid },
 				'Unable to find remote user for blocklist compare ' + remote_user_uuid
@@ -129,7 +131,7 @@ export class MessagesService {
 			throw new InternalServerErrorException();
 		});
 
-		this.wsService.dispatch.channel({
+		this.wsService.dispatch.channel(channel.usersID, {
 			namespace: WsNamespace.Chat,
 			action: ChatAction.Send,
 			channel: new_message.channel,
@@ -150,7 +152,10 @@ export class MessagesService {
 					this.logger.verbose('Unable to find message ' + uuid, e);
 					throw new NotFoundException(ApiResponseError.MessageNotFound);
 				}),
-			this.channelsService.findOne.WithRelationsID(channel_uuid)
+			this.channelsService.findOne.WithRelationsID(
+				{ uuid: channel_uuid },
+				'Unable to find channel ' + channel_uuid
+			)
 		]);
 
 		const message = requests[0];
@@ -168,7 +173,7 @@ export class MessagesService {
 
 		await this.messageRepository.save({ ...message, message: null });
 
-		this.wsService.dispatch.channel({
+		this.wsService.dispatch.channel(channel.usersID, {
 			namespace: WsNamespace.Chat,
 			action: ChatAction.Delete,
 			user: user_uuid,

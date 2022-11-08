@@ -1,15 +1,16 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Server, WebSocket } from 'ws';
+import { Server } from 'ws';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
 
 import { peerOrPeers as PeerOrPeers } from '../utils';
+import { UsersInfos } from '../users/entities/users.entity';
 
 import {
 	ChatAction,
-	SubscribedChannels,
+	SubscribedDictionary,
 	WsChatCreate,
 	WsChatDelete,
 	WsChatDemote,
@@ -32,14 +33,15 @@ import {
 	WsUserSession,
 	WsUserUpdateSession,
 	WsUserBlock,
-	WsUserUnblock
+	WsUserUnblock,
+	WebSocketUser
 } from './types';
 
 @Injectable()
 export class WsService {
 	private readonly logger = new Logger(WsService.name);
 	public ws: Server = null;
-	public subscribed_channels: SubscribedChannels;
+	private subscribed: SubscribedDictionary = {};
 
 	constructor(
 		@InjectRepository(ChatsChannels)
@@ -54,14 +56,14 @@ export class WsService {
 		return exp * 1000 < new Date().valueOf();
 	}
 
-	private send(client: WebSocket, data: any) {
-		if (this.tokenHasExpired(client['refresh_token_exp'])) {
+	private send(client: WebSocketUser, data: any) {
+		if (this.tokenHasExpired(client.refresh_token_exp)) {
 			const expired: WsUserExpired = {
 				namespace: WsNamespace.User,
 				action: UserAction.Expired
 			};
 			client.send(JSON.stringify(expired));
-			this.logger.verbose(`Token for client with user ${client['user'].uuid} has expired`);
+			this.logger.verbose(`Token for client with user ${client.user.uuid} has expired`);
 			return false;
 		}
 
@@ -69,51 +71,47 @@ export class WsService {
 		return true;
 	}
 
-	private wsHasUUID(uuid: string) {
-		const client = this.ws.clients.values();
-		let c = null;
-		while ((c = client.next().value)) {
-			if (c['user'].uuid === uuid) {
-				return true;
-			}
+	private processSend(user_uuid: string, data: any) {
+		if (!this.subscribed[user_uuid]) {
+			this.logger.verbose(`No connected client to dispatch data`);
+			return null;
 		}
-		return false;
+
+		let i = 0;
+		this.subscribed[user_uuid].forEach((client) => {
+			this.send(client, data);
+			++i;
+		});
+
+		return i;
 	}
 
 	/**
 	 * Serivce
 	 */
 	//#region  Service
-	public readonly subscribe = {
-		channel: (user_uuid: string, channel_uuid: string) => {
-			if (!this.subscribed_channels || !this.subscribed_channels[user_uuid]) {
-				this.subscribed_channels = {
-					...this.subscribed_channels,
-					[user_uuid]: [channel_uuid]
-				};
-			} else {
-				this.subscribed_channels[user_uuid].push(channel_uuid);
-			}
-		}
-	};
-
-	public readonly unsubscribe = {
-		channel: (user_uuid: string, channel_uuid: string) => {
-			if (this.subscribed_channels && this.subscribed_channels[user_uuid]) {
-				this.subscribed_channels[user_uuid] = this.subscribed_channels[user_uuid].filter(
-					(c) => c !== channel_uuid
-				);
-			}
-		}
-	};
 
 	public readonly dispatch = {
 		all: (data: WsChatCreate | WsChatRemove | WsChatAvatar | WsUserAvatar) => {
-			const client = this.ws.clients.values();
-			let c: WebSocket = null;
-			let i = 0;
-			while ((c = client.next().value)) {
-				i += this.send(c, data) ? 1 : 0;
+			let i: number | null = 0;
+			for (const [key] of Object.entries(this.subscribed)) {
+				const ret = this.processSend(key, data);
+
+				if (ret === null) {
+					continue;
+				} else if (ret === 0) {
+					this.logger.warn(
+						'Websocket tried to send data on empty user, this should not happend'
+					);
+					continue;
+				}
+
+				i += ret;
+			}
+
+			if (i === 0) {
+				this.logger.verbose(`No data sent`);
+				return;
 			}
 
 			if (data.namespace === WsNamespace.Chat) {
@@ -141,8 +139,7 @@ export class WsService {
 						break;
 				}
 				return;
-			}
-			if (data.namespace === WsNamespace.User) {
+			} else if (data.namespace === WsNamespace.User) {
 				this.logger.verbose(
 					`Updated avatar for user ${
 						data.user
@@ -161,13 +158,14 @@ export class WsService {
 				| WsUserBlock
 				| WsUserUnblock
 		) => {
-			const client = this.ws.clients.values();
-			let c: WebSocket = null;
-			let i = 0;
-			while ((c = client.next().value)) {
-				if (c['user'].uuid === uuid) {
-					i += this.send(c, data) ? 1 : 0;
-				}
+			const i = this.processSend(uuid, data);
+			if (i === null) {
+				return;
+			} else if (i === 0) {
+				this.logger.warn(
+					'Websocket tried to send data on empty user, this should not happend'
+				);
+				return;
 			}
 
 			if (data.namespace === WsNamespace.Chat) {
@@ -176,8 +174,7 @@ export class WsService {
 						data.channel
 					} dispatched to ${i} connected ${PeerOrPeers(i)}`
 				);
-			}
-			if (data.namespace === WsNamespace.User) {
+			} else if (data.namespace === WsNamespace.User) {
 				switch (data.action) {
 					case UserAction.Refresh:
 						this.logger.verbose(
@@ -216,6 +213,7 @@ export class WsService {
 			}
 		},
 		channel: (
+			users: Array<string>,
 			data:
 				| WsChatJoin
 				| WsChatLeave
@@ -233,14 +231,26 @@ export class WsService {
 			const user_uuid = data.user;
 			const channel_uuid = data.channel;
 
-			const client = this.ws.clients.values();
-			let c: WebSocket = null;
-			let i = 0;
-			while ((c = client.next().value)) {
-				if (this.subscribed_channels[c['user'].uuid]?.includes(channel_uuid)) {
-					i += this.send(c, data) ? 1 : 0;
+			let i: number | null = 0;
+			users.forEach((uuid) => {
+				if (!this.subscribed[uuid]) {
+					return;
 				}
-			}
+
+				const ret = this.processSend(uuid, data);
+
+				if (ret === null) {
+					return;
+				} else if (ret === 0) {
+					this.logger.warn(
+						'Websocket tried to send data on empty user, this should not happend'
+					);
+					return;
+				}
+
+				i += ret;
+			});
+
 			if (data.namespace === WsNamespace.Chat) {
 				switch (data.action) {
 					case ChatAction.Join:
@@ -321,12 +331,18 @@ export class WsService {
 		}
 	};
 
-	async connected(uuid: string) {
-		if (!this.subscribed_channels || !this.subscribed_channels[uuid]) {
+	async connected(client: WebSocketUser) {
+		const user_uuid = client.user.uuid;
+
+		if (!this.subscribed) {
+			this.subscribed;
+		}
+
+		if (!this.subscribed[user_uuid]) {
 			const channels = await this.channelRepository
 				.find({
 					select: { uuid: true },
-					where: { users: { uuid } }
+					where: { users: { uuid: user_uuid } }
 				})
 				.then((r) => (r.length ? r : null))
 				.catch((e) => {
@@ -334,39 +350,47 @@ export class WsService {
 					throw new InternalServerErrorException();
 				});
 
-			let subscribed: string[] = [];
-			if (channels) {
-				for (const c of channels) {
-					subscribed.push(c.uuid);
-				}
-			}
+			this.subscribed[user_uuid] = [];
+			this.subscribed[user_uuid].push(client);
+			this.logger.verbose('Connected ' + user_uuid);
 
-			this.subscribed_channels = {
-				...this.subscribed_channels,
-				[uuid]: subscribed
-			};
-			this.logger.verbose('Connected ' + uuid);
-
-			const len = this.subscribed_channels[uuid].length;
+			const len = channels ? channels.length : 0;
 			if (len) {
 				this.logger.verbose(
-					`Subscribed to ${len != 1 ? 'channels' : 'channel'}`,
-					this.subscribed_channels[uuid]
+					`Subscribed to ${len != 1 ? 'channels' : 'channel'} ${JSON.stringify(
+						channels.map((c) => c.uuid)
+					)}`
 				);
 			} else {
 				this.logger.verbose('Not subscribed to any channel');
 			}
 		} else {
-			this.logger.verbose('Connected ' + uuid);
+			this.subscribed[user_uuid].push(client);
+			this.logger.verbose('Connected ' + user_uuid);
 		}
 	}
 
-	disconnected(uuid: string) {
-		if (!this.wsHasUUID(uuid) && this.subscribed_channels && this.subscribed_channels[uuid]) {
-			delete this.subscribed_channels[uuid];
-			this.logger.verbose('No more connected client with user ' + uuid);
+	disconnected(client: WebSocketUser) {
+		const user_uuid = client.user.uuid;
+
+		// Check if user is subscribed
+		if (user_uuid && this.subscribed && this.subscribed[user_uuid]) {
+			// Remove client
+			this.subscribed[user_uuid].forEach((c, i) => {
+				if (c.uuid === client.uuid) {
+					delete this.subscribed[user_uuid][i];
+				}
+				if (!i) {
+					this.subscribed[user_uuid] = [];
+				}
+			});
+			if (!this.subscribed[user_uuid].length) {
+				// All connections are closed removing user
+				delete this.subscribed[user_uuid];
+				this.logger.verbose('No more connected client with user ' + user_uuid);
+			}
 		}
-		this.logger.verbose('Disconnected ' + uuid);
+		this.logger.verbose('Disconnected ' + user_uuid);
 	}
 	//#endregion
 }

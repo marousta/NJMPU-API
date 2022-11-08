@@ -1,7 +1,17 @@
+import { WebSocket } from 'ws';
+
+import { UsersInfos } from '../users/entities/users.entity';
+
 import { NotifcationType } from '../users/types';
 
-export interface SubscribedChannels {
-	[key: string]: string[];
+export interface WebSocketUser extends WebSocket {
+	uuid: string;
+	user: UsersInfos;
+	refresh_token_exp: number;
+}
+
+export interface SubscribedDictionary {
+	[user_uuid: string]: Array<WebSocketUser>;
 }
 
 /**
