@@ -24,6 +24,7 @@ export interface JwtPayload extends PartialUsersInfos {
 
 export interface Jwt {
 	tuuid: string;
+	uuuid?: string;
 	iat: number;
 	exp: number;
 }

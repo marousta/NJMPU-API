@@ -42,10 +42,10 @@ export class TokensService {
 		return this.jwtService.sign(
 			{ tuuid, uuuid },
 			{
-				algorithm: 'RS256',
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
 					encoding: 'utf8'
 				}),
+				algorithm: 'RS256',
 				expiresIn: '20m'
 			}
 		);
@@ -55,10 +55,10 @@ export class TokensService {
 		return this.jwtService.sign(
 			{ tuuid },
 			{
-				algorithm: 'RS256',
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
 					encoding: 'utf8'
 				}),
+				algorithm: 'RS256',
 				expiresIn: '3d'
 			}
 		);

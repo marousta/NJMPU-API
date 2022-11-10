@@ -60,7 +60,9 @@ export function authMethods(config: ConfigService = undefined) {
 				session: {
 					secret: randomBytes(4096).toString('base64'),
 					name: 'twitter_session',
-					unset: 'destroy'
+					unset: 'destroy',
+					resave: false,
+					saveUninitialized: false
 				},
 				forRoutes: ['/auth/oauth2/twitter']
 			})

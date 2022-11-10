@@ -8,7 +8,6 @@ import { readFileSync } from 'fs';
 import { TokensService } from '../tokens/tokens.service';
 
 import { Jwt, JwtData } from '../types';
-import { isEmpty } from '../../utils';
 
 @Injectable()
 export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
@@ -23,10 +22,10 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 				}
 			]),
 			ignoreExpiration: false,
-			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
+			secretOrKey: readFileSync(configService.get<string>('JWT_PUBLIC'), {
 				encoding: 'utf8'
 			}),
-			algorithms: 'RS256',
+			algorithms: ['RS256'],
 			passReqToCallback: true
 		});
 	}

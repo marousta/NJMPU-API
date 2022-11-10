@@ -22,6 +22,7 @@ import { TokensService } from '../auth/tokens/tokens.service';
 
 import { UserAction, WebSocketUser, WsNamespace } from './types';
 import { UsersService } from '../users/services/users.service';
+import { Jwt, JwtData } from '../auth/types';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -50,36 +51,10 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		return cookies ? cookie.parse(cookies) : {};
 	}
 
-	private parseCookies(cookies: Record<string, string>) {
-		const token_str = {
-			access_token: cookies['access_token'],
-			refresh_token: cookies['refresh_token']
-		};
-		if (!token_str.access_token || !token_str.refresh_token) {
-			return null;
-		}
-		let ret = {};
-		for (const token in token_str) {
-			const arr = token_str[token].split('.');
-			const buff = Buffer.from(arr[1], 'base64').toString();
-			ret[token] = JSON.parse(buff);
-		}
-		return ret;
-	}
-
-	private getUUUID(parsed_cookies: any): string | null {
-		if (!parsed_cookies) {
-			return null;
-		}
-		return parsed_cookies.access_token.uuuid;
-	}
-
-	async validate(cookies: any, ua: string, ip: string): Promise<boolean> {
+	async validate(cookies: any, ua: string, ip: string): Promise<Jwt> {
 		const config = {
 			algorithms: ['RS256'],
-			secret: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-				encoding: 'utf8'
-			})
+			ignoreExpiration: false
 		};
 
 		const valid_jwt_token = await Promise.all([
@@ -91,7 +66,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 				.catch((e) => null)
 		]);
 		if (!valid_jwt_token[0] || !valid_jwt_token[1]) {
-			return false;
+			return null;
 		}
 
 		const valid_token = await Promise.all([
@@ -115,7 +90,11 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 				.catch((e) => false)
 		]);
 
-		return valid_token[0] && valid_token[1];
+		if (!valid_token[0] || !valid_token[1]) {
+			return null;
+		}
+
+		return valid_jwt_token[0];
 	}
 	//#endregion
 
@@ -129,8 +108,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		const headers = getHeaders.array(req.rawHeaders);
 		const ip = getClientIp(req);
 		const cookies = this.getCookies(req);
-		const validate = await this.validate(cookies, headers['User-Agent'] as string, ip);
-		if (!validate) {
+		const jwt = await this.validate(cookies, headers['User-Agent'] as string, ip);
+		if (jwt === null) {
 			client.send(
 				JSON.stringify({
 					namespace: WsNamespace.User,
@@ -142,8 +121,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		}
 
 		// Post validation
-		const parsed_cookies: any = this.parseCookies(cookies);
-		const uuid = this.getUUUID(parsed_cookies);
+		const uuid = jwt.uuuid;
 		if (!uuid) {
 			this.logger.error('Cannot get user uuid, this should not happen');
 			throw new InternalServerErrorException();
@@ -157,7 +135,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		}
 		client.uuid = randomUUID();
 		client.user = user;
-		client.refresh_token_exp = parsed_cookies.refresh_token.exp;
+		client.refresh_token_exp = jwt.exp;
 
 		await this.wsService.connected(client);
 	}

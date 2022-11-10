@@ -1,7 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 
@@ -27,6 +27,7 @@ import { UsersTokens } from './tokens/tokens.entity';
 import { UsersTwofactorReq } from './entities/2fa.entity';
 
 import { authMethods } from './authMethods';
+import { readFileSync } from 'fs';
 
 const methods = authMethods();
 const providers: Array<any> = methods[0];
@@ -39,9 +40,26 @@ const modules: Array<any> = methods[2];
 		ConfigModule,
 		PassportModule,
 		HttpModule,
+		JwtModule.registerAsync({
+			imports: [ConfigModule],
+			useFactory: async (configService: ConfigService) => {
+				const options: JwtModuleOptions = {
+					privateKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
+						encoding: 'utf8'
+					}),
+					publicKey: readFileSync(configService.get<string>('JWT_PUBLIC'), {
+						encoding: 'utf8'
+					}),
+					signOptions: {
+						algorithm: 'RS256'
+					}
+				};
+				return options;
+			},
+			inject: [ConfigService]
+		}),
 		TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersTwofactorReq]),
 		TokensModule,
-		JwtModule,
 		forwardRef(() => UsersModule),
 		forwardRef(() => WsModule)
 	],
