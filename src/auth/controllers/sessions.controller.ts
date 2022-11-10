@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
+import { isUUID } from 'class-validator';
 
 import { SessionsService } from '../services/sessions.service';
 
@@ -19,7 +20,7 @@ import { AccessAuthGuard } from '../guards/access.guard';
 import { SessionsGetResponse } from '../properties/sessions.property';
 import { GlobalQueryProperty } from '../../app/properties/global.property';
 
-import { parseUnsigned, isEmpty } from '../../utils';
+import { parseUnsigned } from '../../utils';
 import { ApiResponseError, JwtData } from '../types';
 
 @UseGuards(AccessAuthGuard)
@@ -60,7 +61,7 @@ export class SessionsController {
 	@HttpCode(200)
 	async destroy(@Request() req: Req, @Param('uuid') tuuid: string) {
 		const uuuid = (req.user as JwtData).infos.uuid;
-		if (!tuuid || tuuid === 'undefined') {
+		if (!isUUID(tuuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingSession);
 		}
 		await this.sessionsService.destroy(tuuid, uuuid);

@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req, Response as Res } from 'express';
+import { isUUID } from 'class-validator';
 
 import { ChannelsService } from './services/channels.service';
 import { MessagesService } from './services/messages.service';
@@ -116,7 +117,7 @@ export class ChatsController {
 	@HttpCode(200)
 	@Get(':uuid')
 	async getOne(@Request() req: Req, @Param('uuid') channel_uuid: string) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined') {
+		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -267,14 +268,12 @@ export class ChatsController {
 		@Body() body: ChannelLeaveProperty
 	) {
 		if (
-			isEmpty(channel_uuid) ||
-			channel_uuid === 'undefined' ||
+			!isUUID(channel_uuid, 4) ||
 			isEmpty(body.action) ||
-			(isEmpty(body.user_uuid) && isEmpty(body.channel_uuid))
+			(!isUUID(body.user_uuid, 4) && !isUUID(body.channel_uuid, 4))
 		) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
-
 		const user = (req.user as JwtData).infos;
 
 		await this.channelsService.leave({
@@ -303,7 +302,7 @@ export class ChatsController {
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@Get(':uuid/blacklist')
 	async getBlacklist(@Request() req: Req, @Param('uuid') channel_uuid: string) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined') {
+		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -341,12 +340,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		if (
-			isEmpty(channel_uuid) ||
-			channel_uuid === 'undefined' ||
-			isEmpty(body.user_uuid) ||
-			body.expiration
-		) {
+		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -388,12 +382,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		if (
-			isEmpty(channel_uuid) ||
-			channel_uuid === 'undefined' ||
-			isEmpty(body.user_uuid) ||
-			body.expiration
-		) {
+		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -436,7 +425,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined' || isEmpty(body.user_uuid)) {
+		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -477,12 +466,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		if (
-			isEmpty(channel_uuid) ||
-			channel_uuid === 'undefined' ||
-			isEmpty(body.user_uuid) ||
-			body.expiration
-		) {
+		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -524,7 +508,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined' || isEmpty(body.user_uuid)) {
+		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -565,12 +549,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelModerationProperty
 	) {
-		if (
-			isEmpty(channel_uuid) ||
-			channel_uuid === 'undefined' ||
-			isEmpty(body.user_uuid) ||
-			body.expiration
-		) {
+		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -619,12 +598,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: ChannelSettingProperty
 	) {
-		if (
-			isEmpty(channel_uuid) ||
-			channel_uuid === 'undefined' ||
-			isEmpty(body.password) ||
-			!isEmpty(body.avatar)
-		) {
+		if (!isUUID(channel_uuid, 4) || isEmpty(body.password) || !isEmpty(body.avatar)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -663,7 +637,7 @@ export class ChatsController {
 		@Query('limit') limit: any,
 		@Query('offset') offset: any
 	) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined') {
+		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -693,7 +667,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: MessageStoreProperty
 	) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined') {
+		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -727,11 +701,11 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Body() body: { uuid: string }
 	) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined') {
+		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
-		if (isEmpty(body.uuid)) {
+		if (!isUUID(body.uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingUUID);
 		}
 

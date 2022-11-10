@@ -9,10 +9,12 @@ import {
 	UseGuards,
 	Request,
 	Body,
-	Query
+	Query,
+	BadRequestException
 } from '@nestjs/common';
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
+import { isUUID } from 'class-validator';
 
 import { UsersService } from './services/users.service';
 import { NotifcationsService } from './services/notifications.service';
@@ -28,10 +30,9 @@ import { NotificationsGetResponse } from './properties/notifications.get.propert
 import { GlobalQueryProperty } from '../app/properties/global.property';
 import { UsersPatchProperty } from './properties/users.patch.property';
 
-import { parseUnsigned, isEmpty } from '../utils';
+import { parseUnsigned } from '../utils';
 import { ApiResponseError, RelationType, RelationDispatch } from './types';
 import { JwtData } from '../auth/types';
-import { BadRequestException } from '@nestjs/common';
 
 @UseGuards(AccessAuthGuard)
 @Controller('users')
@@ -61,7 +62,7 @@ export class UsersController {
 	@Get('profile/:uuid')
 	@HttpCode(200)
 	async get(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+		if (!isUUID(remote_user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -125,7 +126,7 @@ export class UsersController {
 	@Post('friendship/:uuid')
 	@HttpCode(200)
 	async updateFriendship(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+		if (!isUUID(remote_user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -149,7 +150,7 @@ export class UsersController {
 	@Delete('friendship/:uuid')
 	@HttpCode(200)
 	async removeFriendship(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+		if (!isUUID(remote_user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -172,7 +173,7 @@ export class UsersController {
 	@Post('blocklist/:uuid')
 	@HttpCode(200)
 	async updateBlocklist(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+		if (!isUUID(remote_user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -195,7 +196,7 @@ export class UsersController {
 	@Delete('blocklist/:uuid')
 	@HttpCode(200)
 	async removeBlocklist(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
-		if (isEmpty(remote_user_uuid) || remote_user_uuid === 'undefined') {
+		if (!isUUID(remote_user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -245,7 +246,7 @@ export class UsersController {
 	@Delete('notifications/:uuid')
 	@ApiResponse({ status: 400, description: ApiResponseError.MissingParameters })
 	async readNotifications(@Request() req: Req, @Param('uuid') notification_uuid: string) {
-		if (isEmpty(notification_uuid) || notification_uuid === 'undefined') {
+		if (!isUUID(notification_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
@@ -265,7 +266,7 @@ export class UsersController {
 	@Post('invite/:uuid')
 	@HttpCode(200)
 	async invite(@Request() req: Req, @Param('uuid') remote_uuid: string) {
-		if (isEmpty(remote_uuid) || remote_uuid === 'undefined') {
+		if (!isUUID(remote_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 

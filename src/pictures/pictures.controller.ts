@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
+import { isUUID } from 'class-validator';
 
 import { PicturesService } from './pictures.service';
 
@@ -20,8 +21,6 @@ import { PicturesInterceptor } from './pictures.interceptor';
 import { AccessAuthGuard } from '../auth/guards/access.guard';
 
 import { FileInterceptorBody } from './pictures.property';
-
-import { isEmpty } from '../utils';
 
 import { PicturesResponse } from './types';
 import { ApiResponseError } from '../chats/types';
@@ -47,7 +46,7 @@ export class PicturesChatsController {
 		@Param('uuid') channel_uuid: string,
 		@UploadedFile() file: Express.Multer.File
 	) {
-		if (isEmpty(channel_uuid) || channel_uuid === 'undefined') {
+		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
 
