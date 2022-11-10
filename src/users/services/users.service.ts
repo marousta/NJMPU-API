@@ -289,35 +289,33 @@ export class UsersService {
 					}
 			}
 		},
-		get: (user: UsersInfos): UsersRelationsResponse => {
+		get: async (user: UsersInfos): Promise<UsersRelationsResponse> => {
 			const users = user.friends;
 			const blocked = user.blocklist;
 
 			let friendship: UsersFriendshipResponse[] = [];
-			users.forEach((remote_user) => {
+			for (let remote_user of users) {
+				remote_user = await this.findWithRelationsOrNull(
+					{ uuid: remote_user.uuid },
+					'Unable to find remote user ' + remote_user.uuid
+				);
 				if (!remote_user) {
-					return;
+					this.logger.error('This should not happen');
+					continue;
 				}
 
 				const friendship_status = this.usersAreFriends(user, remote_user);
 				if (!friendship_status) {
-					return;
+					continue;
 				}
 
 				friendship.push({
 					uuid: remote_user.uuid,
 					friendship: friendship_status
 				});
-			});
+			}
 
-			let blocklist: Array<string>;
-			blocked.forEach((remote_user) => {
-				if (!remote_user) {
-					return;
-				}
-
-				blocklist.push(remote_user.uuid);
-			});
+			const blocklist: Array<string> = blocked.map((u) => u.uuid);
 
 			return {
 				friendship,

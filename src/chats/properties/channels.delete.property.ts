@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiHideProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { UsersInfos } from '../../users/entities/users.entity';
 
@@ -18,6 +18,6 @@ export class ChannelLeaveProperty {
 	@ApiPropertyOptional()
 	current_user: UsersInfos;
 
-	@ApiPropertyOptional()
+	@ApiHideProperty()
 	channel_uuid: string;
 }

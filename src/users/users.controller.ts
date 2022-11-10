@@ -105,8 +105,8 @@ export class UsersController {
 	@ApiTags('users · relations')
 	@ApiResponse({
 		status: 200,
-		description: 'Friendship infos',
-		type: [UsersFriendshipResponse]
+		description: 'relations status',
+		type: UsersRelationsResponse
 	})
 	@HttpCode(200)
 	@Get('relations')
@@ -117,7 +117,7 @@ export class UsersController {
 	}
 
 	@ApiTags('users · relations')
-	@ApiResponse({ status: 200, description: 'Friendship status', type: UsersRelationsResponse })
+	@ApiResponse({ status: 200, description: 'Friendship status', type: UsersFriendshipResponse })
 	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.FriendYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyFriends })
@@ -141,7 +141,7 @@ export class UsersController {
 	}
 
 	@ApiTags('users · relations')
-	@ApiResponse({ status: 200, description: 'Friendship status', type: UsersRelationsResponse })
+	@ApiResponse({ status: 200, description: 'Friendship removed' })
 	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.FriendYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyFriends })
@@ -156,7 +156,7 @@ export class UsersController {
 
 		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.dispatch(
+		await this.usersService.relations.dispatch(
 			RelationType.friends,
 			RelationDispatch.remove,
 			user,
@@ -165,7 +165,7 @@ export class UsersController {
 	}
 
 	@ApiTags('users · relations')
-	@ApiResponse({ status: 200, description: 'Block status', type: UsersRelationsResponse })
+	@ApiResponse({ status: 200, description: 'Blocked user' })
 	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.BlockYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyBlocked })
@@ -179,7 +179,7 @@ export class UsersController {
 
 		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.dispatch(
+		await this.usersService.relations.dispatch(
 			RelationType.blocklist,
 			RelationDispatch.add,
 			user,
@@ -188,7 +188,7 @@ export class UsersController {
 	}
 
 	@ApiTags('users · relations')
-	@ApiResponse({ status: 200, description: 'Block status', type: UsersRelationsResponse })
+	@ApiResponse({ status: 200, description: 'Unblocked user' })
 	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.BlockYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.NotBlocked })
@@ -202,7 +202,7 @@ export class UsersController {
 
 		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.relations.dispatch(
+		await this.usersService.relations.dispatch(
 			RelationType.blocklist,
 			RelationDispatch.remove,
 			user,

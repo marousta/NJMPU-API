@@ -270,7 +270,7 @@ export class ChatsController {
 		if (
 			!isUUID(channel_uuid, 4) ||
 			isEmpty(body.action) ||
-			(!isUUID(body.user_uuid, 4) && !isUUID(body.channel_uuid, 4))
+			(body.action === 'KICK' && !isUUID(body.user_uuid, 4))
 		) {
 			throw new BadRequestException(ApiResponseError.MissingParameters);
 		}
