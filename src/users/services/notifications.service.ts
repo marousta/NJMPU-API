@@ -38,9 +38,11 @@ export class NotifcationsService {
 			type: type,
 			notified_user: notified_user.uuid,
 			interact_w_user: interact_w_user.uuid,
-			creation_date: new Date()
+			creation_date: new Date(),
+			read: false
 		});
-		await this.notifcationsRepository.save(request).catch((e) => {
+
+		const notif = await this.notifcationsRepository.save(request).catch((e) => {
 			this.logger.error(
 				`Unable to create notification type \
 				${request.type} for current user \
@@ -48,11 +50,14 @@ export class NotifcationsService {
 				${request.interact_w_user}`,
 				e
 			);
+			throw new InternalServerErrorException();
 		});
+
 		this.wsService.dispatch.user(request.notified_user, {
 			namespace: WsNamespace.User,
 			action: UserAction.Notification,
 			type: request.type,
+			uuid: notif.uuid,
 			user: request.interact_w_user,
 			creation_date: request.creation_date
 		});

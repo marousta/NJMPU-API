@@ -13,7 +13,7 @@ export class NotificationsData {
 	user: string;
 
 	@ApiProperty()
-	time: Date;
+	creation_date: Date;
 
 	@ApiProperty()
 	read: boolean;

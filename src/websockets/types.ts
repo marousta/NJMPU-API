@@ -170,6 +170,7 @@ export interface WsUserSession extends WsUserUpdateSession {
 export interface WsUserNotification extends WsUser {
 	action: UserAction.Notification;
 	type: NotifcationType;
+	uuid: string;
 	user: string;
 	creation_date: Date;
 }
