@@ -28,6 +28,6 @@ import { PicturesModule } from '../pictures/pictures.module';
 	],
 	controllers: [UsersController],
 	providers: [UsersService, NotifcationsService, ConfigService, AccessStrategy, TokensService],
-	exports: [UsersService]
+	exports: [UsersService, NotifcationsService]
 })
 export class UsersModule {}

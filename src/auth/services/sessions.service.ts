@@ -27,14 +27,19 @@ export class SessionsService {
 	/**
 	 * Utils
 	 */
+	//#region
+
 	private isActive(date: Date) {
 		const offset = 60 * 60 * 24 * 3 * 1000; //3d
 		return date.valueOf() + offset > new Date().valueOf();
 	}
+	//#endregion
 
 	/**
 	 * Service
 	 */
+	//#region
+
 	async get(
 		tuuid: string,
 		uuid: string,
@@ -103,4 +108,5 @@ export class SessionsService {
 			action: UserAction.Refresh
 		});
 	}
+	//#endregion
 }

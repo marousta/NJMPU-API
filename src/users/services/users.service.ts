@@ -11,13 +11,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { NotifcationsService } from './notifications.service';
 import { WsService } from '../../websockets/ws.service';
 
-import { UsersInfos, UsersInfosID } from '../entities/users.entity';
+import { UsersInfos } from '../entities/users.entity';
 
 import {
 	UsersFriendshipResponse,
 	UsersRelationsResponse
 } from '../properties/users.relations.get.property';
-import { UsersMeResponse } from '../properties/users.get.property';
+import { UsersMeResponse, UsersGetResponse } from '../properties/users.get.property';
 
 import { hash_password_config } from '../../auth/config';
 
@@ -50,6 +50,8 @@ export class UsersService {
 	/**
 	 * Utils
 	 */
+	//#region
+
 	async getIdentfier(username: string) {
 		while (true) {
 			const users = await this.usersRepository.find({
@@ -68,7 +70,7 @@ export class UsersService {
 		}
 	}
 
-	async findWithRelationsOrNull(where: object, error_msg: string): Promise<UsersInfosID | null> {
+	async findWithRelationsOrNull(where: object, error_msg: string): Promise<UsersInfos | null> {
 		return this.usersRepository
 			.createQueryBuilder('user')
 			.where(where)
@@ -82,7 +84,7 @@ export class UsersService {
 			});
 	}
 
-	async findWithRelations(where: object, error_msg: string): Promise<UsersInfosID> {
+	async findWithRelations(where: object, error_msg: string): Promise<UsersInfos> {
 		const user = await this.findWithRelationsOrNull(where, error_msg);
 		if (!user) {
 			throw new NotFoundException();
@@ -130,10 +132,13 @@ export class UsersService {
 		const isRemotelyBlocked = this.isRemotelyBlocked(current_user, remote_user);
 		return isCurrentlyBlocked || isRemotelyBlocked;
 	}
+	//#endregion
 
 	/**
 	 * Service
 	 */
+	//#region
+
 	async create(params: SignupProperty) {
 		const requests = await Promise.all([
 			this.getIdentfier(params.username),
@@ -145,7 +150,8 @@ export class UsersService {
 			username: params.username,
 			email: params.email,
 			password: requests[1],
-			twofactor: params.twofactor
+			twofactor: params.twofactor,
+			is_online: false
 		});
 
 		let created_user = await this.usersRepository.save(new_user).catch((e) => {
@@ -189,21 +195,49 @@ export class UsersService {
 		};
 	}
 
-	async get(current_user: UsersInfos, remote_user_uuid: string) {
-		const remote_user = await this.findWithRelations(
-			{ uuid: remote_user_uuid },
-			"Remote user doesn't exist " + remote_user_uuid
-		);
+	public readonly get = {
+		ByUUID: async (
+			current_user: UsersInfos,
+			remote_user_uuid: string
+		): Promise<UsersGetResponse> => {
+			const remote_user = await this.findWithRelations(
+				{ uuid: remote_user_uuid },
+				'Unable to find user by uuid ' + remote_user_uuid
+			);
 
-		return {
-			uuid: remote_user.uuid,
-			identifier: remote_user.identifier,
-			username: remote_user.username,
-			avatar: remote_user.avatar,
-			is_online: remote_user.is_online,
-			friendship: this.usersAreFriends(current_user, remote_user)
-		};
-	}
+			return {
+				uuid: remote_user.uuid,
+				identifier: remote_user.identifier,
+				username: remote_user.username,
+				avatar: remote_user.avatar,
+				is_online: remote_user.is_online,
+				friendship: this.usersAreFriends(current_user, remote_user),
+				is_blocked: this.isCurrentlyBlocked(current_user, remote_user),
+				has_blocked: this.isRemotelyBlocked(current_user, remote_user)
+			};
+		},
+		ByIdentifier: async (
+			current_user: UsersInfos,
+			remote_username: string,
+			remote_identifier: number
+		): Promise<UsersGetResponse> => {
+			const remote_user = await this.findWithRelations(
+				{ identifier: remote_identifier, username: remote_username },
+				'Unable to find user by identifier ' + remote_username + '#' + remote_identifier
+			);
+
+			return {
+				uuid: remote_user.uuid,
+				identifier: remote_user.identifier,
+				username: remote_user.username,
+				avatar: remote_user.avatar,
+				is_online: remote_user.is_online,
+				friendship: this.usersAreFriends(current_user, remote_user),
+				is_blocked: this.isCurrentlyBlocked(current_user, remote_user),
+				has_blocked: this.isRemotelyBlocked(current_user, remote_user)
+			};
+		}
+	};
 
 	async avatar(user: UsersInfos, filename: string) {
 		const old_avatar = user.avatar;
@@ -240,7 +274,7 @@ export class UsersService {
 
 		const verif = await hash_verify(user.password, current_password);
 		if (!verif) {
-			throw new BadRequestException(ApiResponseError.Passwordmismatch);
+			throw new BadRequestException(ApiResponseError.PasswordMismatch);
 		}
 
 		user.password = await hash(new_password, hash_password_config);
@@ -260,9 +294,9 @@ export class UsersService {
 		) => {
 			if (current_user.uuid === remote_user_uuid) {
 				switch (type) {
-					case RelationType.friends:
+					case RelationType.Friends:
 						throw new BadRequestException(ApiResponseError.FriendYourself);
-					case RelationType.blocklist:
+					case RelationType.Blocklist:
 						throw new BadRequestException(ApiResponseError.BlockYourself);
 				}
 			}
@@ -272,19 +306,28 @@ export class UsersService {
 				'Unable to find remote user in relation' + remote_user_uuid
 			);
 
+			await this.notifcationsService.read.friendRequest(current_user, remote_user);
 			switch (type) {
-				case RelationType.friends:
+				case RelationType.Friends:
 					switch (action) {
-						case RelationDispatch.add:
+						case RelationDispatch.Add:
 							return await this.relations.friends.add(current_user, remote_user);
-						case RelationDispatch.remove:
+						case RelationDispatch.Remove:
+							await this.notifcationsService.read.friendRequest(
+								remote_user,
+								current_user
+							);
 							return await this.relations.friends.remove(current_user, remote_user);
 					}
-				case RelationType.blocklist:
+				case RelationType.Blocklist:
 					switch (action) {
-						case RelationDispatch.add:
+						case RelationDispatch.Add:
+							await this.notifcationsService.read.friendRequest(
+								remote_user,
+								current_user
+							);
 							return await this.relations.blocklist.add(current_user, remote_user);
-						case RelationDispatch.remove:
+						case RelationDispatch.Remove:
 							return await this.relations.blocklist.remove(current_user, remote_user);
 					}
 			}
@@ -384,6 +427,17 @@ export class UsersService {
 					);
 					throw new InternalServerErrorException();
 				});
+
+				this.wsService.dispatch.user(current_user.uuid, {
+					namespace: WsNamespace.User,
+					action: UserAction.Unfriend,
+					user: remote_user.uuid
+				});
+				this.wsService.dispatch.user(remote_user.uuid, {
+					namespace: WsNamespace.User,
+					action: UserAction.Unfriend,
+					user: current_user.uuid
+				});
 			}
 		},
 		blocklist: {
@@ -444,22 +498,5 @@ export class UsersService {
 			}
 		}
 	};
-
-	async invite(interact_w_user: UsersInfos, notified_user_uuid: string) {
-		if (interact_w_user.uuid === notified_user_uuid) {
-			throw new BadRequestException(ApiResponseError.InteractYourself);
-		}
-
-		const notified_user = await this.usersRepository
-			.findOneByOrFail({ uuid: notified_user_uuid })
-			.catch((e) => {
-				this.logger.verbose(
-					'Unable to find user to interact with ' + notified_user_uuid,
-					e
-				);
-				throw new NotFoundException();
-			});
-
-		this.notifcationsService.add(NotifcationType.GameInvite, interact_w_user, notified_user);
-	}
+	//#endregion
 }

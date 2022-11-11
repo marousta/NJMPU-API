@@ -41,6 +41,8 @@ export class TwoFactorService {
 	/**
 	 * Utils
 	 */
+	//#region
+
 	private twoFactorToken(uuid: string): string {
 		return this.jwtService.sign(
 			{ uuid },
@@ -68,7 +70,7 @@ export class TwoFactorService {
 		return token;
 	}
 
-	private async request(uuid: string): Promise<UsersTwofactorReqID> {
+	private async getRequest(uuid: string): Promise<UsersTwofactorReqID> {
 		return await this.twofactorRepository
 			.createQueryBuilder('request')
 			.loadAllRelationIds()
@@ -81,7 +83,7 @@ export class TwoFactorService {
 	}
 
 	async getUserFromRequest(uuid: string) {
-		const request = await this.request(uuid);
+		const request = await this.getRequest(uuid);
 		const user = await this.usersService.findWithRelationsOrNull(
 			{ uuid: request.user_uuid },
 			'Unable to find user ' + request.user_uuid + ' from 2FA request ' + uuid
@@ -97,7 +99,7 @@ export class TwoFactorService {
 	private async garbageCollect() {
 		const exist = await this.twofactorRepository.find().catch((e) => {
 			this.logger.error('Could not fetch existing requests', e);
-			throw new InternalServerErrorException();
+			return null;
 		});
 
 		if (exist) {
@@ -123,10 +125,13 @@ export class TwoFactorService {
 			await Promise.all(requests);
 		}
 	}
+	//#endregion
 
 	/**
 	 * Service
 	 */
+	//#region
+
 	private async requestCreator(uuid: string, secret?: string): Promise<TwoFactorRequest> {
 		await this.garbageCollect();
 
@@ -176,7 +181,7 @@ export class TwoFactorService {
 
 	async remove(user: UsersInfos) {
 		if (!user.twofactor) {
-			throw new ForbiddenException('2FA not set');
+			throw new ForbiddenException(ApiResponseError.TwoFactorNotSet);
 		}
 
 		user.twofactor = null;
@@ -213,7 +218,7 @@ export class TwoFactorService {
 			return await this.getUserFromRequest(payload.uuid);
 		},
 		code: async (user: UsersInfos, request_uuid: string, code: string): Promise<boolean> => {
-			const request = await this.request(request_uuid);
+			const request = await this.getRequest(request_uuid);
 
 			if (request.user_uuid !== user.uuid) {
 				throw new InternalServerErrorException();
@@ -243,4 +248,5 @@ export class TwoFactorService {
 			return false;
 		}
 	};
+	//#endregion
 }

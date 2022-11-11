@@ -41,7 +41,6 @@ export enum ApiResponseError {
 	AlreadyMuted = 'Already muted',
 	AlreadyDirect = 'Direct message with this user already exist',
 	NotAllowed = 'Not allowed',
-	MissingParameters = 'Invalid or missing parameters',
 	MissingChannelUUID = 'Missing channel uuid',
 	MissingUUID = 'Missing uuid',
 	RemoteUserNotFound = 'User not found',
@@ -55,6 +54,5 @@ export enum ApiResponseError {
 	DirectYourseft = "You can't DM yourself",
 	EmptyMessage = 'Empty message',
 	EmptyBody = 'Empty body',
-	isAdministrator = 'User is channel administrator',
-	ImgTooLarge = 'Image too large'
+	isAdministrator = 'User is channel administrator'
 }

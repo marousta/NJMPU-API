@@ -8,7 +8,8 @@ export class UsersTwofactorReq {
 	uuid: string;
 
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
-		onDelete: 'CASCADE'
+		onDelete: 'CASCADE',
+		nullable: false
 	})
 	@JoinColumn()
 	user_uuid: string;

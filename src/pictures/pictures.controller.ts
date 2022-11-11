@@ -23,7 +23,8 @@ import { AccessAuthGuard } from '../auth/guards/access.guard';
 import { FileInterceptorBody } from './pictures.property';
 
 import { PicturesResponse } from './types';
-import { ApiResponseError } from '../chats/types';
+import { ApiResponseError as ApiResponseErrorGlobal } from '../types';
+import { ApiResponseError } from './types';
 import { JwtData } from '../auth/types';
 
 @UseGuards(AccessAuthGuard)
@@ -36,7 +37,7 @@ export class PicturesChatsController {
 	@ApiConsumes('multipart/form-data')
 	@ApiBody(FileInterceptorBody)
 	@ApiResponse({ status: 200, description: 'Successfully uploaded', type: PicturesResponse })
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 413, description: ApiResponseError.ImgTooLarge })
 	@HttpCode(200)
 	@Post(':uuid/avatar')
@@ -47,7 +48,7 @@ export class PicturesChatsController {
 		@UploadedFile() file: Express.Multer.File
 	) {
 		if (!isUUID(channel_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;

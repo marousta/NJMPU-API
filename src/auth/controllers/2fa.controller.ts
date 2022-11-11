@@ -33,12 +33,15 @@ export class TwoFactorController {
 		private readonly twoFactorService: TwoFactorService
 	) {}
 
+	/**
+	 * QRcode
+	 */
 	@UseGuards(AccessAuthGuard)
 	@ApiResponse({
 		status: 202,
 		description: 'Create a 2FA request and return QRCode image in base64'
 	})
-	@ApiResponse({ status: 401, description: 'User not logged in' })
+	@ApiResponse({ status: 401 })
 	@ApiResponse({ status: 403, description: ApiResponseError.TwoFactorAlreadySet })
 	@HttpCode(202)
 	@Get()
@@ -54,6 +57,9 @@ export class TwoFactorController {
 		};
 	}
 
+	/**
+	 * Code validation
+	 */
 	@UseGuards(TwoFactorAuthGuard)
 	@ApiBody({ type: TwoFactorProperty })
 	@ApiResponse({ status: 200, description: '2FA code is valid' })
@@ -88,9 +94,12 @@ export class TwoFactorController {
 		}
 	}
 
+	/**
+	 * Remove 2FA
+	 */
 	@UseGuards(AccessAuthGuard)
 	@ApiResponse({ status: 200, description: '2FA removed' })
-	@ApiResponse({ status: 403, description: '2FA not set' })
+	@ApiResponse({ status: 403, description: ApiResponseError.TwoFactorNotSet })
 	@HttpCode(200)
 	@Delete()
 	async twoFactorRemove(

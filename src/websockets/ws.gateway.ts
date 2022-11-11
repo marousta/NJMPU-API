@@ -7,14 +7,12 @@ import {
 	OnGatewayInit,
 	ConnectedSocket
 } from '@nestjs/websockets';
-import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
 import { Server } from 'ws';
 import { Request as Req } from 'express';
 import * as getHeaders from 'get-headers';
 import * as cookie from 'cookie';
 import { getClientIp } from 'request-ip';
-import { readFileSync } from 'fs';
 import { randomUUID } from 'crypto';
 
 import { WsService } from './ws.service';
@@ -22,7 +20,7 @@ import { TokensService } from '../auth/tokens/tokens.service';
 
 import { UserAction, WebSocketUser, WsNamespace } from './types';
 import { UsersService } from '../users/services/users.service';
-import { Jwt, JwtData } from '../auth/types';
+import { Jwt } from '../auth/types';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -32,7 +30,6 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	private readonly logger = new Logger(WsGateway.name);
 	constructor(
 		private readonly jwtService: JwtService,
-		private readonly configService: ConfigService,
 		private readonly tokensService: TokensService,
 		private readonly usersService: UsersService,
 		private readonly wsService: WsService

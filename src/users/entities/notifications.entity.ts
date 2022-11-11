@@ -18,7 +18,7 @@ export class UsersNotifications {
 	@Column({ nullable: false })
 	creation_date: Date;
 
-	@Column({ nullable: false, default: false })
+	@Column({ nullable: false })
 	read: boolean;
 
 	/**

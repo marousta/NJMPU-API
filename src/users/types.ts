@@ -12,28 +12,26 @@ export enum NotifcationType {
 }
 
 export enum RelationType {
-	friends,
-	blocklist
+	Friends,
+	Blocklist
 }
 
 export enum RelationDispatch {
-	add,
-	remove
+	Add,
+	Remove
 }
 
 export enum ApiResponseError {
 	EmailTaken = 'Email already in use',
 	AlreadyFriends = 'Already friends',
-	AlreadyPending = 'Already sended a friend request',
+	AlreadyPending = 'Already sent a friend request',
 	AlreadyBlocked = 'User already blocked',
 	NotBlocked = 'User not blocked',
 	FriendYourself = "You can't be friend with yourself",
 	BlockYourself = "You can't block yourself",
 	InteractYourself = "You can't interact with yourself",
 	NotFound = "User doesn't exist",
-	BadRequest = 'Bad request format',
-	ConfirmMismatch = 'New password mismatch confirmation input',
 	PasswordsIdentical = "Passwords can't be identical",
-	Passwordmismatch = 'Password mismatch',
-	MissingParameters = 'Invalid or missing parameters'
+	PasswordMismatch = 'Password mismatch',
+	ConfirmMismatch = 'New password mismatch confirmation input'
 }

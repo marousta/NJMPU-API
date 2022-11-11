@@ -38,6 +38,11 @@ export class TokensService {
 		private readonly wsService: WsService
 	) {}
 
+	/**
+	 * Utils
+	 */
+	//#region
+
 	private accessToken(tuuid: string, uuuid: string): string {
 		return this.jwtService.sign(
 			{ tuuid, uuuid },
@@ -84,50 +89,12 @@ export class TokensService {
 		}
 		return user;
 	}
+	//#endregion
 
-	async update(uuid: string): Promise<GeneratedTokens> {
-		const user = await this.getUser(uuid);
-
-		const access_token = this.accessToken(uuid, user.uuid);
-		const refresh_token = this.refreshToken(uuid);
-
-		const hashs = await Promise.all([
-			hash(access_token, hash_token_config),
-			hash(refresh_token, hash_token_config)
-		]);
-
-		await this.tokensRepository
-			.save({
-				uuid,
-				refresh_date: new Date(),
-				access_token_hash: hashs[0],
-				refresh_token_hash: hashs[1]
-			})
-			.catch((e) => {
-				this.logger.error('Unable to update token', e);
-				throw new UnauthorizedException();
-			});
-
-		this.logger.debug('Token refreshed for user ' + user.uuid);
-		return { interface: 'GeneratedTokens', access_token, refresh_token };
-	}
-
-	async delete(uuid: string) {
-		await this.tokensRepository
-			.save({
-				uuid,
-				access_token_hash: null,
-				refresh_token_hash: null,
-				ua_hash: null,
-				ip_hash: null
-			})
-			.catch((e) => {
-				this.logger.error('Failed to delete token', e);
-				throw new BadRequestException();
-			});
-
-		this.logger.debug('Token destroyed ' + uuid);
-	}
+	/**
+	 * Service
+	 */
+	//#region
 
 	async validate(
 		uuid: string,
@@ -211,4 +178,49 @@ export class TokensService {
 
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
+
+	async update(uuid: string): Promise<GeneratedTokens> {
+		const user = await this.getUser(uuid);
+
+		const access_token = this.accessToken(uuid, user.uuid);
+		const refresh_token = this.refreshToken(uuid);
+
+		const hashs = await Promise.all([
+			hash(access_token, hash_token_config),
+			hash(refresh_token, hash_token_config)
+		]);
+
+		await this.tokensRepository
+			.save({
+				uuid,
+				refresh_date: new Date(),
+				access_token_hash: hashs[0],
+				refresh_token_hash: hashs[1]
+			})
+			.catch((e) => {
+				this.logger.error('Unable to update token', e);
+				throw new UnauthorizedException();
+			});
+
+		this.logger.debug('Token refreshed for user ' + user.uuid);
+		return { interface: 'GeneratedTokens', access_token, refresh_token };
+	}
+
+	async delete(uuid: string) {
+		await this.tokensRepository
+			.save({
+				uuid,
+				access_token_hash: null,
+				refresh_token_hash: null,
+				ua_hash: null,
+				ip_hash: null
+			})
+			.catch((e) => {
+				this.logger.error('Failed to delete token', e);
+				throw new BadRequestException();
+			});
+
+		this.logger.debug('Token destroyed ' + uuid);
+	}
+	//#endregion
 }

@@ -9,3 +9,7 @@ export interface MulterFileLike {
 	filename: string;
 	originalname: string;
 }
+
+export enum ApiResponseError {
+	ImgTooLarge = 'Image too large'
+}

@@ -8,7 +8,7 @@ export class ChatsMessages {
 	@PrimaryGeneratedColumn('uuid')
 	uuid: string;
 
-	@Column()
+	@Column({ nullable: false })
 	creation_date: Date;
 
 	@Column({ nullable: true })
@@ -18,7 +18,7 @@ export class ChatsMessages {
 	 * Relation Message -> Users
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
-		// onDelete: 'CASCADE',
+		onDelete: 'SET NULL',
 		nullable: false
 	})
 	user: string;

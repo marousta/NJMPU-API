@@ -38,6 +38,11 @@ export class MessagesService {
 		private readonly wsService: WsService
 	) {}
 
+	/**
+	 * Utils
+	 */
+	//#region
+
 	async count(channel_uuid: string) {
 		return this.messageRepository
 			.createQueryBuilder('message')
@@ -46,6 +51,12 @@ export class MessagesService {
 			.loadRelationIdAndMap('message.user', 'message.user')
 			.getCount();
 	}
+	//#endregion
+
+	/**
+	 * Service
+	 */
+	//#region
 
 	async get(
 		channel_uuid: string,
@@ -181,4 +192,5 @@ export class MessagesService {
 			uuid: message.uuid
 		});
 	}
+	//#endregion
 }

@@ -182,6 +182,7 @@ export enum ApiResponseError {
 	TwoFactorInvalidCode = '2FA code is invalid',
 	TwoFactorInvalidRequest = 'No ongoing 2FA request',
 	TwoFactorAlreadySet = '2FA already set',
-	MissingSession = 'Missing session id',
-	InvalidSession = 'Invalid session id'
+	TwoFactorNotSet = '2FA not set',
+	MissingSession = 'Missing session uuid',
+	InvalidSession = 'Invalid session uuid'
 }

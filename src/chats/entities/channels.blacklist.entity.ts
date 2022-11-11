@@ -12,7 +12,8 @@ export class ChatsChannelsBlacklist {
 
 	@Column({
 		type: 'enum',
-		enum: BlacklistType
+		enum: BlacklistType,
+		nullable: true
 	})
 	type: BlacklistType;
 
@@ -25,6 +26,7 @@ export class ChatsChannelsBlacklist {
 	 * Relation Channel blacklist -> User
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
+		onDelete: 'CASCADE',
 		nullable: false
 	})
 	@JoinColumn()

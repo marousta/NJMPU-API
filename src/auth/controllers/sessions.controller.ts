@@ -29,6 +29,9 @@ import { ApiResponseError, JwtData } from '../types';
 export class SessionsController {
 	constructor(private readonly sessionsService: SessionsService) {}
 
+	/**
+	 * Get
+	 */
 	@ApiResponse({
 		status: 200,
 		description: 'Sessions of currently connected user',
@@ -54,6 +57,9 @@ export class SessionsController {
 		return await this.sessionsService.get(tuuid, uuuid, page, limit, offset);
 	}
 
+	/**
+	 * Destroy
+	 */
 	@ApiResponse({ status: 200, description: 'Session destroyed' })
 	@ApiResponse({ status: 400, description: ApiResponseError.MissingSession })
 	@ApiResponse({ status: 404, description: ApiResponseError.InvalidSession })

@@ -43,4 +43,10 @@ export class UsersGetResponse {
 
 	@ApiProperty()
 	friendship: UsersFriendship;
+
+	@ApiProperty()
+	is_blocked: boolean;
+
+	@ApiProperty()
+	has_blocked: boolean;
 }

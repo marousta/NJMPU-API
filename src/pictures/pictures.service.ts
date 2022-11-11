@@ -36,6 +36,17 @@ export class PicturesService {
 		this.folder = configService.get<string>('IMG_PATH');
 	}
 
+	/**
+	 * Utils
+	 */
+	//#region
+	//#endregin
+
+	/**
+	 * Service
+	 */
+	//#region
+
 	static parseContentType(type: string) {
 		if (!type || !type.includes('image')) {
 			throw new Error('Response Content-Type not matching image type. Received: ' + type);
@@ -177,7 +188,7 @@ export class PicturesService {
 	}
 
 	async download(hash: string, url: string): Promise<string> {
-		return new Promise(async (ret) => {
+		return new Promise(async (resolve) => {
 			const img = await this.fetch(url);
 
 			const tmp_path = this.folder + '/' + hash;
@@ -187,7 +198,11 @@ export class PicturesService {
 			fs.rmSync(final_path, { force: true });
 			fs.writeFileSync(tmp_path, img.data);
 
-			ret(
+			await this.resize({
+				filename: hash,
+				originalname: final
+			});
+			resolve(
 				this.stripExif({
 					filename: hash,
 					originalname: final
@@ -229,4 +244,5 @@ export class PicturesService {
 			this.logger.error('Unable to remove previous avatar ' + old_avatar, e);
 		}
 	}
+	//#endregion
 }

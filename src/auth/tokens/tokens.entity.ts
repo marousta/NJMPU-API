@@ -13,13 +13,13 @@ export class UsersTokens {
 	})
 	user_uuid: string;
 
-	@Column()
+	@Column({ nullable: false })
 	creation_date: Date;
 
 	@Column({ nullable: true })
 	refresh_date: Date;
 
-	@Column()
+	@Column({ nullable: false })
 	platform: string;
 
 	@Column({ nullable: true })

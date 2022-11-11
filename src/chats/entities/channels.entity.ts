@@ -19,20 +19,20 @@ export class ChatsChannels {
 	@PrimaryGeneratedColumn('uuid')
 	uuid: string;
 
-	@Column({ nullable: false, default: false })
+	@Column({ nullable: false })
 	default: boolean;
 
 	@Column({
 		type: 'enum',
 		enum: ChannelType,
-		default: ChannelType.Public
+		nullable: false
 	})
 	type: ChannelType;
 
-	@Column()
+	@Column({ nullable: false })
 	identifier: number;
 
-	@Column()
+	@Column({ nullable: false })
 	name: string;
 
 	@Column({ nullable: true })
@@ -54,6 +54,7 @@ export class ChatsChannels {
 	 * Relation Channel moderators -> Users
 	 */
 	@ManyToMany((type) => UsersInfos, (user) => user.moderator, {
+		onDelete: 'CASCADE',
 		nullable: false
 	})
 	@JoinTable({
@@ -72,6 +73,7 @@ export class ChatsChannels {
 	 * Relation Channel -> Users
 	 */
 	@ManyToMany((type) => UsersInfos, (user) => user.channel, {
+		onDelete: 'CASCADE',
 		nullable: false
 	})
 	@JoinTable({
@@ -90,6 +92,7 @@ export class ChatsChannels {
 	 * Relation Channel -> Channel blacklist
 	 */
 	@OneToMany((type) => ChatsChannelsBlacklist, (entry) => entry.channel, {
+		onDelete: 'CASCADE',
 		nullable: true
 	})
 	@JoinTable({

@@ -7,13 +7,13 @@ export class UsersInfos {
 	@PrimaryGeneratedColumn('uuid')
 	uuid: string;
 
-	@Column({ nullable: false, default: false })
+	@Column({ nullable: false })
 	adam: boolean;
 
-	@Column()
+	@Column({ nullable: false })
 	identifier: number;
 
-	@Column()
+	@Column({ nullable: false })
 	username: string;
 
 	@Column({ unique: true })
@@ -28,7 +28,7 @@ export class UsersInfos {
 	@Column({ nullable: true })
 	avatar: string;
 
-	@Column({ default: false })
+	@Column({ nullable: false })
 	is_online: boolean;
 
 	/**
@@ -89,8 +89,4 @@ export class UsersInfos {
 		}
 		this.blocklist.push(user);
 	}
-}
-
-export interface UsersInfosID extends UsersInfos {
-	friendsID?: string[];
 }

@@ -30,7 +30,9 @@ import { NotificationsGetResponse } from './properties/notifications.get.propert
 import { GlobalQueryProperty } from '../app/properties/global.property';
 import { UsersPatchProperty } from './properties/users.patch.property';
 
-import { parseUnsigned } from '../utils';
+import { parseUnsigned, isEmpty } from '../utils';
+
+import { ApiResponseError as ApiResponseErrorGlobal } from '../types';
 import { ApiResponseError, RelationType, RelationDispatch } from './types';
 import { JwtData } from '../auth/types';
 
@@ -45,6 +47,11 @@ export class UsersController {
 	/**
 	 * Users infos
 	 */
+	//#region
+
+	/**
+	 * Whoami
+	 */
 	@ApiTags('users · infos')
 	@ApiResponse({ status: 200, description: 'User infos', type: UsersMeResponse })
 	@HttpCode(200)
@@ -55,31 +62,64 @@ export class UsersController {
 		return await this.usersService.whoami(user);
 	}
 
+	/**
+	 * Get one by uuid
+	 */
 	@ApiTags('users · infos')
 	@ApiResponse({ status: 200, description: 'User details', type: UsersGetResponse })
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
 	@Get('profile/:uuid')
 	@HttpCode(200)
-	async get(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
+	async getOneByUUID(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
 		if (!isUUID(remote_user_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
-		return await this.usersService.get(user, remote_user_uuid);
+		return await this.usersService.get.ByUUID(user, remote_user_uuid);
 	}
+
+	/**
+	 * Get one by name and identifier
+	 */
+	@ApiTags('users · infos')
+	@ApiResponse({ status: 200, description: 'User details', type: UsersGetResponse })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
+	@Get('profile/:username/:identifier')
+	@HttpCode(200)
+	async getByIdentifier(
+		@Request() req: Req,
+		@Param('username') remote_username: string,
+		@Param('identifier') remote_identifier: number
+	) {
+		if (isEmpty(remote_username)) {
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
+		}
+		remote_identifier = parseUnsigned({ identifier: remote_identifier });
+
+		const user = (req.user as JwtData).infos;
+
+		return await this.usersService.get.ByIdentifier(user, remote_username, remote_identifier);
+	}
+	//#endregion
 
 	/**
 	 * Users account
 	 */
+	//#region
+
+	/**
+	 * Change password
+	 */
 	@ApiTags('users · account')
 	@ApiResponse({ status: 200, description: 'Password changed' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.ConfirmMismatch })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.PasswordsIdentical })
-	@ApiResponse({ status: 400.4, description: ApiResponseError.Passwordmismatch })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.PasswordMismatch })
 	@Patch()
 	@HttpCode(200)
 	async changePassword(@Request() req: Req, @Body() body: UsersPatchProperty) {
@@ -98,9 +138,15 @@ export class UsersController {
 	// @Delete()
 	// @HttpCode(200)
 	// async delete() {}
+	//#endregion
 
 	/**
 	 * Relations
+	 */
+	//#region
+
+	/**
+	 * Get relation
 	 */
 	@ApiTags('users · relations')
 	@ApiResponse({
@@ -116,9 +162,12 @@ export class UsersController {
 		return await this.usersService.relations.get(user);
 	}
 
+	/**
+	 * Add friend
+	 */
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Friendship status', type: UsersFriendshipResponse })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.FriendYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyFriends })
 	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyPending })
@@ -127,22 +176,25 @@ export class UsersController {
 	@HttpCode(200)
 	async updateFriendship(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
 		if (!isUUID(remote_user_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
 		return await this.usersService.relations.dispatch(
-			RelationType.friends,
-			RelationDispatch.add,
+			RelationType.Friends,
+			RelationDispatch.Add,
 			user,
 			remote_user_uuid
 		);
 	}
 
+	/**
+	 * Remove friend
+	 */
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Friendship removed' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.FriendYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyFriends })
 	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyPending })
@@ -151,22 +203,25 @@ export class UsersController {
 	@HttpCode(200)
 	async removeFriendship(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
 		if (!isUUID(remote_user_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
 		await this.usersService.relations.dispatch(
-			RelationType.friends,
-			RelationDispatch.remove,
+			RelationType.Friends,
+			RelationDispatch.Remove,
 			user,
 			remote_user_uuid
 		);
 	}
 
+	/**
+	 * Block
+	 */
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Blocked user' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.BlockYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyBlocked })
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
@@ -174,22 +229,25 @@ export class UsersController {
 	@HttpCode(200)
 	async updateBlocklist(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
 		if (!isUUID(remote_user_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
 		await this.usersService.relations.dispatch(
-			RelationType.blocklist,
-			RelationDispatch.add,
+			RelationType.Blocklist,
+			RelationDispatch.Add,
 			user,
 			remote_user_uuid
 		);
 	}
 
+	/**
+	 * Unblock
+	 */
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Unblocked user' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.BlockYourself })
 	@ApiResponse({ status: 400.3, description: ApiResponseError.NotBlocked })
 	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
@@ -197,21 +255,27 @@ export class UsersController {
 	@HttpCode(200)
 	async removeBlocklist(@Request() req: Req, @Param('uuid') remote_user_uuid: string) {
 		if (!isUUID(remote_user_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
 		await this.usersService.relations.dispatch(
-			RelationType.blocklist,
-			RelationDispatch.remove,
+			RelationType.Blocklist,
+			RelationDispatch.Remove,
 			user,
 			remote_user_uuid
 		);
 	}
+	//#endregion
 
 	/**
 	 * Notifications
+	 */
+	//#region
+
+	/**
+	 * Get
 	 */
 	@ApiTags('users · notifications')
 	@ApiQuery({ type: GlobalQueryProperty })
@@ -237,6 +301,9 @@ export class UsersController {
 		return await this.notifcationsService.get(user, page, limit, offset);
 	}
 
+	/**
+	 * Read
+	 */
 	@ApiTags('users · notifications')
 	@ApiResponse({
 		status: 200,
@@ -244,34 +311,15 @@ export class UsersController {
 	})
 	@HttpCode(200)
 	@Delete('notifications/:uuid')
-	@ApiResponse({ status: 400, description: ApiResponseError.MissingParameters })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	async readNotifications(@Request() req: Req, @Param('uuid') notification_uuid: string) {
 		if (!isUUID(notification_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const user = (req.user as JwtData).infos;
 
-		return await this.notifcationsService.delete(user, notification_uuid);
+		return await this.notifcationsService.read.ByUUID(user, notification_uuid);
 	}
-
-	/**
-	 * invite
-	 */
-	@ApiTags('users · invite')
-	@ApiResponse({ status: 200, description: 'User notified' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.MissingParameters })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.BadRequest })
-	@ApiResponse({ status: 404, description: ApiResponseError.NotFound })
-	@Post('invite/:uuid')
-	@HttpCode(200)
-	async invite(@Request() req: Req, @Param('uuid') remote_uuid: string) {
-		if (!isUUID(remote_uuid, 4)) {
-			throw new BadRequestException(ApiResponseError.MissingParameters);
-		}
-
-		const user = (req.user as JwtData).infos;
-
-		await this.usersService.invite(user, remote_uuid);
-	}
+	//#endregion
 }

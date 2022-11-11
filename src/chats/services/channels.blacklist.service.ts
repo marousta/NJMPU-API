@@ -35,6 +35,8 @@ export class ChannelsBlacklistService {
 	/**
 	 * Utils
 	 */
+	//#region
+
 	private validateType(action: ChatAction) {
 		switch (action) {
 			case ChatAction.Ban:
@@ -107,10 +109,13 @@ export class ChannelsBlacklistService {
 			throw new InternalServerErrorException();
 		});
 	}
+	//#endregion
 
 	/**
 	 * Service
 	 */
+	//#region
+
 	async create(params: ChannelModerationPropertyEX, channel: ChatsChannelsID) {
 		// Get remote user
 		// should not fail
@@ -221,4 +226,5 @@ export class ChannelsBlacklistService {
 		});
 		return filtered;
 	}
+	//#endregion
 }

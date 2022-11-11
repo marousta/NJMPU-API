@@ -7,3 +7,8 @@ export const colors = {
 	pink: '\x1b[35m',
 	end: '\x1b[0m'
 };
+
+export enum ApiResponseError {
+	BadRequest = 'Bad request format',
+	MissingParameters = 'Invalid or missing parameters'
+}

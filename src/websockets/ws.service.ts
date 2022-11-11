@@ -6,7 +6,6 @@ import { Server } from 'ws';
 import { ChatsChannels } from '../chats/entities/channels.entity';
 
 import { peerOrPeers as PeerOrPeers } from '../utils';
-import { UsersInfos } from '../users/entities/users.entity';
 
 import {
 	ChatAction,
@@ -34,7 +33,9 @@ import {
 	WsUserUpdateSession,
 	WsUserBlock,
 	WsUserUnblock,
-	WebSocketUser
+	WebSocketUser,
+	WsUserNotificationRead,
+	WsUserUnfriend
 } from './types';
 
 @Injectable()
@@ -51,13 +52,15 @@ export class WsService {
 	/**
 	 * Utils
 	 */
-	//#region  Utils
+	//#region
+
 	private tokenHasExpired(exp: number) {
 		return exp * 1000 < new Date().valueOf();
 	}
 
 	private send(client: WebSocketUser, data: any) {
 		if (this.tokenHasExpired(client.refresh_token_exp)) {
+			this.logger.warn(client.refresh_token_exp * 1000, new Date().valueOf());
 			const expired: WsUserExpired = {
 				namespace: WsNamespace.User,
 				action: UserAction.Expired
@@ -85,11 +88,12 @@ export class WsService {
 
 		return i;
 	}
+	//#endregion
 
 	/**
 	 * Serivce
 	 */
-	//#region  Service
+	//#region
 
 	public readonly dispatch = {
 		all: (data: WsChatCreate | WsChatRemove | WsChatAvatar | WsUserAvatar) => {
@@ -157,6 +161,8 @@ export class WsService {
 				| WsUserNotification
 				| WsUserBlock
 				| WsUserUnblock
+				| WsUserNotificationRead
+				| WsUserUnfriend
 		) => {
 			const i = this.processSend(uuid, data);
 			if (i === null) {
@@ -207,6 +213,20 @@ export class WsService {
 							`Unblocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
 								i
 							)}`
+						);
+						break;
+					case UserAction.Unfriend:
+						this.logger.verbose(
+							`Unfriend users ${uuid} <-> ${
+								data.user
+							} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+						);
+						break;
+					case UserAction.Read:
+						this.logger.verbose(
+							`Readed notification ${
+								data.uuid
+							} broadcasted to ${i} connected ${PeerOrPeers(i)}`
 						);
 						break;
 				}

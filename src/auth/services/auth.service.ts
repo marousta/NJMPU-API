@@ -6,7 +6,6 @@ import { Request, Response } from 'express';
 
 import { UsersService } from '../../users/services/users.service';
 import { TokensService } from '../tokens/tokens.service';
-import { PicturesService } from '../../pictures/pictures.service';
 import { TwoFactorService } from '../services/2fa.service';
 import { WsService } from '../../websockets/ws.service';
 
@@ -41,6 +40,17 @@ export class AuthService {
 		private readonly twoFactorService: TwoFactorService,
 		private readonly wsService: WsService
 	) {}
+
+	/**
+	 * Utils
+	 */
+	//#region
+	//#endregion
+
+	/**
+	 * Service
+	 */
+	//#region
 
 	async validate(email: string, password: string): Promise<UsersInfos> {
 		const user = await this.usersRepository.findOneByOrFail({ email }).catch((e) => {
@@ -214,4 +224,5 @@ export class AuthService {
 			});
 		}
 	};
+	//#endregion
 }

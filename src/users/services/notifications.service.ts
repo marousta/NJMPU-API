@@ -29,10 +29,14 @@ export class NotifcationsService {
 	/**
 	 * Utils
 	 */
+	//#region
+	//#endregion
 
 	/**
 	 * Service
 	 */
+	//#region
+
 	async add(type: NotifcationType, interact_w_user: UsersInfos, notified_user: UsersInfos) {
 		const request = this.notifcationsRepository.create({
 			type: type,
@@ -92,22 +96,75 @@ export class NotifcationsService {
 		return { data, count, total, page, page_count };
 	}
 
-	async delete(user: UsersInfos, uuid: string) {
-		const request = await this.notifcationsRepository
-			.createQueryBuilder('notif')
-			.where({ uuid })
-			.andWhere({ notified_user: user.uuid })
-			.getOneOrFail()
-			.catch((e) => {
-				this.logger.verbose('No notification found for uuid ' + uuid, e);
-				throw new NotFoundException();
+	public readonly read = {
+		ByUUID: async (user: UsersInfos, uuid: string) => {
+			const notif = await this.notifcationsRepository
+				.createQueryBuilder('notif')
+				.where({ uuid })
+				.andWhere({ notified_user: user.uuid })
+				.getOneOrFail()
+				.catch((e) => {
+					this.logger.verbose('No notification found for uuid ' + uuid, e);
+					throw new NotFoundException();
+				});
+
+			if (notif.read) {
+				return;
+			}
+
+			notif.read = true;
+
+			await this.notifcationsRepository.save(notif).catch((e) => {
+				this.logger.error('Unable to read notification for uuid ' + notif.uuid);
+				throw new InternalServerErrorException();
 			});
 
-		request.read = true;
+			this.wsService.dispatch.user(user.uuid, {
+				namespace: WsNamespace.User,
+				action: UserAction.Read,
+				uuid: notif.uuid
+			});
+		},
+		friendRequest: async (current_user: UsersInfos, remote_user: UsersInfos) => {
+			const notifs = await this.notifcationsRepository
+				.createQueryBuilder('notifs')
+				.where({
+					notified_user: current_user,
+					interact_w_user: remote_user,
+					read: false
+				})
+				.getMany()
+				.then((r) => (r.length ? r : null))
+				.catch((e) => {
+					this.logger.error('Unable to get notifications for ');
+					return null;
+				});
 
-		await this.notifcationsRepository.save(request).catch((e) => {
-			this.logger.error('Unable to read notification for uuid ' + request.uuid);
-			throw new InternalServerErrorException();
-		});
-	}
+			if (!notifs) {
+				return;
+			}
+
+			for (const notif of notifs) {
+				if (notif.type === NotifcationType.GameInvite && notif.read) {
+					continue;
+				}
+
+				notif.read = true;
+
+				this.logger.verbose('Readed notification ' + notif.uuid);
+
+				this.wsService.dispatch.user(current_user.uuid, {
+					namespace: WsNamespace.User,
+					action: UserAction.Read,
+					uuid: notif.uuid
+				});
+			}
+
+			await this.notifcationsRepository.save(notifs).catch((e) => {
+				this.logger.error('Unable to read notifications for ' + current_user.uuid, e);
+			});
+		}
+	};
+
+	//#endregion
 }

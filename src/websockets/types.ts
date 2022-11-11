@@ -128,13 +128,15 @@ export interface WsChatAvatar extends WsChat {
  */
 
 export enum UserAction {
+	Unfriend = 'UNFRIEND',
 	Block = 'BLOCK',
 	Unblock = 'UNBLOCK',
 	Refresh = 'REFRESH',
 	Expired = 'EXPIRED',
 	Avatar = 'AVATAR',
 	Session = 'SESSION',
-	Notification = 'NOTIFICATION'
+	Notification = 'NOTIFICATION',
+	Read = 'READ'
 }
 
 export interface WsUser {
@@ -175,6 +177,11 @@ export interface WsUserNotification extends WsUser {
 	creation_date: Date;
 }
 
+export interface WsUserNotificationRead extends WsUser {
+	action: UserAction.Read;
+	uuid: string;
+}
+
 export interface WsUserBlock extends WsUser {
 	action: UserAction.Block;
 	user: string;
@@ -182,6 +189,11 @@ export interface WsUserBlock extends WsUser {
 
 export interface WsUserUnblock extends WsUser {
 	action: UserAction.Unblock;
+	user: string;
+}
+
+export interface WsUserUnfriend extends WsUser {
+	action: UserAction.Unfriend;
 	user: string;
 }
 

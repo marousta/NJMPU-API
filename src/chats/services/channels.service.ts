@@ -49,7 +49,6 @@ import {
 	ApiResponseError
 } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
-import { channel } from 'diagnostics_channel';
 
 @Injectable()
 export class ChannelsService {
@@ -70,7 +69,8 @@ export class ChannelsService {
 	/**
 	 * Utils
 	 */
-	//#region  Utils
+	//#region
+
 	readonly findOne = {
 		WithRelationsID: async (where: object, error_msg: string): Promise<ChatsChannelsID> => {
 			return await this.channelRepository
@@ -299,7 +299,8 @@ export class ChannelsService {
 	/**
 	 * Serivce
 	 */
-	//#region  Service
+	//#region
+
 	async getAll(
 		page: number = 1,
 		limit: number = 0,
@@ -490,7 +491,7 @@ export class ChannelsService {
 			// Save to database
 			const request = this.channelRepository.create({
 				type: params.type,
-				default: params.current_user.adam,
+				default: params.current_user.adam ? true : false,
 				identifier: params.current_user.adam ? 0 : await this.getIdentifier(params.name),
 				name: params.name,
 				password,
@@ -558,6 +559,7 @@ export class ChannelsService {
 			// Save to database
 			const request = this.channelRepository.create({
 				type: params.type,
+				default: false,
 				identifier: await this.getIdentifier(name),
 				name
 			});
