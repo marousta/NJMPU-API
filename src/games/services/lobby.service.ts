@@ -126,6 +126,7 @@ export class GamesLobbyService {
 	//#region
 
 	// TODO: update lobby on user disconnect
+	// TODO: read notification
 	public readonly lobby = {
 		get: async (uuid: string): Promise<GamesLobbyGetResponse> => {
 			const lobby = await this.findWithRelations(

@@ -27,6 +27,7 @@ import {
 } from '../types';
 import { UserAction, WsNamespace } from '../../websockets/types';
 import { JwtData, TwitterUser } from '../types';
+import { token_time } from '../config';
 
 @Injectable()
 export class AuthService {
@@ -118,11 +119,11 @@ export class AuthService {
 			let expires = new Date();
 
 			if (name === 'access_token') {
-				expires = new Date(expires.valueOf() + 60 * 10 * 2000); // 20m
+				expires = token_time.access();
 			} else if (name === 'refresh_token') {
-				expires = new Date(expires.valueOf() + 60 * 60 * 24 * 3 * 1000); //3d
+				expires = token_time.refresh();
 			} else if (name === 'twofactor_token') {
-				expires = new Date(expires.valueOf() + 60 * 4 * 1000); // 4m
+				expires = token_time.twofactor();
 			}
 
 			res.cookie(name, Object.values(obj)[0], {

@@ -1,4 +1,4 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server } from 'ws';
@@ -8,7 +8,7 @@ import { GamesLobby } from '../games/entities/lobby.entity';
 
 import { peerOrPeers as PeerOrPeers } from '../utils';
 
-import { JwtData } from '../auth/types';
+import { Jwt, JwtData } from '../auth/types';
 import {
 	ChatAction,
 	SubscribedDictionary,
@@ -45,10 +45,10 @@ import {
 	WsGameSpectate,
 	WsGameStart
 } from './types';
-
+import { wsLogger } from './ws.logger';
 @Injectable()
 export class WsService {
-	private readonly logger = new Logger(WsService.name);
+	private readonly logger = new wsLogger(WsService.name);
 	public ws: Server = null;
 	private subscribed: SubscribedDictionary = {};
 
@@ -66,6 +66,18 @@ export class WsService {
 		return exp * 1000 < new Date().valueOf();
 	}
 
+	updateToken(jwt: Jwt) {
+		if (!this.subscribed[jwt.uuuid]) {
+			return;
+		}
+		for (const client of this.subscribed[jwt.uuuid]) {
+			if (client.jwt.token.tuuid === jwt.tuuid) {
+				this.logger.set(client.uuid).verbose('Token updated').unset();
+				client.jwt.token = jwt;
+			}
+		}
+	}
+
 	private send(client: WebSocketUser, data: any) {
 		if (this.tokenHasExpired(client.jwt.token.exp)) {
 			this.logger.warn(client.jwt.token.exp * 1000, new Date().valueOf());
@@ -78,6 +90,7 @@ export class WsService {
 			return false;
 		}
 
+		this.logger.set(client.uuid).debug('Data sent').unset();
 		client.send(JSON.stringify(data));
 		return true;
 	}
@@ -393,7 +406,9 @@ export class WsService {
 						continue;
 					}
 
+					this.logger.set(client.uuid);
 					const ret = this.send(client, data);
+					this.logger.unset();
 					if (ret === false) {
 						continue;
 					}
@@ -439,7 +454,6 @@ export class WsService {
 
 	async connected(client: WebSocketUser) {
 		const user_uuid = client.jwt.infos.uuid;
-
 		if (!this.subscribed) {
 			this.subscribed;
 		}
@@ -486,9 +500,7 @@ export class WsService {
 				if (c.uuid === client.uuid) {
 					delete this.subscribed[user_uuid][i];
 				}
-				if (!i) {
-					this.subscribed[user_uuid] = [];
-				}
+				this.subscribed[user_uuid] = this.subscribed[user_uuid].filter((entry) => entry);
 			});
 			if (!this.subscribed[user_uuid].length) {
 				// All connections are closed removing user

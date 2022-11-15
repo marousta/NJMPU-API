@@ -18,7 +18,7 @@ import { WsService } from '../../websockets/ws.service';
 import { UsersTokens, UsersTokensID } from './tokens.entity';
 import { UsersInfos } from '../../users/entities/users.entity';
 
-import { hash_token_config } from '../config';
+import { hash_token_config, token_time } from '../config';
 
 import { isEmpty } from '../../utils';
 import { hash, hash_verify } from '../utils';
@@ -190,7 +190,7 @@ export class TokensService {
 			hash(refresh_token, hash_token_config)
 		]);
 
-		await this.tokensRepository
+		const refreshed_token = await this.tokensRepository
 			.save({
 				uuid,
 				refresh_date: new Date(),
@@ -202,6 +202,12 @@ export class TokensService {
 				throw new UnauthorizedException();
 			});
 
+		this.wsService.updateToken({
+			tuuid: refreshed_token.uuid,
+			uuuid: user.uuid,
+			iat: Math.floor(refreshed_token.refresh_date.valueOf() / 1000),
+			exp: Math.floor(token_time.refresh().valueOf() / 1000)
+		});
 		this.logger.debug('Token refreshed for user ' + user.uuid);
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
 	}
