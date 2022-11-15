@@ -1,13 +1,12 @@
 import { WebSocket } from 'ws';
 
-import { UsersInfos } from '../users/entities/users.entity';
-
 import { NotifcationType } from '../users/types';
+import { JwtData } from '../auth/types';
 
 export interface WebSocketUser extends WebSocket {
 	uuid: string;
-	user: UsersInfos;
-	refresh_token_exp: number;
+	jwt: JwtData;
+	lobby_uuid: string;
 }
 
 export interface SubscribedDictionary {
@@ -201,7 +200,40 @@ export interface WsUserUnfriend extends WsUser {
  * Game
  */
 
+export enum GameAction {
+	Join = 'JOIN',
+	Spectate = 'SPECTATE',
+	Ready = 'READY',
+	Start = 'START',
+	Leave = 'LEAVE'
+}
+
 export interface WsGame {
 	namespace: WsNamespace.Game;
-	action: '';
+	action: GameAction;
+	lobby_uuid: string;
+}
+
+export interface WsGameJoin extends WsGame {
+	action: GameAction.Join;
+	user_uuid: string;
+}
+
+export interface WsGameSpectate extends WsGame {
+	action: GameAction.Spectate;
+	user_uuid: string;
+}
+
+export interface WsGameReady extends WsGame {
+	action: GameAction.Ready;
+	user_uuid: string;
+}
+
+export interface WsGameStart extends WsGame {
+	action: GameAction.Start;
+}
+
+export interface WsGameLeave extends WsGame {
+	action: GameAction.Leave;
+	user_uuid: string;
 }

@@ -16,6 +16,7 @@ import { ChatsModule } from '../chats/chats.module';
 import { AppController } from './app.controller';
 
 import { AppService } from './services/app.service';
+import { GamesModule } from 'src/games/games.module';
 
 @Module({
 	imports: [
@@ -44,7 +45,8 @@ import { AppService } from './services/app.service';
 		AuthModule,
 		UsersModule,
 		ChatsModule,
-		PicturesModule
+		PicturesModule,
+		GamesModule
 	],
 	providers: [AppService],
 	controllers: [AppController]

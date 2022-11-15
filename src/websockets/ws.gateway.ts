@@ -91,7 +91,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 			return null;
 		}
 
-		return valid_jwt_token[0];
+		return valid_jwt_token as any;
 	}
 	//#endregion
 
@@ -118,7 +118,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		}
 
 		// Post validation
-		const uuid = jwt.uuuid;
+		const uuid = jwt[0].uuuid;
 		if (!uuid) {
 			this.logger.error('Cannot get user uuid, this should not happen');
 			throw new InternalServerErrorException();
@@ -131,14 +131,17 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 			throw new InternalServerErrorException();
 		}
 		client.uuid = randomUUID();
-		client.user = user;
-		client.refresh_token_exp = jwt.exp;
+		client.jwt = {
+			infos: user,
+			token: jwt[1]
+		};
+		client.lobby_uuid = null;
 
 		await this.wsService.connected(client);
 	}
 
 	handleDisconnect(client: WebSocketUser) {
-		const user = client.user;
+		const user = client.jwt?.infos;
 		if (!user) {
 			this.logger.verbose('Disconnected unauthenticated client');
 			return;

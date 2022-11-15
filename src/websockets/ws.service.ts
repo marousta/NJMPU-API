@@ -4,9 +4,11 @@ import { Repository } from 'typeorm';
 import { Server } from 'ws';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
+import { GamesLobby } from '../games/entities/lobby.entity';
 
 import { peerOrPeers as PeerOrPeers } from '../utils';
 
+import { JwtData } from '../auth/types';
 import {
 	ChatAction,
 	SubscribedDictionary,
@@ -35,7 +37,13 @@ import {
 	WsUserUnblock,
 	WebSocketUser,
 	WsUserNotificationRead,
-	WsUserUnfriend
+	WsUserUnfriend,
+	GameAction,
+	WsGameJoin,
+	WsGameLeave,
+	WsGameReady,
+	WsGameSpectate,
+	WsGameStart
 } from './types';
 
 @Injectable()
@@ -59,14 +67,14 @@ export class WsService {
 	}
 
 	private send(client: WebSocketUser, data: any) {
-		if (this.tokenHasExpired(client.refresh_token_exp)) {
-			this.logger.warn(client.refresh_token_exp * 1000, new Date().valueOf());
+		if (this.tokenHasExpired(client.jwt.token.exp)) {
+			this.logger.warn(client.jwt.token.exp * 1000, new Date().valueOf());
 			const expired: WsUserExpired = {
 				namespace: WsNamespace.User,
 				action: UserAction.Expired
 			};
 			client.send(JSON.stringify(expired));
-			this.logger.verbose(`Token for client with user ${client.user.uuid} has expired`);
+			this.logger.verbose(`Token for client with user ${client.jwt.infos.uuid} has expired`);
 			return false;
 		}
 
@@ -94,6 +102,22 @@ export class WsService {
 	 * Serivce
 	 */
 	//#region
+
+	setLobby(jwt: JwtData, lobby_uuid: string) {
+		const user_uuid = jwt.infos.uuid;
+		const token_uuid = jwt.token.tuuid;
+
+		// User not connected
+		if (!this.subscribed[user_uuid]) {
+			return;
+		}
+		for (const client of this.subscribed[user_uuid]) {
+			if (client.jwt.token.tuuid !== token_uuid) {
+				continue;
+			}
+			client.lobby_uuid = lobby_uuid;
+		}
+	}
 
 	public readonly dispatch = {
 		all: (data: WsChatCreate | WsChatRemove | WsChatAvatar | WsUserAvatar) => {
@@ -252,42 +276,42 @@ export class WsService {
 			const channel_uuid = data.channel;
 
 			let i: number | null = 0;
-			users.forEach((uuid) => {
+			for (const uuid of users) {
 				if (!this.subscribed[uuid]) {
-					return;
+					continue;
 				}
 
 				const ret = this.processSend(uuid, data);
 
 				if (ret === null) {
-					return;
+					continue;
 				} else if (ret === 0) {
 					this.logger.warn(
 						'Websocket tried to send data on empty user, this should not happend'
 					);
-					return;
+					continue;
 				}
 
 				i += ret;
-			});
+			}
 
 			if (data.namespace === WsNamespace.Chat) {
 				switch (data.action) {
 					case ChatAction.Join:
 						return this.logger.verbose(
-							`${user_uuid} JOIN ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							`${user_uuid} JOIN channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);
 					case ChatAction.Leave:
 						return this.logger.verbose(
-							`${user_uuid} LEAVE ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							`${user_uuid} LEAVE channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);
 					case ChatAction.Send:
 						return this.logger.verbose(
-							`New message in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							`New message in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);
@@ -295,7 +319,9 @@ export class WsService {
 						return this.logger.verbose(
 							`Deleted message id ${
 								data.uuid
-							} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+							} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+								i
+							)}`
 						);
 					case ChatAction.Remove:
 						return this.logger.verbose(
@@ -305,54 +331,114 @@ export class WsService {
 						);
 					case ChatAction.Promote:
 						return this.logger.verbose(
-							`Promoted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							`Promoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);
 					case ChatAction.Demote:
 						return this.logger.verbose(
-							`Demoted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							`Demoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);
 					case ChatAction.Ban:
 						return this.logger.verbose(
-							`Banned ${user_uuid} in ${channel_uuid} ${
+							`Banned ${user_uuid} in channel ${channel_uuid} ${
 								data.expiration ? 'until ' + data.expiration : 'permanently'
 							} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 						);
 					case ChatAction.Unban:
 						return this.logger.verbose(
-							`Unbanned ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							`Unbanned ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);
 					case ChatAction.Mute:
 						return this.logger.verbose(
-							`Muted ${user_uuid} in ${channel_uuid} ${
+							`Muted ${user_uuid} in channel ${channel_uuid} ${
 								data.expiration ? 'until ' + data.expiration : 'permanently'
 							} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 						);
 					case ChatAction.Unmute:
 						return this.logger.verbose(
-							`Unmuted ${user_uuid} in ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							`Unmuted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
 								i
 							)}`
 						);
 					case ChatAction.Avatar:
 						this.logger.verbose(
-							`Updated channel avatar for ${
+							`Updated channel avatar for channel ${
 								data.channel
 							} dispatched to ${i} connected ${PeerOrPeers(i)}`
 						);
 						break;
 				}
 			}
+		},
+		lobby: (
+			lobby: GamesLobby,
+			data: WsGameJoin | WsGameLeave | WsGameReady | WsGameSpectate | WsGameStart
+		) => {
+			let i: number | null = 0;
+			const spectators = lobby.spectators ? lobby.spectators.map((u) => u.uuid) : [];
+			const users = [lobby.player1.uuid, lobby.player2?.uuid, ...spectators];
+
+			for (const uuid of users) {
+				if (!this.subscribed[uuid]) {
+					continue;
+				}
+
+				for (const client of this.subscribed[uuid]) {
+					if (client.lobby_uuid !== lobby.uuid) {
+						continue;
+					}
+
+					const ret = this.send(client, data);
+					if (ret === false) {
+						continue;
+					}
+
+					i++;
+				}
+			}
+
+			switch (data.action) {
+				case GameAction.Join:
+					return this.logger.verbose(
+						`${data.user_uuid} JOIN lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case GameAction.Leave:
+					return this.logger.verbose(
+						`${data.user_uuid} LEAVE lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case GameAction.Spectate:
+					return this.logger.verbose(
+						`${data.user_uuid} SPECTATE lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case GameAction.Ready:
+					return this.logger.verbose(
+						`Player ${data.user_uuid} is ready for lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case GameAction.Start:
+					return this.logger.verbose(
+						`Game for lobby ${
+							lobby.uuid
+						} has started broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+			}
 		}
 	};
 
 	async connected(client: WebSocketUser) {
-		const user_uuid = client.user.uuid;
+		const user_uuid = client.jwt.infos.uuid;
 
 		if (!this.subscribed) {
 			this.subscribed;
@@ -391,7 +477,7 @@ export class WsService {
 	}
 
 	disconnected(client: WebSocketUser) {
-		const user_uuid = client.user.uuid;
+		const user_uuid = client.jwt.infos.uuid;
 
 		// Check if user is subscribed
 		if (user_uuid && this.subscribed && this.subscribed[user_uuid]) {
