@@ -115,6 +115,7 @@ export class GamesLobbyService {
 	 */
 	//#region
 
+	// TODO: Remove spectators
 	async removeFromLobbies(jwt: JwtData) {
 		const current_user = jwt.infos;
 
@@ -152,8 +153,6 @@ export class GamesLobbyService {
 		await Promise.all(promises);
 	}
 
-	// FIXME: update lobby on user disconnect (maybe)
-	// FIXME: read notification (maybe)
 	public readonly lobby = {
 		get: async (uuid: string): Promise<GamesLobbyGetResponse> => {
 			const lobby = await this.findWithRelations(
@@ -210,7 +209,19 @@ export class GamesLobbyService {
 				user_uuid: current_user.uuid
 			});
 
+			return lobby;
+		},
+		createFormat: async (jwt: JwtData, remote_user?: UsersInfos) => {
+			const lobby = await this.lobby.create(jwt, remote_user);
 			return this.formatResponse(lobby);
+		},
+		addPlayer: async (lobby: GamesLobby, user: UsersInfos) => {
+			lobby.player2 = user;
+			await this.lobbyRepository.save(lobby).catch((e) => {
+				this.logger.error('Unable to add player 2 to lobby ' + lobby.uuid, e);
+				throw new InternalServerErrorException();
+			});
+			return lobby;
 		},
 		invite: async (jwt: JwtData, remote_user_uuid: string) => {
 			const current_user = jwt.infos;
@@ -218,42 +229,67 @@ export class GamesLobbyService {
 				throw new BadRequestException(ApiResponseErrorUser.InteractYourself);
 			}
 
-			const remote_user = await this.usersRepository
-				.findOneByOrFail({ uuid: remote_user_uuid })
-				.catch((e) => {
+			const promises = await Promise.all([
+				this.usersRepository.findOneByOrFail({ uuid: remote_user_uuid }).catch((e) => {
 					this.logger.verbose('Unable to find remote user ' + remote_user_uuid, e);
 					throw new NotFoundException(ApiResponseErrorUser.NotFound);
-				});
+				}),
+				this.findInLobby(current_user.uuid)
+			]);
+			const remote_user = promises[0];
+			const existing_lobbies: any = promises[1];
 
-			const lobby_response = await this.lobby.create(jwt, remote_user);
+			// Check if user in already in lobby
+			let lobby: GamesLobby = null;
+			if (existing_lobbies && existing_lobbies.length > 1) {
+				// User is in several lobbies
+				this.logger.error('User ' + remote_user.uuid + ' is in several lobbies');
+				throw new InternalServerErrorException();
+			} else if (existing_lobbies.length === 1) {
+				// Add user to existing lobby (it was in spectator)
+				lobby = await this.lobby.addPlayer(existing_lobbies[0], remote_user);
+			} else {
+				// User not in lobby, creating one
+				lobby = await this.lobby.create(jwt, remote_user);
+			}
 
 			this.notifcationsService.add(
 				NotifcationType.GameInvite,
 				current_user,
 				remote_user,
-				lobby_response.uuid
+				lobby.uuid
 			);
+			this.wsService.dispatch.lobby(lobby, {
+				namespace: WsNamespace.Game,
+				action: GameAction.Invite,
+				lobby_uuid: lobby.uuid,
+				user_uuid: remote_user_uuid
+			});
 
-			return lobby_response;
+			return this.formatResponse(lobby);
 		},
 		join: async (jwt: JwtData, uuid: string) => {
 			const remote_user = jwt.infos;
 			const lobby = await this.findWithRelations({ uuid }, 'Unable to find lobby ' + uuid);
 
-			if (
-				lobby.player1.uuid === remote_user.uuid ||
-				lobby.spectators.map((u) => u.uuid).includes(remote_user.uuid)
-			) {
+			if (lobby.player1.uuid === remote_user.uuid) {
 				throw new BadRequestException(ApiResponseError.AlreadyIn);
 			}
 
-			if (lobby.player2.uuid === remote_user.uuid) {
-				lobby.player2_status = LobbyPlayerReadyState.Joined;
-			} else {
+			let wasSpectator = false;
+
+			if (!lobby.player2 || lobby.player2.uuid !== remote_user.uuid) {
 				if (lobby.spectators.length > max_spectators) {
 					throw new BadRequestException(ApiResponseError.GameFull);
 				}
 				lobby.addSpectator(remote_user);
+			} else if (lobby.player2.uuid === remote_user.uuid) {
+				lobby.player2_status = LobbyPlayerReadyState.Joined;
+
+				if (lobby.spectators.map((u) => u.uuid).includes(remote_user.uuid)) {
+					lobby.spectators.filter((u) => u.uuid !== remote_user.uuid);
+					wasSpectator = true;
+				}
 			}
 
 			await this.lobbyRepository.save(lobby).catch((e) => {
@@ -265,17 +301,25 @@ export class GamesLobbyService {
 			});
 
 			this.wsService.setLobby(jwt, lobby.uuid);
-			if (lobby.player2.uuid === remote_user.uuid) {
+			if (!lobby.player2 || lobby.player2.uuid !== remote_user.uuid) {
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
-					action: GameAction.Join,
+					action: GameAction.Spectate,
 					lobby_uuid: lobby.uuid,
 					user_uuid: remote_user.uuid
 				});
 			} else {
+				if (wasSpectator) {
+					this.wsService.dispatch.lobby(lobby, {
+						namespace: WsNamespace.Game,
+						action: GameAction.Leave,
+						lobby_uuid: lobby.uuid,
+						user_uuid: remote_user.uuid
+					});
+				}
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
-					action: GameAction.Spectate,
+					action: GameAction.Join,
 					lobby_uuid: lobby.uuid,
 					user_uuid: remote_user.uuid
 				});
@@ -311,11 +355,20 @@ export class GamesLobbyService {
 				throw new InternalServerErrorException();
 			});
 
-			this.wsService.dispatch.lobby(lobby, {
-				namespace: WsNamespace.Game,
-				action: GameAction.Start,
-				lobby_uuid: lobby.uuid
-			});
+			if (lobby.in_game) {
+				this.wsService.dispatch.lobby(lobby, {
+					namespace: WsNamespace.Game,
+					action: GameAction.Start,
+					lobby_uuid: lobby.uuid
+				});
+			} else {
+				this.wsService.dispatch.lobby(lobby, {
+					namespace: WsNamespace.Game,
+					action: GameAction.Ready,
+					lobby_uuid: lobby.uuid,
+					user_uuid: user.uuid
+				});
+			}
 		},
 		delete: async (jwt: JwtData, uuid: string, lobby?: GamesLobby) => {
 			const user = jwt.infos;
@@ -324,6 +377,7 @@ export class GamesLobbyService {
 			}
 
 			if (lobby.player1.uuid === user.uuid) {
+				await this.notifcationsService.read.ByLobby(uuid);
 				await this.lobbyRepository.delete(lobby.uuid).catch((e) => {
 					this.logger.error('Unable to delete lobby ' + lobby.uuid, e);
 					throw new InternalServerErrorException();
@@ -339,6 +393,7 @@ export class GamesLobbyService {
 
 			if (lobby.player2.uuid === user.uuid) {
 				lobby.player2 = null;
+				lobby.player2_status = LobbyPlayerReadyState.Invited;
 			} else if (lobby.spectators.includes(user)) {
 				lobby.spectators = lobby.spectators.filter((u) => u.uuid !== user.uuid);
 			} else {

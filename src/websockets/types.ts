@@ -220,6 +220,7 @@ export interface WsUserNotificationGameInvite extends WsUserNotification {
 
 export enum GameAction {
 	Join = 'JOIN',
+	Invite = 'INVITE',
 	Spectate = 'SPECTATE',
 	Ready = 'READY',
 	Start = 'START',
@@ -230,6 +231,11 @@ export interface WsGame {
 	namespace: WsNamespace.Game;
 	action: GameAction;
 	lobby_uuid: string;
+}
+
+export interface WsGameInvite extends WsGame {
+	action: GameAction.Invite;
+	user_uuid: string;
 }
 
 export interface WsGameJoin extends WsGame {

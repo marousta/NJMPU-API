@@ -191,7 +191,7 @@ export class NotifcationsService {
 					this.notifcationsRepository
 						.save(notifs)
 						.then(() => {
-							this.logger.debug('Readed notification ' + notif.uuid);
+							this.logger.debug('Read notification ' + notif.uuid);
 							this.wsService.dispatch.user(current_user.uuid, {
 								namespace: WsNamespace.User,
 								action: UserAction.Read,
@@ -236,7 +236,7 @@ export class NotifcationsService {
 					this.notifcationsRepository
 						.save(notifs)
 						.then(() => {
-							this.logger.debug('Readed notification ' + notif.uuid);
+							this.logger.debug('Read notification ' + notif.uuid);
 							this.wsService.dispatch.user(notif.notified_user, {
 								namespace: WsNamespace.User,
 								action: UserAction.Read,

@@ -50,7 +50,8 @@ import {
 	WsGameSpectate,
 	WsGameStart,
 	WsUserNotificationFriendRequest,
-	WsUserNotificationGameInvite
+	WsUserNotificationGameInvite,
+	WsGameInvite
 } from './types';
 @Injectable()
 export class WsService {
@@ -288,7 +289,7 @@ export class WsService {
 						break;
 					case UserAction.Read:
 						this.logger.verbose(
-							`Readed notification ${
+							`Read notification ${
 								data.uuid
 							} broadcasted to ${i} connected ${PeerOrPeers(i)}`
 						);
@@ -417,7 +418,13 @@ export class WsService {
 		},
 		lobby: (
 			lobby: GamesLobby,
-			data: WsGameJoin | WsGameLeave | WsGameReady | WsGameSpectate | WsGameStart
+			data:
+				| WsGameJoin
+				| WsGameInvite
+				| WsGameLeave
+				| WsGameReady
+				| WsGameSpectate
+				| WsGameStart
 		) => {
 			let i: number | null = 0;
 			const spectators = lobby.spectators ? lobby.spectators.map((u) => u.uuid) : [];
@@ -448,6 +455,12 @@ export class WsService {
 				case GameAction.Join:
 					return this.logger.verbose(
 						`${data.user_uuid} JOIN lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case GameAction.Invite:
+					return this.logger.verbose(
+						`${data.user_uuid} INVITED lobby ${
 							lobby.uuid
 						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 					);

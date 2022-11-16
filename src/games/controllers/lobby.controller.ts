@@ -89,7 +89,25 @@ export class GamesLobbyController {
 	@HttpCode(200)
 	async create(@Request() req: Req) {
 		const jwt = req.user as JwtData;
-		return await this.lobbyService.lobby.create(jwt);
+		return await this.lobbyService.lobby.createFormat(jwt);
+	}
+
+	/**
+	 * Join
+	 */
+	@ApiTags('games · lobby')
+	@ApiResponse({ status: 200, description: 'Lobby joined', type: GamesLobbyGetResponse })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
+	@Post('join/:uuid')
+	@HttpCode(200)
+	async inviteHandler(@Request() req: Req, @Param('uuid') uuid: string) {
+		if (!isUUID(uuid, 4)) {
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
+		}
+
+		const jwt = req.user as JwtData;
+		return await this.lobbyService.lobby.join(jwt, uuid);
 	}
 
 	/**
@@ -99,7 +117,7 @@ export class GamesLobbyController {
 	@ApiBody({ type: GamesLobbyInviteProperty })
 	@ApiResponse({
 		status: 200,
-		description: 'Create lobby and invite user',
+		description: 'Create lobby if not exist and invite user',
 		type: GamesLobbyGetResponse
 	})
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
@@ -113,24 +131,6 @@ export class GamesLobbyController {
 
 		const jwt = req.user as JwtData;
 		return await this.lobbyService.lobby.invite(jwt, body.user_uuid);
-	}
-
-	/**
-	 * Accept invite
-	 */
-	@ApiTags('games · lobby')
-	@ApiResponse({ status: 200, description: 'Lobby joined', type: GamesLobbyGetResponse })
-	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
-	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
-	@Post('invite/:uuid')
-	@HttpCode(200)
-	async inviteHandler(@Request() req: Req, @Param('uuid') uuid: string) {
-		if (!isUUID(uuid, 4)) {
-			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
-		}
-
-		const jwt = req.user as JwtData;
-		return await this.lobbyService.lobby.join(jwt, uuid);
 	}
 	//#endregion
 
