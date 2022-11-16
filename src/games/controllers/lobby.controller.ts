@@ -26,6 +26,7 @@ import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
 import { JwtData } from '../../auth/types';
 import { ApiResponseError } from '../types';
 import { GamesLobbyGetResponse } from '../properties/lobby.get.property';
+import { GamesLobbyKickProperty } from '../properties/lobby.kick.property';
 
 @UseGuards(AccessAuthGuard)
 @Controller('games/lobby')
@@ -129,7 +130,7 @@ export class GamesLobbyController {
 		}
 
 		const jwt = req.user as JwtData;
-		await this.lobbyService.lobby.join(jwt, uuid);
+		return await this.lobbyService.lobby.join(jwt, uuid);
 	}
 	//#endregion
 
@@ -140,15 +141,21 @@ export class GamesLobbyController {
 
 	/**
 	 * Cancel lobby
+	 * Kick user
 	 */
 	@ApiTags('games · lobby')
 	@ApiResponse({ status: 200, description: 'Left' })
-	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Delete(':uuid')
 	@HttpCode(200)
-	async leave(@Request() req: Req, @Param('uuid') uuid: string) {
-		if (!isUUID(uuid, 4)) {
+	async leave(
+		@Request() req: Req,
+		@Param('uuid') uuid: string,
+		@Body() body: GamesLobbyKickProperty
+	) {
+		if (!isUUID(uuid, 4) || (body.user_uuid && !isUUID(body.user_uuid, 4))) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 

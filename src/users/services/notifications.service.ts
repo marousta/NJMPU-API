@@ -16,6 +16,9 @@ import { NotificationsGetResponse } from '../properties/notifications.get.proper
 
 import { UserAction, WsNamespace } from '../../websockets/types';
 import { NotifcationType } from '../types';
+import { BadRequestException } from '@nestjs/common';
+import { ApiResponseError } from '../../types';
+import { GamesLobby } from '../../games/entities/lobby.entity';
 
 @Injectable()
 export class NotifcationsService {
@@ -37,34 +40,62 @@ export class NotifcationsService {
 	 */
 	//#region
 
-	async add(type: NotifcationType, interact_w_user: UsersInfos, notified_user: UsersInfos) {
+	async add(
+		type: NotifcationType,
+		interact_w_user: UsersInfos,
+		notified_user: UsersInfos,
+		lobby_uuid?: string
+	) {
 		const request = this.notifcationsRepository.create({
 			type: type,
 			notified_user: notified_user.uuid,
 			interact_w_user: interact_w_user.uuid,
 			creation_date: new Date(),
+			lobby: lobby_uuid ?? null,
 			read: false
 		});
 
 		const notif = await this.notifcationsRepository.save(request).catch((e) => {
-			this.logger.error(
-				`Unable to create notification type \
+			if (request.type === NotifcationType.GameInvite) {
+				this.logger.error(
+					`Unable to create notification type \
+				${request.type} for current user \
+				${request.notified_user} sending to remote user \
+				${request.interact_w_user} for lobby \
+				${lobby_uuid}`,
+					e
+				);
+			} else {
+				this.logger.error(
+					`Unable to create notification type \
 				${request.type} for current user \
 				${request.notified_user} sending to remote user \
 				${request.interact_w_user}`,
-				e
-			);
+					e
+				);
+			}
 			throw new InternalServerErrorException();
 		});
 
-		this.wsService.dispatch.user(request.notified_user, {
-			namespace: WsNamespace.User,
-			action: UserAction.Notification,
-			type: request.type,
-			uuid: notif.uuid,
-			user: request.interact_w_user,
-			creation_date: request.creation_date
-		});
+		if (request.type === NotifcationType.GameInvite) {
+			this.wsService.dispatch.user(request.notified_user, {
+				namespace: WsNamespace.User,
+				action: UserAction.Notification,
+				type: request.type,
+				uuid: notif.uuid,
+				user: request.interact_w_user,
+				lobby: lobby_uuid
+			});
+		} else {
+			this.wsService.dispatch.user(request.notified_user, {
+				namespace: WsNamespace.User,
+				action: UserAction.Notification,
+				type: request.type,
+				uuid: notif.uuid,
+				user: request.interact_w_user,
+				creation_date: request.creation_date
+			});
+		}
 	}
 
 	async get(
@@ -125,7 +156,11 @@ export class NotifcationsService {
 				uuid: notif.uuid
 			});
 		},
-		friendRequest: async (current_user: UsersInfos, remote_user: UsersInfos) => {
+		ByType: async (
+			current_user: UsersInfos,
+			remote_user: UsersInfos,
+			notifcation_type: Array<NotifcationType>
+		) => {
 			const notifs = await this.notifcationsRepository
 				.createQueryBuilder('notifs')
 				.where({
@@ -144,25 +179,80 @@ export class NotifcationsService {
 				return;
 			}
 
+			let promises = [];
 			for (const notif of notifs) {
-				if (notif.type === NotifcationType.GameInvite && notif.read) {
+				if (!notifcation_type.includes(notif.type)) {
 					continue;
 				}
 
 				notif.read = true;
 
-				this.logger.verbose('Readed notification ' + notif.uuid);
-
-				this.wsService.dispatch.user(current_user.uuid, {
-					namespace: WsNamespace.User,
-					action: UserAction.Read,
-					uuid: notif.uuid
-				});
+				promises.push(
+					this.notifcationsRepository
+						.save(notifs)
+						.then(() => {
+							this.logger.debug('Readed notification ' + notif.uuid);
+							this.wsService.dispatch.user(current_user.uuid, {
+								namespace: WsNamespace.User,
+								action: UserAction.Read,
+								uuid: notif.uuid
+							});
+						})
+						.catch((e) => {
+							this.logger.error(
+								'Unable to read notifications for ' + current_user.uuid,
+								e
+							);
+						})
+				);
 			}
 
-			await this.notifcationsRepository.save(notifs).catch((e) => {
-				this.logger.error('Unable to read notifications for ' + current_user.uuid, e);
-			});
+			await Promise.all(promises);
+		},
+		ByLobby: async (lobby_uuid: string, notified_user?: string) => {
+			const notifs: Array<UsersNotifications> | null = await this.notifcationsRepository
+				.createQueryBuilder('notifs')
+				.where({
+					lobby: lobby_uuid,
+					read: false,
+					notified_user
+				})
+				.getMany()
+				.then((r) => (r.length ? r : null))
+				.catch((e) => {
+					this.logger.error('Unable to get notifications for ');
+					return null;
+				});
+
+			if (!notifs) {
+				return;
+			}
+
+			let promises = [];
+			for (const notif of notifs) {
+				notif.read = true;
+
+				promises.push(
+					this.notifcationsRepository
+						.save(notifs)
+						.then(() => {
+							this.logger.debug('Readed notification ' + notif.uuid);
+							this.wsService.dispatch.user(notif.notified_user, {
+								namespace: WsNamespace.User,
+								action: UserAction.Read,
+								uuid: notif.uuid
+							});
+						})
+						.catch((e) => {
+							this.logger.error(
+								'Unable to read notifications for ' + notif.notified_user,
+								e
+							);
+						})
+				);
+			}
+
+			await Promise.all(promises);
 		}
 	};
 

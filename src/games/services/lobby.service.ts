@@ -4,7 +4,9 @@ import {
 	NotFoundException,
 	InternalServerErrorException,
 	BadRequestException,
-	ForbiddenException
+	ForbiddenException,
+	Inject,
+	forwardRef
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -17,12 +19,12 @@ import { UsersInfos } from '../../users/entities/users.entity';
 
 import { GamesLobbyGetResponse } from '../properties/lobby.get.property';
 
+import { max_spectators } from '../config';
+
 import { ApiResponseError as ApiResponseErrorUser, NotifcationType } from '../../users/types';
 import { ApiResponseError, LobbyPlayerReadyState } from '../types';
 import { JwtData } from '../../auth/types';
-import { GameAction, WsNamespace } from 'src/websockets/types';
-
-import { max_spectators } from '../config';
+import { GameAction, WsNamespace } from '../../websockets/types';
 
 @Injectable()
 export class GamesLobbyService {
@@ -32,7 +34,9 @@ export class GamesLobbyService {
 		private readonly lobbyRepository: Repository<GamesLobby>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
+		@Inject(forwardRef(() => NotifcationsService))
 		private readonly notifcationsService: NotifcationsService,
+		@Inject(forwardRef(() => WsService))
 		private readonly wsService: WsService
 	) {}
 
@@ -104,29 +108,52 @@ export class GamesLobbyService {
 				return null;
 			});
 	}
+
 	//#endregion
-
-	private async removeFromLobbies(jwt: JwtData) {
-		const current_user = jwt.infos;
-
-		let promises = [];
-		const old_lobby = await this.findInLobby(current_user.uuid);
-		if (!old_lobby) {
-			return;
-		}
-		for (const old of old_lobby) {
-			console.log(old.uuid);
-			promises.push(this.lobby.delete(jwt, old.uuid, old));
-		}
-		await Promise.all(promises);
-	}
 	/**
 	 * Service
 	 */
 	//#region
 
-	// TODO: update lobby on user disconnect
-	// TODO: read notification
+	async removeFromLobbies(jwt: JwtData) {
+		const current_user = jwt.infos;
+
+		const old_lobby = await this.findInLobby(current_user.uuid);
+		if (!old_lobby) {
+			return;
+		}
+
+		// Read notifications
+		let promises = [];
+		for (const old of old_lobby) {
+			if (!old.player2) {
+				break;
+			}
+			if (
+				old.player2.uuid === current_user.uuid &&
+				old.player2_status === LobbyPlayerReadyState.Invited
+			) {
+				continue;
+			}
+			promises.push(this.notifcationsService.read.ByLobby(old.uuid));
+		}
+		await Promise.all(promises);
+
+		// Delete lobbies
+		promises = [];
+		for (const old of old_lobby) {
+			promises.push(
+				this.lobby.delete(jwt, old.uuid, old).then(() => {
+					// Debug
+					this.logger.debug('Removed lobby ' + old.uuid);
+				})
+			);
+		}
+		await Promise.all(promises);
+	}
+
+	// FIXME: update lobby on user disconnect (maybe)
+	// FIXME: read notification (maybe)
 	public readonly lobby = {
 		get: async (uuid: string): Promise<GamesLobbyGetResponse> => {
 			const lobby = await this.findWithRelations(
@@ -200,7 +227,12 @@ export class GamesLobbyService {
 
 			const lobby_response = await this.lobby.create(jwt, remote_user);
 
-			this.notifcationsService.add(NotifcationType.GameInvite, current_user, remote_user);
+			this.notifcationsService.add(
+				NotifcationType.GameInvite,
+				current_user,
+				remote_user,
+				lobby_response.uuid
+			);
 
 			return lobby_response;
 		},
@@ -248,6 +280,7 @@ export class GamesLobbyService {
 					user_uuid: remote_user.uuid
 				});
 			}
+			await this.notifcationsService.read.ByLobby(lobby.uuid, remote_user.uuid);
 
 			return this.formatResponse(lobby);
 		},

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UsersModule } from '../users/users.module';
@@ -17,8 +17,8 @@ import { UsersInfos } from '../users/entities/users.entity';
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([GamesLobby, GamesHistory, UsersInfos]),
-		UsersModule,
-		WsModule
+		forwardRef(() => UsersModule),
+		forwardRef(() => WsModule)
 	],
 	controllers: [GamesLobbyController, GamesHistoryController],
 	providers: [GamesLobbyService, GamesHistoryService],

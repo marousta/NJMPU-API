@@ -3,12 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server } from 'ws';
 
+import { GamesLobbyService } from '../games/services/lobby.service';
+
 import { ChatsChannels } from '../chats/entities/channels.entity';
 import { GamesLobby } from '../games/entities/lobby.entity';
+
+import { wsLogger } from './ws.logger';
 
 import { peerOrPeers as PeerOrPeers } from '../utils';
 
 import { Jwt, JwtData } from '../auth/types';
+import { NotifcationType } from '../users/types';
 import {
 	ChatAction,
 	SubscribedDictionary,
@@ -43,9 +48,10 @@ import {
 	WsGameLeave,
 	WsGameReady,
 	WsGameSpectate,
-	WsGameStart
+	WsGameStart,
+	WsUserNotificationFriendRequest,
+	WsUserNotificationGameInvite
 } from './types';
-import { wsLogger } from './ws.logger';
 @Injectable()
 export class WsService {
 	private readonly logger = new wsLogger(WsService.name);
@@ -54,7 +60,8 @@ export class WsService {
 
 	constructor(
 		@InjectRepository(ChatsChannels)
-		private readonly channelRepository: Repository<ChatsChannels>
+		private readonly channelRepository: Repository<ChatsChannels>,
+		private readonly lobbyService: GamesLobbyService
 	) {}
 
 	/**
@@ -195,7 +202,8 @@ export class WsService {
 				| WsUserRefresh
 				| WsUserSession
 				| WsUserUpdateSession
-				| WsUserNotification
+				| WsUserNotificationFriendRequest
+				| WsUserNotificationGameInvite
 				| WsUserBlock
 				| WsUserUnblock
 				| WsUserNotificationRead
@@ -232,11 +240,30 @@ export class WsService {
 						);
 						break;
 					case UserAction.Notification:
-						this.logger.verbose(
-							`New notification for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
-								i
-							)}`
-						);
+						switch (data.type) {
+							case NotifcationType.AcceptedFriendRequest:
+								this.logger.verbose(
+									`${uuid} accepted a friend request from ${
+										data.user
+									} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+								);
+								break;
+							case NotifcationType.FriendRequest:
+								this.logger.verbose(
+									`${uuid} sent a friend request for ${
+										data.user
+									} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+								);
+								break;
+							case NotifcationType.GameInvite:
+								this.logger.verbose(
+									`${uuid} invite to game ${
+										data.user
+									} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+								);
+								break;
+						}
+
 						break;
 					case UserAction.Block:
 						this.logger.verbose(
@@ -492,6 +519,8 @@ export class WsService {
 
 	disconnected(client: WebSocketUser) {
 		const user_uuid = client.jwt.infos.uuid;
+
+		this.lobbyService.removeFromLobbies(client.jwt);
 
 		// Check if user is subscribed
 		if (user_uuid && this.subscribed && this.subscribed[user_uuid]) {

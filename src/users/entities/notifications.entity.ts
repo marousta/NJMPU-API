@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 import { UsersInfos } from './users.entity';
+import { GamesLobby } from '../../games/entities/lobby.entity';
 
 import { NotifcationType } from '../types';
 
@@ -22,7 +23,7 @@ export class UsersNotifications {
 	read: boolean;
 
 	/**
-	 * Relation Channel -> Users
+	 * Relation notifications -> Users
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',
@@ -35,4 +36,13 @@ export class UsersNotifications {
 		nullable: false
 	})
 	interact_w_user: string;
+
+	/**
+	 * Relation notifications -> Games Lobby
+	 */
+	@ManyToOne((type) => GamesLobby, (lobby) => lobby.uuid, {
+		onDelete: 'SET NULL',
+		nullable: true
+	})
+	lobby: string;
 }

@@ -5,6 +5,7 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 
 import { TokensModule } from '../auth/tokens/tokens.module';
 import { UsersModule } from '../users/users.module';
+import { GamesModule } from '../games/games.module';
 
 import { WsGateway } from './ws.gateway';
 
@@ -36,6 +37,7 @@ import { readFileSync } from 'fs';
 		}),
 		forwardRef(() => UsersModule),
 		forwardRef(() => TokensModule),
+		forwardRef(() => GamesModule),
 		TypeOrmModule.forFeature([ChatsChannels])
 	],
 	providers: [WsGateway, WsService],

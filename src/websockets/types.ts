@@ -168,31 +168,49 @@ export interface WsUserSession extends WsUserUpdateSession {
 	creation_date: Date;
 }
 
-export interface WsUserNotification extends WsUser {
-	action: UserAction.Notification;
-	type: NotifcationType;
-	uuid: string;
-	user: string;
-	creation_date: Date;
-}
-
 export interface WsUserNotificationRead extends WsUser {
 	action: UserAction.Read;
 	uuid: string;
 }
 
+export enum BlockDirection {
+	IsBlocked = 0,
+	IsUnblocked = 0,
+	HasBlocked = 1,
+	HasUnblocked = 1
+}
+
 export interface WsUserBlock extends WsUser {
 	action: UserAction.Block;
 	user: string;
+	direction: BlockDirection;
 }
 
 export interface WsUserUnblock extends WsUser {
 	action: UserAction.Unblock;
 	user: string;
+	direction: BlockDirection;
 }
 
 export interface WsUserUnfriend extends WsUser {
 	action: UserAction.Unfriend;
+	user: string;
+}
+
+export interface WsUserNotification extends WsUser {
+	action: UserAction.Notification;
+	uuid: string;
+}
+
+export interface WsUserNotificationFriendRequest extends WsUserNotification {
+	type: NotifcationType.AcceptedFriendRequest | NotifcationType.FriendRequest;
+	user: string;
+	creation_date: Date;
+}
+
+export interface WsUserNotificationGameInvite extends WsUserNotification {
+	type: NotifcationType.GameInvite;
+	lobby: string;
 	user: string;
 }
 

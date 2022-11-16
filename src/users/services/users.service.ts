@@ -24,7 +24,7 @@ import { hash_password_config } from '../../auth/config';
 import { genIdentifier } from '../../utils';
 import { hash, hash_verify } from '../../auth/utils';
 
-import { UserAction, WsNamespace } from '../../websockets/types';
+import { BlockDirection, UserAction, WsNamespace } from '../../websockets/types';
 import {
 	ApiResponseError,
 	UsersFriendship,
@@ -306,25 +306,32 @@ export class UsersService {
 				'Unable to find remote user in relation' + remote_user_uuid
 			);
 
-			await this.notifcationsService.read.friendRequest(current_user, remote_user);
+			const notifcation_type = [
+				NotifcationType.FriendRequest,
+				NotifcationType.AcceptedFriendRequest
+			];
+			await this.notifcationsService.read.ByType(current_user, remote_user, notifcation_type);
+
 			switch (type) {
 				case RelationType.Friends:
 					switch (action) {
 						case RelationDispatch.Add:
 							return await this.relations.friends.add(current_user, remote_user);
 						case RelationDispatch.Remove:
-							await this.notifcationsService.read.friendRequest(
+							await this.notifcationsService.read.ByType(
 								remote_user,
-								current_user
+								current_user,
+								notifcation_type
 							);
 							return await this.relations.friends.remove(current_user, remote_user);
 					}
 				case RelationType.Blocklist:
 					switch (action) {
 						case RelationDispatch.Add:
-							await this.notifcationsService.read.friendRequest(
+							await this.notifcationsService.read.ByType(
 								remote_user,
-								current_user
+								current_user,
+								notifcation_type
 							);
 							return await this.relations.blocklist.add(current_user, remote_user);
 						case RelationDispatch.Remove:
@@ -457,12 +464,14 @@ export class UsersService {
 				this.wsService.dispatch.user(current_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Block,
-					user: remote_user.uuid
+					user: remote_user.uuid,
+					direction: BlockDirection.IsBlocked
 				});
 				this.wsService.dispatch.user(remote_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Block,
-					user: current_user.uuid
+					user: current_user.uuid,
+					direction: BlockDirection.HasBlocked
 				});
 			},
 			remove: async (current_user: UsersInfos, remote_user: UsersInfos) => {
@@ -488,12 +497,14 @@ export class UsersService {
 				this.wsService.dispatch.user(current_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Unblock,
-					user: remote_user.uuid
+					user: remote_user.uuid,
+					direction: BlockDirection.IsUnblocked
 				});
 				this.wsService.dispatch.user(remote_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Unblock,
-					user: current_user.uuid
+					user: current_user.uuid,
+					direction: BlockDirection.HasUnblocked
 				});
 			}
 		}

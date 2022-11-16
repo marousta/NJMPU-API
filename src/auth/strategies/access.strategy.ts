@@ -39,6 +39,7 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 			req.clientIp
 		);
 		if (!user) {
+			// Debug
 			console.log(user);
 			throw new Error();
 		}
