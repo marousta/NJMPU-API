@@ -148,6 +148,22 @@ export class WsService {
 		}
 	}
 
+	unsetLobby(jwt: JwtData) {
+		this.setLobby(jwt, null);
+	}
+
+	unsetAllLobby(lobby: GamesLobby) {
+		const users = this.lobbyService.getUsers(lobby);
+		users.map((user_uuid) => {
+			this.subscribed[user_uuid]?.map((client) => {
+				if (client.lobby_uuid === lobby.uuid) {
+					this.logger.debug('CLEARED LOBBY ' + user_uuid);
+					client.lobby_uuid = null;
+				}
+			});
+		});
+	}
+
 	async updateUserStatus(user: UsersInfos, status: UserStatus, lobby_uuid?: string) {
 		await this.usersService.updateStatus(user, status);
 
@@ -530,29 +546,50 @@ export class WsService {
 				| WsGameDisband
 		) => {
 			let i: number | null = 0;
-			const spectators = lobby.spectators ? lobby.spectators.map((u) => u.uuid) : [];
-			const users = [lobby.player1.uuid, lobby.player2?.uuid, ...spectators];
+			for (const [key] of Object.entries(this.subscribed)) {
+				const ret = this.processSend(key, data);
 
-			for (const uuid of users) {
-				if (!this.subscribed[uuid]) {
+				if (ret === null) {
+					continue;
+				} else if (ret === 0) {
+					this.logger.warn(
+						'Websocket tried to send data on empty user, this should not happend'
+					);
 					continue;
 				}
 
-				for (const client of this.subscribed[uuid]) {
-					if (client.lobby_uuid !== lobby.uuid) {
-						continue;
-					}
-
-					this.logger.set(client.uuid);
-					const ret = this.send(client, data);
-					this.logger.unset();
-					if (ret === false) {
-						continue;
-					}
-
-					i++;
-				}
+				i += ret;
 			}
+
+			if (i === 0) {
+				this.logger.verbose(`No data sent`);
+				return;
+			}
+			//
+			// Dispatch to lobby users only
+			//
+			// const users = this.lobbyService.getUsers(lobby);
+
+			// for (const uuid of users) {
+			// 	if (!this.subscribed[uuid]) {
+			// 		continue;
+			// 	}
+
+			// 	for (const client of this.subscribed[uuid]) {
+			// 		if (client.lobby_uuid !== lobby.uuid) {
+			// 			continue;
+			// 		}
+
+			// 		this.logger.set(client.uuid);
+			// 		const ret = this.send(client, data);
+			// 		this.logger.unset();
+			// 		if (ret === false) {
+			// 			continue;
+			// 		}
+
+			// 		i++;
+			// 	}
+			// }
 
 			if (process.env['PRODUCION']) {
 				return;

@@ -5,7 +5,7 @@ import { isEmpty } from '../utils';
 import { colors } from '../types';
 
 export class wsLogger extends Logger {
-	public client = '';
+	private client = '';
 
 	constructor(args: any) {
 		super(args);

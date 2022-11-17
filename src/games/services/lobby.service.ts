@@ -152,6 +152,12 @@ export class GamesLobbyService {
 						this.logger.debug(
 							'Removed spectator ' + current_user.uuid + ' from lobby ' + lobby.uuid
 						);
+						this.wsService.dispatch.lobby(lobby, {
+							namespace: WsNamespace.Game,
+							action: GameAction.Leave,
+							lobby_uuid: lobby.uuid,
+							user_uuid: current_user.uuid
+						});
 					})
 					.catch((e) => {
 						this.logger.error(
@@ -191,6 +197,11 @@ export class GamesLobbyService {
 	 * Service
 	 */
 	//#region
+
+	getUsers(lobby: GamesLobby) {
+		const spectators = lobby.spectators ? lobby.spectators.map((u) => u.uuid) : [];
+		return [lobby.player1.uuid, lobby.player2?.uuid, ...spectators];
+	}
 
 	public readonly lobby = {
 		get: async (uuid: string): Promise<GamesLobbyGetResponse> => {
@@ -414,7 +425,12 @@ export class GamesLobbyService {
 			}
 		},
 		delete: async (jwt: JwtData, lobby: GamesLobby) => {
-			await this.notifcationsService.read.ByRelation(lobby.player1.uuid, lobby.player2.uuid);
+			if (lobby.player2) {
+				await this.notifcationsService.read.ByRelation(
+					lobby.player1.uuid,
+					lobby.player2.uuid
+				);
+			}
 
 			if (lobby.player1.uuid === jwt.infos.uuid || lobby.in_game) {
 				//TODO: Game history
@@ -430,6 +446,7 @@ export class GamesLobbyService {
 					action: GameAction.Disband,
 					lobby_uuid: lobby.uuid
 				});
+				this.wsService.unsetAllLobby(lobby);
 
 				this.wsService.updateUserStatus(lobby.player1, UserStatus.Online);
 				if (lobby.player2) {
@@ -445,6 +462,7 @@ export class GamesLobbyService {
 				lobby_uuid: lobby.uuid,
 				user_uuid: jwt.infos.uuid
 			});
+			this.wsService.unsetLobby(jwt);
 			return false;
 		},
 		leave: async (jwt: JwtData, uuid: string) => {
@@ -454,7 +472,8 @@ export class GamesLobbyService {
 				'Unable to find lobby for ' + uuid
 			);
 
-			if (await this.lobby.delete(jwt, lobby)) {
+			const deleted = await this.lobby.delete(jwt, lobby);
+			if (deleted) {
 				return;
 			}
 
@@ -481,6 +500,7 @@ export class GamesLobbyService {
 				lobby_uuid: lobby.uuid,
 				user_uuid: user.uuid
 			});
+			this.wsService.unsetLobby(jwt);
 		}
 	};
 	//#endregion
