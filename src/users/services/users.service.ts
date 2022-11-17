@@ -30,7 +30,8 @@ import {
 	UsersFriendship,
 	NotifcationType,
 	RelationType,
-	RelationDispatch
+	RelationDispatch,
+	UserStatus
 } from '../types';
 import { SignupProperty } from 'src/auth/properties/signup.property';
 import { createHash } from 'crypto';
@@ -139,6 +140,14 @@ export class UsersService {
 	 */
 	//#region
 
+	async updateStatus(user: UsersInfos, status: UserStatus) {
+		user.is_online = status;
+		await this.usersRepository.save(user).catch((e) => {
+			this.logger.error('Unable to update user status for user ' + user.uuid, e);
+			throw new InternalServerErrorException();
+		});
+	}
+
 	async create(params: SignupProperty) {
 		const requests = await Promise.all([
 			this.getIdentfier(params.username),
@@ -151,7 +160,7 @@ export class UsersService {
 			email: params.email,
 			password: requests[1],
 			twofactor: params.twofactor,
-			is_online: false
+			is_online: UserStatus.Offline
 		});
 
 		let created_user = await this.usersRepository.save(new_user).catch((e) => {

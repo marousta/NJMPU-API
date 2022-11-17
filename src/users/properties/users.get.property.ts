@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-import { UsersFriendship } from '../types';
+import { UsersFriendship, UserStatus } from '../types';
 
 export class UsersMeResponse {
 	@ApiProperty()
@@ -39,7 +39,7 @@ export class UsersGetResponse {
 	avatar: string;
 
 	@ApiProperty()
-	is_online: boolean;
+	is_online: UserStatus;
 
 	@ApiProperty()
 	friendship: UsersFriendship;

@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GamesLobbyKickProperty {
-	@ApiProperty()
+	@ApiPropertyOptional()
 	user_uuid: string;
 }

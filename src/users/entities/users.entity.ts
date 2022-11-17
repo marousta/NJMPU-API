@@ -4,6 +4,8 @@ import { ChatsChannels } from '../../chats/entities/channels.entity';
 import { GamesHistory } from '../../games/entities/history.entity';
 import { GamesLobby } from '../../games/entities/lobby.entity';
 
+import { UserStatus } from '../types';
+
 @Entity()
 export class UsersInfos {
 	@PrimaryGeneratedColumn('uuid')
@@ -30,8 +32,12 @@ export class UsersInfos {
 	@Column({ nullable: true })
 	avatar: string;
 
-	@Column({ nullable: false })
-	is_online: boolean;
+	@Column({
+		type: 'enum',
+		enum: UserStatus,
+		nullable: false
+	})
+	is_online: UserStatus;
 
 	/**
 	 * Relation Channel moderators -> Users

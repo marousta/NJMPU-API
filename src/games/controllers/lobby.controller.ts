@@ -144,6 +144,19 @@ export class GamesLobbyController {
 	 * Kick user
 	 */
 	@ApiTags('games · lobby')
+	@ApiBody({
+		type: GamesLobbyKickProperty,
+		examples: {
+			['Leave']: {
+				value: {} as GamesLobbyKickProperty
+			},
+			['Kick']: {
+				value: {
+					user_uuid: 'string'
+				} as GamesLobbyKickProperty
+			}
+		}
+	})
 	@ApiResponse({ status: 200, description: 'Left' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseErrorGlobal.MissingParameters })

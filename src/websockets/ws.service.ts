@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server } from 'ws';
@@ -13,18 +13,20 @@ import { wsLogger } from './ws.logger';
 import { peerOrPeers as PeerOrPeers } from '../utils';
 
 import { Jwt, JwtData } from '../auth/types';
-import { NotifcationType } from '../users/types';
+import { NotifcationType, UserStatus } from '../users/types';
+import { UsersService } from '../users/services/users.service';
+import { UsersInfos } from '../users/entities/users.entity';
 import {
 	ChatAction,
 	SubscribedDictionary,
 	WsChatCreate,
-	WsChatDelete,
+	WsChatMessageDelete,
 	WsChatDemote,
 	WsChatJoin,
 	WsChatLeave,
 	WsChatRemove,
 	WsChatPromote,
-	WsChatSend,
+	WsChatMessageSend,
 	WsNamespace,
 	WsUserRefresh,
 	WsChatBan,
@@ -51,8 +53,12 @@ import {
 	WsGameStart,
 	WsUserNotificationFriendRequest,
 	WsUserNotificationGameInvite,
-	WsGameInvite
+	WsGameInvite,
+	WsUserStatus,
+	WsUserStatusInGame,
+	WsGameDisband
 } from './types';
+import { colors } from 'src/types';
 @Injectable()
 export class WsService {
 	private readonly logger = new wsLogger(WsService.name);
@@ -62,6 +68,8 @@ export class WsService {
 	constructor(
 		@InjectRepository(ChatsChannels)
 		private readonly channelRepository: Repository<ChatsChannels>,
+		@Inject(forwardRef(() => UsersService))
+		private readonly usersService: UsersService,
 		private readonly lobbyService: GamesLobbyService
 	) {}
 
@@ -98,7 +106,7 @@ export class WsService {
 			return false;
 		}
 
-		this.logger.set(client.uuid).debug('Data sent').unset();
+		// this.logger.set(client.uuid).debug('Data sent').unset();
 		client.send(JSON.stringify(data));
 		return true;
 	}
@@ -140,8 +148,50 @@ export class WsService {
 		}
 	}
 
+	async updateUserStatus(user: UsersInfos, status: UserStatus, lobby_uuid?: string) {
+		await this.usersService.updateStatus(user, status);
+
+		if (status === UserStatus.InGame) {
+			return this.dispatch.all({
+				namespace: WsNamespace.User,
+				action: UserAction.Status,
+				user: user.uuid,
+				status: status,
+				lobby_uuid
+			});
+		}
+
+		if (status === UserStatus.Online) {
+			// Check if user is really online
+			if (!this.subscribed[user.uuid]) {
+				return;
+			}
+			return this.dispatch.all({
+				namespace: WsNamespace.User,
+				action: UserAction.Status,
+				user: user.uuid,
+				status: UserStatus.Online
+			});
+		}
+
+		this.dispatch.all({
+			namespace: WsNamespace.User,
+			action: UserAction.Status,
+			user: user.uuid,
+			status: UserStatus.Offline
+		});
+	}
+
 	public readonly dispatch = {
-		all: (data: WsChatCreate | WsChatRemove | WsChatAvatar | WsUserAvatar) => {
+		all: (
+			data:
+				| WsChatCreate
+				| WsChatRemove
+				| WsChatAvatar
+				| WsUserAvatar
+				| WsUserStatus
+				| WsUserStatusInGame
+		) => {
 			let i: number | null = 0;
 			for (const [key] of Object.entries(this.subscribed)) {
 				const ret = this.processSend(key, data);
@@ -163,37 +213,77 @@ export class WsService {
 				return;
 			}
 
-			if (data.namespace === WsNamespace.Chat) {
-				switch (data.action) {
-					case ChatAction.Create:
-						this.logger.verbose(
-							`Created channel ${
-								data.channel
-							} dispatched to ${i} connected ${PeerOrPeers(i)}`
-						);
-						break;
-					case ChatAction.Remove:
-						this.logger.verbose(
-							`Removed channel ${
-								data.channel
-							} dispatched to ${i} connected ${PeerOrPeers(i)}`
-						);
-						break;
-					case ChatAction.Avatar:
-						this.logger.verbose(
-							`Updated channel avatar for ${
-								data.channel
-							} dispatched to ${i} connected ${PeerOrPeers(i)}`
-						);
-						break;
-				}
-				return;
-			} else if (data.namespace === WsNamespace.User) {
-				this.logger.verbose(
-					`Updated avatar for user ${
-						data.user
-					} dispatched to ${i} connected ${PeerOrPeers(i)}`
-				);
+			switch (data.namespace) {
+				case WsNamespace.Chat:
+					switch (data.action) {
+						case ChatAction.Create:
+							this.logger.verbose(
+								`Created channel ${
+									data.channel
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+							);
+							break;
+						case ChatAction.Remove:
+							this.logger.verbose(
+								`Removed channel ${
+									data.channel
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+							);
+							break;
+						case ChatAction.Avatar:
+							this.logger.verbose(
+								`Updated channel avatar for ${
+									data.channel
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+							);
+							break;
+					}
+					break;
+				case WsNamespace.User:
+					switch (data.action) {
+						case UserAction.Avatar:
+							this.logger.verbose(
+								`Updated avatar for user ${
+									data.user
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+							);
+							break;
+						case UserAction.Status:
+							switch (data.status) {
+								case UserStatus.Offline:
+									this.logger.verbose(
+										`User ${data.user} is ${colors.red}OFFLINE${
+											colors.cyan
+										} dispatched to ${i} connected ${PeerOrPeers(i)}${
+											colors.end
+										}`
+									);
+									break;
+								case UserStatus.Online:
+									this.logger.verbose(
+										`User ${data.user} is ${colors.green}ONLINE${
+											colors.cyan
+										} dispatched to ${i} connected ${PeerOrPeers(i)}${
+											colors.end
+										}`
+									);
+									break;
+								case UserStatus.InGame:
+									this.logger.verbose(
+										`User ${data.user} is ${colors.yellow}IN GAME${
+											colors.cyan
+										} ${
+											(data as WsUserStatusInGame).lobby_uuid
+										} dispatched to ${i} connected ${PeerOrPeers(i)}${
+											colors.end
+										}`
+									);
+									break;
+							}
+							break;
+					}
+				case WsNamespace.Chat:
+					return;
 			}
 		},
 		user: (
@@ -220,81 +310,89 @@ export class WsService {
 				return;
 			}
 
-			if (data.namespace === WsNamespace.Chat) {
-				this.logger.verbose(
-					`Created direct channel ${
-						data.channel
-					} dispatched to ${i} connected ${PeerOrPeers(i)}`
-				);
-			} else if (data.namespace === WsNamespace.User) {
-				switch (data.action) {
-					case UserAction.Refresh:
-						this.logger.verbose(
-							`Token recheck forced on ${uuid} for ${i} connected ${PeerOrPeers(i)}`
-						);
-						break;
-					case UserAction.Session:
-						this.logger.verbose(
-							`Update session for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
-								i
-							)}`
-						);
-						break;
-					case UserAction.Notification:
-						switch (data.type) {
-							case NotifcationType.AcceptedFriendRequest:
-								this.logger.verbose(
-									`${uuid} accepted a friend request from ${
-										data.user
-									} broadcasted to ${i} connected ${PeerOrPeers(i)}`
-								);
-								break;
-							case NotifcationType.FriendRequest:
-								this.logger.verbose(
-									`${uuid} sent a friend request for ${
-										data.user
-									} broadcasted to ${i} connected ${PeerOrPeers(i)}`
-								);
-								break;
-							case NotifcationType.GameInvite:
-								this.logger.verbose(
-									`${uuid} invite to game ${
-										data.user
-									} broadcasted to ${i} connected ${PeerOrPeers(i)}`
-								);
-								break;
-						}
+			if (process.env['PRODUCION']) {
+				return;
+			}
 
-						break;
-					case UserAction.Block:
-						this.logger.verbose(
-							`Blocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
-								i
-							)}`
-						);
-						break;
-					case UserAction.Unblock:
-						this.logger.verbose(
-							`Unblocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
-								i
-							)}`
-						);
-						break;
-					case UserAction.Unfriend:
-						this.logger.verbose(
-							`Unfriend users ${uuid} <-> ${
-								data.user
-							} broadcasted to ${i} connected ${PeerOrPeers(i)}`
-						);
-						break;
-					case UserAction.Read:
-						this.logger.verbose(
-							`Read notification ${
-								data.uuid
-							} broadcasted to ${i} connected ${PeerOrPeers(i)}`
-						);
-						break;
-				}
+			switch (data.namespace) {
+				case WsNamespace.Chat:
+					this.logger.verbose(
+						`Created direct channel ${
+							data.channel
+						} dispatched to ${i} connected ${PeerOrPeers(i)}`
+					);
+					break;
+				case WsNamespace.User:
+					switch (data.action) {
+						case UserAction.Refresh:
+							this.logger.verbose(
+								`Token recheck forced on ${uuid} for ${i} connected ${PeerOrPeers(
+									i
+								)}`
+							);
+							break;
+						case UserAction.Session:
+							this.logger.verbose(
+								`Update session for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
+									i
+								)}`
+							);
+							break;
+						case UserAction.Notification:
+							switch (data.type) {
+								case NotifcationType.AcceptedFriendRequest:
+									this.logger.verbose(
+										`${uuid} accepted a friend request from ${
+											data.user
+										} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+									);
+									break;
+								case NotifcationType.FriendRequest:
+									this.logger.verbose(
+										`${uuid} sent a friend request for ${
+											data.user
+										} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+									);
+									break;
+								case NotifcationType.GameInvite:
+									this.logger.verbose(
+										`${uuid} invite to game ${
+											data.user
+										} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+									);
+									break;
+							}
+
+							break;
+						case UserAction.Block:
+							this.logger.verbose(
+								`Blocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
+									i
+								)}`
+							);
+							break;
+						case UserAction.Unblock:
+							this.logger.verbose(
+								`Unblocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
+									i
+								)}`
+							);
+							break;
+						case UserAction.Unfriend:
+							this.logger.verbose(
+								`Unfriend users ${uuid} <-> ${
+									data.user
+								} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+							);
+							break;
+						case UserAction.Read:
+							this.logger.verbose(
+								`Read notification ${
+									data.uuid
+								} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+							);
+							break;
+					}
 			}
 		},
 		channel: (
@@ -303,8 +401,8 @@ export class WsService {
 				| WsChatJoin
 				| WsChatLeave
 				| WsChatRemove
-				| WsChatSend
-				| WsChatDelete
+				| WsChatMessageSend
+				| WsChatMessageDelete
 				| WsChatPromote
 				| WsChatDemote
 				| WsChatBan
@@ -334,6 +432,10 @@ export class WsService {
 				}
 
 				i += ret;
+			}
+
+			if (process.env['PRODUCION']) {
+				return;
 			}
 
 			if (data.namespace === WsNamespace.Chat) {
@@ -425,6 +527,7 @@ export class WsService {
 				| WsGameReady
 				| WsGameSpectate
 				| WsGameStart
+				| WsGameDisband
 		) => {
 			let i: number | null = 0;
 			const spectators = lobby.spectators ? lobby.spectators.map((u) => u.uuid) : [];
@@ -449,6 +552,10 @@ export class WsService {
 
 					i++;
 				}
+			}
+
+			if (process.env['PRODUCION']) {
+				return;
 			}
 
 			switch (data.action) {
@@ -488,6 +595,12 @@ export class WsService {
 							lobby.uuid
 						} has started broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 					);
+				case GameAction.Disband:
+					return this.logger.verbose(
+						`Lobby ${lobby.uuid} disband broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
 			}
 		}
 	};
@@ -499,16 +612,19 @@ export class WsService {
 		}
 
 		if (!this.subscribed[user_uuid]) {
-			const channels = await this.channelRepository
-				.find({
-					select: { uuid: true },
-					where: { users: { uuid: user_uuid } }
-				})
-				.then((r) => (r.length ? r : null))
-				.catch((e) => {
-					this.logger.error('Cannot get channels', e);
-					throw new InternalServerErrorException();
-				});
+			let channels: Array<ChatsChannels> = null;
+			if (process.env['PRODUCTION']) {
+				channels = await this.channelRepository
+					.find({
+						select: { uuid: true },
+						where: { users: { uuid: user_uuid } }
+					})
+					.then((r) => (r.length ? r : null))
+					.catch((e) => {
+						this.logger.error('Cannot get channels', e);
+						throw new InternalServerErrorException();
+					});
+			}
 
 			this.subscribed[user_uuid] = [];
 			this.subscribed[user_uuid].push(client);
@@ -524,6 +640,7 @@ export class WsService {
 			} else {
 				this.logger.verbose('Not subscribed to any channel');
 			}
+			await this.updateUserStatus(client.jwt.infos, UserStatus.Online);
 		} else {
 			this.subscribed[user_uuid].push(client);
 			this.logger.verbose('Connected ' + user_uuid);
@@ -532,6 +649,8 @@ export class WsService {
 
 	disconnected(client: WebSocketUser) {
 		const user_uuid = client.jwt.infos.uuid;
+
+		this.updateUserStatus(client.jwt.infos, UserStatus.Offline);
 
 		this.lobbyService.removeFromLobbies(client.jwt);
 

@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws';
 
-import { NotifcationType } from '../users/types';
+import { NotifcationType, UserStatus } from '../users/types';
 import { JwtData } from '../auth/types';
 
 export interface WebSocketUser extends WebSocket {
@@ -50,6 +50,10 @@ export interface WsChat {
 	user?: string;
 }
 
+/**
+ * Chat channels
+ */
+
 export interface WsChatCreate extends WsChat {
 	action: ChatAction.Create;
 }
@@ -66,23 +70,6 @@ export interface WsChatLeave extends WsChat {
 
 export interface WsChatRemove extends WsChat {
 	action: ChatAction.Remove;
-}
-
-export interface WsMessage {
-	uuid: string;
-	text: string;
-	time: Date;
-}
-
-export interface WsChatSend extends WsChat {
-	action: ChatAction.Send;
-	user: string;
-	message: WsMessage;
-}
-
-export interface WsChatDelete extends WsChat {
-	action: ChatAction.Delete;
-	uuid: string;
 }
 
 export interface WsChatPromote extends WsChat {
@@ -123,6 +110,27 @@ export interface WsChatAvatar extends WsChat {
 }
 
 /**
+ * Chat messages
+ */
+
+export interface WsMessage {
+	uuid: string;
+	text: string;
+	time: Date;
+}
+
+export interface WsChatMessageSend extends WsChat {
+	action: ChatAction.Send;
+	user: string;
+	message: WsMessage;
+}
+
+export interface WsChatMessageDelete extends WsChat {
+	action: ChatAction.Delete;
+	uuid: string;
+}
+
+/**
  * User
  */
 
@@ -135,7 +143,8 @@ export enum UserAction {
 	Avatar = 'AVATAR',
 	Session = 'SESSION',
 	Notification = 'NOTIFICATION',
-	Read = 'READ'
+	Read = 'READ',
+	Status = 'STATUS'
 }
 
 export interface WsUser {
@@ -168,10 +177,9 @@ export interface WsUserSession extends WsUserUpdateSession {
 	creation_date: Date;
 }
 
-export interface WsUserNotificationRead extends WsUser {
-	action: UserAction.Read;
-	uuid: string;
-}
+/**
+ * Relations
+ */
 
 export enum BlockDirection {
 	IsBlocked = 0,
@@ -197,6 +205,14 @@ export interface WsUserUnfriend extends WsUser {
 	user: string;
 }
 
+/**
+ * Notifications
+ */
+
+export interface WsUserNotificationRead extends WsUser {
+	action: UserAction.Read;
+	uuid: string;
+}
 export interface WsUserNotification extends WsUser {
 	action: UserAction.Notification;
 	uuid: string;
@@ -215,6 +231,23 @@ export interface WsUserNotificationGameInvite extends WsUserNotification {
 }
 
 /**
+ * Status
+ */
+
+export interface WsUserStatus extends WsUser {
+	action: UserAction.Status;
+	user: string;
+	status: UserStatus;
+}
+
+export interface WsUserStatusInGame extends WsUser {
+	action: UserAction.Status;
+	user: string;
+	status: UserStatus.InGame;
+	lobby_uuid: string;
+}
+
+/**
  * Game
  */
 
@@ -224,7 +257,8 @@ export enum GameAction {
 	Spectate = 'SPECTATE',
 	Ready = 'READY',
 	Start = 'START',
-	Leave = 'LEAVE'
+	Leave = 'LEAVE',
+	Disband = 'DISBAND'
 }
 
 export interface WsGame {
@@ -232,6 +266,10 @@ export interface WsGame {
 	action: GameAction;
 	lobby_uuid: string;
 }
+
+/**
+ * Lobby
+ */
 
 export interface WsGameInvite extends WsGame {
 	action: GameAction.Invite;
@@ -260,4 +298,8 @@ export interface WsGameStart extends WsGame {
 export interface WsGameLeave extends WsGame {
 	action: GameAction.Leave;
 	user_uuid: string;
+}
+
+export interface WsGameDisband extends WsGame {
+	action: GameAction.Disband;
 }

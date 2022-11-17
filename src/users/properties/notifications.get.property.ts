@@ -16,6 +16,9 @@ export class NotificationsData {
 	creation_date: Date;
 
 	@ApiProperty()
+	lobby: string;
+
+	@ApiProperty()
 	read: boolean;
 }
 

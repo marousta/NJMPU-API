@@ -11,6 +11,12 @@ export enum NotifcationType {
 	AcceptedFriendRequest
 }
 
+export enum UserStatus {
+	Offline,
+	Online,
+	InGame
+}
+
 export enum RelationType {
 	Friends,
 	Blocklist
