@@ -160,7 +160,7 @@ export class GamesLobbyController {
 		}
 
 		const jwt = req.user as JwtData;
-		await this.lobbyService.lobby.delete(jwt, uuid);
+		await this.lobbyService.lobby.leave(jwt, uuid);
 	}
 
 	/**

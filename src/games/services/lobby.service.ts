@@ -9,7 +9,7 @@ import {
 	forwardRef
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { getManager, Repository } from 'typeorm';
 
 import { NotifcationsService } from '../../users/services/notifications.service';
 import { WsService } from '../../websockets/ws.service';
@@ -55,7 +55,7 @@ export class GamesLobbyService {
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose(error_msg, e);
-				this.logger.verbose(where);
+				this.logger.verbose(JSON.stringify(where));
 				return null;
 			});
 	}
@@ -66,7 +66,8 @@ export class GamesLobbyService {
 			.leftJoinAndSelect('lobby.player1', 'player1')
 			.leftJoinAndSelect('lobby.player2', 'player2')
 			.leftJoinAndSelect('lobby.spectators', 'spectators')
-			.getOneOrFail()
+			.getMany()
+			.then((r) => (r.length ? r : null))
 			.catch((e) => {
 				this.logger.verbose(error_msg, e);
 				return null;
@@ -80,17 +81,6 @@ export class GamesLobbyService {
 		}
 
 		return lobby;
-	}
-
-	private formatResponse(lobby: GamesLobby): GamesLobbyGetResponse {
-		return {
-			uuid: lobby.uuid,
-			in_game: lobby.in_game,
-			players: [lobby.player1.uuid, lobby.player2 ? lobby.player2.uuid : null],
-			players_status: [lobby.player1_status, lobby.player2_status],
-			spectators: lobby.spectators?.map((u) => u.uuid),
-			max_spectators
-		};
 	}
 
 	private async findInLobby(uuid: string): Promise<GamesLobby[]> {
@@ -109,42 +99,84 @@ export class GamesLobbyService {
 			});
 	}
 
-	//#endregion
+	private formatResponse(lobby: GamesLobby): GamesLobbyGetResponse {
+		return {
+			uuid: lobby.uuid,
+			in_game: lobby.in_game,
+			players: [lobby.player1.uuid, lobby.player2 ? lobby.player2.uuid : null],
+			players_status: [lobby.player1_status, lobby.player2_status],
+			spectators: lobby.spectators?.map((u) => u.uuid),
+			max_spectators
+		};
+	}
+
 	/**
-	 * Service
+	 * Garbage collect leftover lobbies
 	 */
 	//#region
 
-	// TODO: Remove spectators
+	// I'm very sorry for this function
+	// TypeORM won't let me find an entity based on Many-To-Many relation uuid
+	async RemoveSpectatorFromLobbies(current_user: UsersInfos) {
+		// Manually getting all lobbies where the user is spectating
+		const query_spectating_lobbies: Array<{ games_lobby_uuid: string }> =
+			await this.lobbyRepository.manager.query(
+				`SELECT games_lobby_uuid FROM public."games_lobby_spectators-users_infos" WHERE users_infos_uuid='${current_user.uuid}'`
+			);
+
+		// Convert raw query response to array of lobby uuid
+		const spectating_lobbies = query_spectating_lobbies.map((lobby) => lobby.games_lobby_uuid);
+
+		// Finally getting lobbies entities
+		let lobbies_promises: Array<Promise<GamesLobby>> = [];
+		for (const lobby_uuid of spectating_lobbies) {
+			lobbies_promises.push(this.findWithRelationsOrNull({ uuid: lobby_uuid }, 'ignore'));
+		}
+		const lobbies = await Promise.all(lobbies_promises);
+
+		// Removing user from lobbies spectators
+		let spectator_remove_promises: Array<Promise<void>> = [];
+		for (const lobby of lobbies) {
+			// Filtering user from spectators
+			lobby.spectators = lobby.spectators.filter((u) => u.uuid !== current_user.uuid);
+
+			spectator_remove_promises.push(
+				this.lobbyRepository
+					.save(lobby)
+					.then((r) => {
+						// Debug
+						this.logger.debug(
+							'Removed spectator ' + current_user.uuid + ' from lobby ' + lobby.uuid
+						);
+					})
+					.catch((e) => {
+						this.logger.error(
+							'Unable to remove spectator "+current_user.uuid+" from lobby ' +
+								lobby.uuid,
+							e
+						);
+					})
+			);
+		}
+		await Promise.all(spectator_remove_promises);
+	}
+
+	// Garbage collector
+	// This will theorically never clean more than one lobby
 	async removeFromLobbies(jwt: JwtData) {
 		const current_user = jwt.infos;
+
+		await this.RemoveSpectatorFromLobbies(current_user);
 
 		const old_lobby = await this.findInLobby(current_user.uuid);
 		if (!old_lobby) {
 			return;
 		}
 
-		// Read notifications
-		let promises = [];
-		for (const old of old_lobby) {
-			if (!old.player2) {
-				break;
-			}
-			if (
-				old.player2.uuid === current_user.uuid &&
-				old.player2_status === LobbyPlayerReadyState.Invited
-			) {
-				continue;
-			}
-			promises.push(this.notifcationsService.read.ByLobby(old.uuid));
-		}
-		await Promise.all(promises);
-
-		// Delete lobbies
-		promises = [];
+		let promises: Array<Promise<void>> = [];
 		for (const old of old_lobby) {
 			promises.push(
-				this.lobby.delete(jwt, old.uuid, old).then(() => {
+				this.lobby.delete(jwt, old).then(() => {
 					// Debug
 					this.logger.debug('Removed lobby ' + old.uuid);
 				})
@@ -152,6 +184,14 @@ export class GamesLobbyService {
 		}
 		await Promise.all(promises);
 	}
+	//#endregion
+
+	//#endregion
+
+	/**
+	 * Service
+	 */
+	//#region
 
 	public readonly lobby = {
 		get: async (uuid: string): Promise<GamesLobbyGetResponse> => {
@@ -276,9 +316,12 @@ export class GamesLobbyService {
 				throw new BadRequestException(ApiResponseError.AlreadyIn);
 			}
 
-			let wasSpectator = false;
+			let wasSpectator = lobby.spectators.map((u) => u.uuid).includes(remote_user.uuid);
 
 			if (!lobby.player2 || lobby.player2.uuid !== remote_user.uuid) {
+				if (wasSpectator) {
+					throw new BadRequestException(ApiResponseError.AlreadyIn);
+				}
 				if (lobby.spectators.length > max_spectators) {
 					throw new BadRequestException(ApiResponseError.GameFull);
 				}
@@ -286,9 +329,8 @@ export class GamesLobbyService {
 			} else if (lobby.player2.uuid === remote_user.uuid) {
 				lobby.player2_status = LobbyPlayerReadyState.Joined;
 
-				if (lobby.spectators.map((u) => u.uuid).includes(remote_user.uuid)) {
+				if (wasSpectator) {
 					lobby.spectators.filter((u) => u.uuid !== remote_user.uuid);
-					wasSpectator = true;
 				}
 			}
 
@@ -370,28 +412,31 @@ export class GamesLobbyService {
 				});
 			}
 		},
-		delete: async (jwt: JwtData, uuid: string, lobby?: GamesLobby) => {
+		delete: async (jwt: JwtData, lobby: GamesLobby) => {
+			await this.notifcationsService.read.ByLobby(lobby.uuid);
+			await this.lobbyRepository.delete(lobby.uuid).catch((e) => {
+				this.logger.error('Unable to delete lobby ' + lobby.uuid, e);
+				throw new InternalServerErrorException();
+			});
+			this.wsService.dispatch.lobby(lobby, {
+				namespace: WsNamespace.Game,
+				action: GameAction.Leave,
+				lobby_uuid: lobby.uuid,
+				user_uuid: jwt.infos.uuid
+			});
+		},
+		leave: async (jwt: JwtData, uuid: string) => {
 			const user = jwt.infos;
-			if (!lobby) {
-				lobby = await this.findWithRelations({ uuid }, 'Unable to find lobby for ' + uuid);
-			}
+			const lobby = await this.findWithRelations(
+				{ uuid },
+				'Unable to find lobby for ' + uuid
+			);
 
 			if (lobby.player1.uuid === user.uuid) {
-				await this.notifcationsService.read.ByLobby(uuid);
-				await this.lobbyRepository.delete(lobby.uuid).catch((e) => {
-					this.logger.error('Unable to delete lobby ' + lobby.uuid, e);
-					throw new InternalServerErrorException();
-				});
-				this.wsService.dispatch.lobby(lobby, {
-					namespace: WsNamespace.Game,
-					action: GameAction.Leave,
-					lobby_uuid: lobby.uuid,
-					user_uuid: user.uuid
-				});
-				return;
+				return await this.lobby.delete(jwt, lobby);
 			}
 
-			if (lobby.player2.uuid === user.uuid) {
+			if (lobby.player2?.uuid === user.uuid) {
 				lobby.player2 = null;
 				lobby.player2_status = LobbyPlayerReadyState.Invited;
 			} else if (lobby.spectators.includes(user)) {
