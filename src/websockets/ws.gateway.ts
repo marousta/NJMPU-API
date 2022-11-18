@@ -17,9 +17,9 @@ import { randomUUID } from 'crypto';
 
 import { WsService } from './ws.service';
 import { TokensService } from '../auth/tokens/tokens.service';
+import { UsersService } from '../users/services/users.service';
 
 import { UserAction, WebSocketUser, WsNamespace } from './types';
-import { UsersService } from '../users/services/users.service';
 import { Jwt } from '../auth/types';
 
 @WebSocketGateway({

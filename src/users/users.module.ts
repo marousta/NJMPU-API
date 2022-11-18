@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 
 import { WsModule } from '../websockets/ws.module';
+import { PicturesModule } from '../pictures/pictures.module';
 
 import { UsersController } from './users.controller';
 
@@ -16,7 +17,6 @@ import { AccessStrategy } from '../auth/strategies/access.strategy';
 import { UsersInfos } from './entities/users.entity';
 import { UsersNotifications } from './entities/notifications.entity';
 import { UsersTokens } from '../auth/tokens/tokens.entity';
-import { PicturesModule } from '../pictures/pictures.module';
 
 @Module({
 	imports: [

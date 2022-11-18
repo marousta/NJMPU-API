@@ -14,6 +14,8 @@ import { readFileSync } from 'fs';
 import * as TwoFactor from 'node-2fa';
 import * as QRCode from 'qrcode';
 
+import { UsersService } from '../../users/services/users.service';
+
 import { UsersTwofactorReq, UsersTwofactorReqID } from '../entities/2fa.entity';
 import { UsersInfos } from '../../users/entities/users.entity';
 
@@ -23,7 +25,6 @@ import { hash, hash_verify } from '../utils';
 import { dateFromOffset } from '../../utils';
 
 import { ApiResponseError, TwoFactorRequest, TwoFactorSetupRequest } from '../types';
-import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
 export class TwoFactorService {

@@ -20,13 +20,13 @@ import { GamesLobbyService } from '../services/lobby.service';
 import { AccessAuthGuard } from '../../auth/guards/access.guard';
 
 import { GamesLobbyInviteProperty } from '../properties/lobby.add.property';
+import { GamesLobbyGetResponse } from '../properties/lobby.get.property';
+import { GamesLobbyKickProperty } from '../properties/lobby.kick.property';
 
 import { ApiResponseError as ApiResponseErrorGlobal } from '../../types';
 import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
 import { JwtData } from '../../auth/types';
 import { ApiResponseError } from '../types';
-import { GamesLobbyGetResponse } from '../properties/lobby.get.property';
-import { GamesLobbyKickProperty } from '../properties/lobby.kick.property';
 
 @UseGuards(AccessAuthGuard)
 @Controller('games/lobby')

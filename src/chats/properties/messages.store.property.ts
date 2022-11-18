@@ -1,4 +1,5 @@
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+
 import { UsersInfos } from '../../users/entities/users.entity';
 
 export class MessageStoreProperty {

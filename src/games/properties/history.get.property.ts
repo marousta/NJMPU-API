@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+
 import { LobbyWinner } from '../types';
 
 export class GamesHistoryGetResponse {

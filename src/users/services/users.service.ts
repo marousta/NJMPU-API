@@ -7,9 +7,11 @@ import {
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { createHash } from 'crypto';
 
 import { NotifcationsService } from './notifications.service';
 import { WsService } from '../../websockets/ws.service';
+import { PicturesService } from '../../pictures/pictures.service';
 
 import { UsersInfos } from '../entities/users.entity';
 
@@ -18,6 +20,7 @@ import {
 	UsersRelationsResponse
 } from '../properties/users.relations.get.property';
 import { UsersMeResponse, UsersGetResponse } from '../properties/users.get.property';
+import { SignupProperty } from 'src/auth/properties/signup.property';
 
 import { hash_password_config } from '../../auth/config';
 
@@ -33,9 +36,6 @@ import {
 	RelationDispatch,
 	UserStatus
 } from '../types';
-import { SignupProperty } from 'src/auth/properties/signup.property';
-import { createHash } from 'crypto';
-import { PicturesService } from '../../pictures/pictures.service';
 
 @Injectable()
 export class UsersService {

@@ -89,6 +89,17 @@ export function parseUnsigned(raw: object) {
 	return value;
 }
 
+export function parseUnsignedNull(raw: any) {
+	const value = parseInt(raw);
+	if (isNaN(value)) {
+		return 0;
+	}
+	if (value < 0) {
+		return null;
+	}
+	return value;
+}
+
 export function peerOrPeers(i: number) {
 	return i != 1 ? 'peers' : 'peer';
 }

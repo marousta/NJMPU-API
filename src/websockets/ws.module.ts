@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { readFileSync } from 'fs';
 
 import { TokensModule } from '../auth/tokens/tokens.module';
 import { UsersModule } from '../users/users.module';
@@ -12,7 +13,6 @@ import { WsGateway } from './ws.gateway';
 import { WsService } from './ws.service';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
-import { readFileSync } from 'fs';
 
 @Module({
 	imports: [

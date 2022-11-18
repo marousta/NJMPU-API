@@ -9,7 +9,7 @@ import {
 	forwardRef
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { getManager, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { NotifcationsService } from '../../users/services/notifications.service';
 import { WsService } from '../../websockets/ws.service';

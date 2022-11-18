@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { execSync, execFileSync, spawnSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import * as TwoFactor from 'node-2fa';
 
 import { UsersService } from 'src/users/services/users.service';
 import { ChannelsService } from '../../chats/services/channels.service';
 
-import { ChannelType } from '../../chats/types';
 import { UsersInfos } from '../../users/entities/users.entity';
+
+import { ChannelType } from '../../chats/types';
 
 @Injectable()
 export class AppService {

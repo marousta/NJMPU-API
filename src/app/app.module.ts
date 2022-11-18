@@ -12,11 +12,11 @@ import { AuthModule } from '../auth/auth.module';
 import { PicturesModule } from '../pictures/pictures.module';
 import { WsModule } from '../websockets/ws.module';
 import { ChatsModule } from '../chats/chats.module';
+import { GamesModule } from 'src/games/games.module';
 
 import { AppController } from './app.controller';
 
 import { AppService } from './services/app.service';
-import { GamesModule } from 'src/games/games.module';
 
 @Module({
 	imports: [

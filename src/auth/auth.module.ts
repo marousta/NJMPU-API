@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
+import { readFileSync } from 'fs';
 
 import { UsersModule } from '../users/users.module';
 import { TokensModule } from './tokens/tokens.module';
@@ -27,7 +28,6 @@ import { UsersTokens } from './tokens/tokens.entity';
 import { UsersTwofactorReq } from './entities/2fa.entity';
 
 import { authMethods } from './authMethods';
-import { readFileSync } from 'fs';
 
 const methods = authMethods();
 const providers: Array<any> = methods[0];

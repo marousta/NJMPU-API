@@ -9,17 +9,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { NotifcationsService } from '../../users/services/notifications.service';
+import { WsService } from '../../websockets/ws.service';
 
 import { GamesHistory } from '../entities/history.entity';
 import { UsersInfos } from '../../users/entities/users.entity';
-
-import { ApiResponseError as ApiResponseErrorUser, NotifcationType } from '../../users/types';
-import { GamesLobbyGetResponse } from '../properties/lobby.get.property';
-import { ApiResponseError, LobbyPlayerReadyState, LobbyWinner } from '../types';
-import { WsService } from '../../websockets/ws.service';
-import { ForbiddenException } from '@nestjs/common';
-import { GamesHistoryGetResponse } from '../properties/history.get.property';
 import { GamesLobbyFinished } from '../entities/lobby.entity';
+
+import { GamesHistoryGetResponse } from '../properties/history.get.property';
+
+import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
+import { LobbyWinner } from '../types';
 
 @Injectable()
 export class GamesHistoryService {

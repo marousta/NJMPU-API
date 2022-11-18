@@ -16,9 +16,6 @@ import { NotificationsGetResponse } from '../properties/notifications.get.proper
 
 import { UserAction, WsNamespace } from '../../websockets/types';
 import { NotifcationType } from '../types';
-import { BadRequestException } from '@nestjs/common';
-import { ApiResponseError } from '../../types';
-import { GamesLobby } from '../../games/entities/lobby.entity';
 
 @Injectable()
 export class NotifcationsService {

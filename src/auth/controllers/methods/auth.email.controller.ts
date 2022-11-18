@@ -11,6 +11,7 @@ import { UsersInfos } from '../../../users/entities/users.entity';
 import { SigninProperty } from '../../properties/signin.property';
 
 import { getFingerprint } from '../../../utils';
+
 import { ApiResponseError } from '../../types';
 
 @ApiTags('auth · Email')

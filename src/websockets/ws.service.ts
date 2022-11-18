@@ -4,9 +4,11 @@ import { Repository } from 'typeorm';
 import { Server } from 'ws';
 
 import { GamesLobbyService } from '../games/services/lobby.service';
+import { UsersService } from '../users/services/users.service';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
 import { GamesLobby } from '../games/entities/lobby.entity';
+import { UsersInfos } from '../users/entities/users.entity';
 
 import { wsLogger } from './ws.logger';
 
@@ -14,8 +16,6 @@ import { peerOrPeers as PeerOrPeers } from '../utils';
 
 import { Jwt, JwtData } from '../auth/types';
 import { NotifcationType, UserStatus } from '../users/types';
-import { UsersService } from '../users/services/users.service';
-import { UsersInfos } from '../users/entities/users.entity';
 import {
 	ChatAction,
 	SubscribedDictionary,
@@ -37,7 +37,6 @@ import {
 	WsUserAvatar,
 	UserAction,
 	WsUserExpired,
-	WsUserNotification,
 	WsUserSession,
 	WsUserUpdateSession,
 	WsUserBlock,
@@ -58,7 +57,7 @@ import {
 	WsUserStatusInGame,
 	WsGameDisband
 } from './types';
-import { colors } from 'src/types';
+import { colors } from '../types';
 @Injectable()
 export class WsService {
 	private readonly logger = new wsLogger(WsService.name);
@@ -250,7 +249,7 @@ export class WsService {
 					continue;
 				} else if (ret === 0) {
 					this.logger.warn(
-						'Websocket tried to send data on empty user, this should not happend'
+						'Websocket tried to send data on empty user, this should not happen'
 					);
 					continue;
 				}
@@ -355,7 +354,7 @@ export class WsService {
 				return;
 			} else if (i === 0) {
 				this.logger.warn(
-					'Websocket tried to send data on empty user, this should not happend'
+					'Websocket tried to send data on empty user, this should not happen'
 				);
 				return;
 			}
@@ -476,7 +475,7 @@ export class WsService {
 					continue;
 				} else if (ret === 0) {
 					this.logger.warn(
-						'Websocket tried to send data on empty user, this should not happend'
+						'Websocket tried to send data on empty user, this should not happen'
 					);
 					continue;
 				}
@@ -587,7 +586,7 @@ export class WsService {
 					continue;
 				} else if (ret === 0) {
 					this.logger.warn(
-						'Websocket tried to send data on empty user, this should not happend'
+						'Websocket tried to send data on empty user, this should not happen'
 					);
 					continue;
 				}

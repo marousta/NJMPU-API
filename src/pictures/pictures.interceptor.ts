@@ -1,5 +1,6 @@
-import { PicturesService } from './pictures.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+
+import { PicturesService } from './pictures.service';
 
 export const PicturesInterceptor = FileInterceptor('avatar', {
 	fileFilter(req, file, callback) {

@@ -12,6 +12,11 @@ import { AppModule } from './app/app.module';
 import { DisabledLogger } from './app/services/disabledLogger.service';
 
 import { ValidateEnv } from './validateEnv';
+import { max_spectators } from './games/config';
+
+import { parseUnsignedNull } from './utils';
+
+import { colors } from './types';
 
 async function bootstrap() {
 	const env = new ValidateEnv();
@@ -28,6 +33,11 @@ async function bootstrap() {
 	env.check('PSQL_DATABASE', 'string');
 	env.check('PSQL_SYNC', false);
 	env.result();
+
+	if (!parseUnsignedNull(max_spectators)) {
+		console.error(colors.red + 'Invalid game/config: max_spectators' + colors.end);
+		process.exit(1);
+	}
 
 	const app = await NestFactory.create(AppModule, {
 		logger: process.env['PRODUCTION'] ? new DisabledLogger() : undefined

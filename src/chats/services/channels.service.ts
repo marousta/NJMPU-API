@@ -29,7 +29,6 @@ import {
 	DirectData,
 	ChannelPrivateGetResponse
 } from '../properties/channels.get.property';
-
 import {
 	ChannelModerationPropertyEX,
 	ChannelSettingProperty

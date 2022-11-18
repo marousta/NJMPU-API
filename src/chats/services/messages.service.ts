@@ -13,6 +13,7 @@ import { Repository } from 'typeorm';
 import { ChannelsService } from './channels.service';
 import { WsService } from '../../websockets/ws.service';
 import { UsersService } from '../../users/services/users.service';
+import { ChannelsBlacklistService } from './channels.blacklist.service';
 
 import { UsersInfos } from '../../users/entities/users.entity';
 import { ChatsMessages } from '../entities/messages.entity';
@@ -22,7 +23,6 @@ import { MessagesGetResponse } from '../properties/messages.get.propoerty';
 
 import { ApiResponseError, ChannelType } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
-import { ChannelsBlacklistService } from './channels.blacklist.service';
 
 @Injectable()
 export class MessagesService {

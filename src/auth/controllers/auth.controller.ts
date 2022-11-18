@@ -6,7 +6,8 @@ import {
 	Post,
 	Request,
 	Response,
-	UseGuards
+	UseGuards,
+	BadRequestException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -21,10 +22,10 @@ import { SignupProperty } from '../properties/signup.property';
 
 import { getMethods } from '../authMethods';
 
+import { isEmpty } from '../../utils';
+
 import { JwtData, ApiResponseError } from '../types';
 import { ApiResponseError as ApiUsersResponseError } from '../../users/types';
-import { isEmpty } from '../../utils';
-import { BadRequestException } from '@nestjs/common';
 
 @ApiTags('auth')
 @Controller('auth')
