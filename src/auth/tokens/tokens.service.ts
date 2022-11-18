@@ -203,11 +203,13 @@ export class TokensService {
 				throw new UnauthorizedException();
 			});
 
-		this.wsService.updateToken({
-			tuuid: refreshed_token.uuid,
-			uuuid: user.uuid,
-			iat: Math.floor(refreshed_token.refresh_date.valueOf() / 1000),
-			exp: Math.floor(token_time.refresh().valueOf() / 1000)
+		this.wsService.updateClient({
+			jwt: {
+				tuuid: refreshed_token.uuid,
+				uuuid: user.uuid,
+				iat: Math.floor(refreshed_token.refresh_date.valueOf() / 1000),
+				exp: Math.floor(token_time.refresh().valueOf() / 1000)
+			}
 		});
 		this.logger.debug('Token refreshed for user ' + user.uuid);
 		return { interface: 'GeneratedTokens', access_token, refresh_token };

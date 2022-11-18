@@ -82,14 +82,34 @@ export class WsService {
 		return exp * 1000 < new Date().valueOf();
 	}
 
-	updateToken(jwt: Jwt) {
-		if (!this.subscribed[jwt.uuuid]) {
+	updateClient(args: { jwt?: Jwt; user?: UsersInfos }) {
+		const jwt = args.jwt;
+		const user = args.user;
+
+		if (!jwt && !user) {
+			this.logger.warn(
+				'updateClient fail safe | ' + jwt?.uuuid
+					? 'jwt defined'
+					: 'jwt undefined' + ' | ' + user?.uuid
+					? 'user defined'
+					: 'user undefined' + ' |'
+			);
 			return;
 		}
-		for (const client of this.subscribed[jwt.uuuid]) {
-			if (client.jwt.token.tuuid === jwt.tuuid) {
+
+		const uuid = jwt?.uuuid || user?.uuid;
+		if (!this.subscribed[uuid]) {
+			return;
+		}
+
+		for (const client of this.subscribed[uuid]) {
+			if (jwt?.tuuid === client.jwt.token.tuuid) {
 				this.logger.set(client.uuid).verbose('Token updated').unset();
 				client.jwt.token = jwt;
+			}
+			if (user?.uuid === client.jwt.infos.uuid) {
+				this.logger.set(client.uuid).verbose('User updated').unset();
+				client.jwt.infos = user;
 			}
 		}
 	}
@@ -165,37 +185,51 @@ export class WsService {
 	}
 
 	async updateUserStatus(user: UsersInfos, status: UserStatus, lobby_uuid?: string) {
-		await this.usersService.updateStatus(user, status);
-
 		if (status === UserStatus.InGame) {
-			return this.dispatch.all({
+			await this.usersService.updateStatus(user, status);
+
+			this.dispatch.all({
 				namespace: WsNamespace.User,
 				action: UserAction.Status,
 				user: user.uuid,
 				status: status,
 				lobby_uuid
 			});
+
+			return false;
 		}
 
-		if (status === UserStatus.Online) {
-			// Check if user is really online
-			if (!this.subscribed[user.uuid]) {
-				return;
-			}
-			return this.dispatch.all({
+		// Check if user is really online
+		if (status === UserStatus.Online && this.subscribed[user.uuid]) {
+			await this.usersService.updateStatus(user, status);
+
+			this.dispatch.all({
 				namespace: WsNamespace.User,
 				action: UserAction.Status,
 				user: user.uuid,
 				status: UserStatus.Online
 			});
+
+			return false;
 		}
 
-		this.dispatch.all({
-			namespace: WsNamespace.User,
-			action: UserAction.Status,
-			user: user.uuid,
-			status: UserStatus.Offline
-		});
+		// Check if user is really offline
+		const closed =
+			!this.subscribed[user.uuid] ||
+			this.subscribed[user.uuid].filter((client) => client.readyState === client.OPEN)
+				.length === 0;
+
+		if (closed) {
+			await this.usersService.updateStatus(user, status);
+
+			this.dispatch.all({
+				namespace: WsNamespace.User,
+				action: UserAction.Status,
+				user: user.uuid,
+				status: UserStatus.Offline
+			});
+			return true;
+		}
 	}
 
 	public readonly dispatch = {
@@ -684,12 +718,13 @@ export class WsService {
 		}
 	}
 
-	disconnected(client: WebSocketUser) {
+	async disconnected(client: WebSocketUser) {
 		const user_uuid = client.jwt.infos.uuid;
 
-		this.updateUserStatus(client.jwt.infos, UserStatus.Offline);
-
-		this.lobbyService.removeFromLobbies(client.jwt);
+		const offline = await this.updateUserStatus(client.jwt.infos, UserStatus.Offline);
+		if (offline) {
+			this.lobbyService.removeFromLobbies(client.jwt);
+		}
 
 		// Check if user is subscribed
 		if (user_uuid && this.subscribed && this.subscribed[user_uuid]) {
@@ -703,6 +738,7 @@ export class WsService {
 			if (!this.subscribed[user_uuid].length) {
 				// All connections are closed removing user
 				delete this.subscribed[user_uuid];
+
 				this.logger.verbose('No more connected client with user ' + user_uuid);
 			}
 		}

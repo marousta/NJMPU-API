@@ -257,6 +257,7 @@ export class UsersService {
 			throw new InternalServerErrorException();
 		});
 
+		this.wsService.updateClient({ user });
 		this.wsService.dispatch.all({
 			namespace: WsNamespace.User,
 			action: UserAction.Avatar,
