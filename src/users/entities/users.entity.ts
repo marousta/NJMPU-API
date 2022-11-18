@@ -2,7 +2,6 @@ import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColum
 
 import { ChatsChannels } from '../../chats/entities/channels.entity';
 import { GamesHistory } from '../../games/entities/history.entity';
-import { GamesLobby } from '../../games/entities/lobby.entity';
 
 import { UserStatus } from '../types';
 
@@ -97,24 +96,6 @@ export class UsersInfos {
 		}
 		this.blocklist.push(user);
 	}
-
-	/**
-	 * Relation Games Lobby -> Users
-	 */
-	@OneToMany((type) => GamesLobby, (channel) => channel.player1, {
-		onDelete: 'CASCADE',
-		nullable: false
-	})
-	player1_lobby: GamesLobby;
-
-	/**
-	 * Relation Games Lobby -> Users
-	 */
-	@OneToMany((type) => GamesLobby, (channel) => channel.player2, {
-		onDelete: 'CASCADE',
-		nullable: false
-	})
-	player2_lobby: GamesLobby;
 
 	/**
 	 * Relation Games Lobby -> Users

@@ -112,7 +112,6 @@ export class NotifcationsService {
 			.addOrderBy('type', 'DESC')
 			.addOrderBy('creation_date', 'DESC')
 			.loadRelationIdAndMap('notif.user', 'notif.interact_w_user')
-			.loadRelationIdAndMap('notif.lobby', 'notif.lobby')
 			.limit(limit)
 			.offset((page ? page - 1 : 0) * limit + offset)
 			.getManyAndCount();

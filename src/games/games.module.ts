@@ -10,13 +10,12 @@ import { GamesHistoryService } from './services/history.service';
 import { GamesLobbyController } from './controllers/lobby.controller';
 import { GamesHistoryController } from './controllers/history.controller';
 
-import { GamesLobby } from './entities/lobby.entity';
 import { GamesHistory } from './entities/history.entity';
 import { UsersInfos } from '../users/entities/users.entity';
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([GamesLobby, GamesHistory, UsersInfos]),
+		TypeOrmModule.forFeature([GamesHistory, UsersInfos]),
 		forwardRef(() => UsersModule),
 		forwardRef(() => WsModule)
 	],

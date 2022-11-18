@@ -13,7 +13,7 @@ import { WsService } from '../../websockets/ws.service';
 
 import { GamesHistory } from '../entities/history.entity';
 import { UsersInfos } from '../../users/entities/users.entity';
-import { GamesLobbyFinished } from '../entities/lobby.entity';
+import { GamesLobbyFinished } from '../entities/lobby';
 
 import { GamesHistoryGetResponse } from '../properties/history.get.property';
 

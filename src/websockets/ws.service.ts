@@ -7,7 +7,7 @@ import { GamesLobbyService } from '../games/services/lobby.service';
 import { UsersService } from '../users/services/users.service';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
-import { GamesLobby } from '../games/entities/lobby.entity';
+import { GamesLobby } from '../games/entities/lobby';
 import { UsersInfos } from '../users/entities/users.entity';
 
 import { wsLogger } from './ws.logger';
