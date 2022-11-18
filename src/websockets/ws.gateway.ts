@@ -135,7 +135,10 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 			infos: user,
 			token: jwt[1]
 		};
-		client.lobby_uuid = null;
+		client.lobby = {
+			uuid: null,
+			spectate: false
+		};
 
 		await this.wsService.connected(client);
 	}

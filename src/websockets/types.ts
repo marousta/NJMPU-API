@@ -6,7 +6,10 @@ import { JwtData } from '../auth/types';
 export interface WebSocketUser extends WebSocket {
 	uuid: string;
 	jwt: JwtData;
-	lobby_uuid: string;
+	lobby: {
+		uuid: string;
+		spectate: boolean;
+	};
 }
 
 export interface SubscribedDictionary {

@@ -151,7 +151,7 @@ export class WsService {
 	 */
 	//#region
 
-	setLobby(jwt: JwtData, lobby_uuid: string) {
+	async setLobby(jwt: JwtData, lobby_uuid: string, spectate: boolean) {
 		const user_uuid = jwt.infos.uuid;
 		const token_uuid = jwt.token.tuuid;
 
@@ -163,21 +163,25 @@ export class WsService {
 			if (client.jwt.token.tuuid !== token_uuid) {
 				continue;
 			}
-			client.lobby_uuid = lobby_uuid;
+			client.lobby = { uuid: lobby_uuid, spectate };
+		}
+
+		if (lobby_uuid && !spectate) {
+			this.updateUserStatus(jwt.infos, UserStatus.InGame, lobby_uuid);
 		}
 	}
 
 	unsetLobby(jwt: JwtData) {
-		this.setLobby(jwt, null);
+		this.setLobby(jwt, null, false);
 	}
 
 	unsetAllLobby(lobby: GamesLobby) {
 		const users = this.lobbyService.getUsers(lobby);
 		users.map((user_uuid) => {
 			this.subscribed[user_uuid]?.map((client) => {
-				if (client.lobby_uuid === lobby.uuid) {
+				if (client.lobby.uuid === lobby.uuid) {
 					this.logger.debug('CLEARED LOBBY ' + user_uuid);
-					client.lobby_uuid = null;
+					client.lobby = { uuid: null, spectate: false };
 				}
 			});
 		});
@@ -229,6 +233,23 @@ export class WsService {
 			});
 			return true;
 		}
+	}
+
+	getUserStatus(user_uuid: string) {
+		if (!this.subscribed[user_uuid]) {
+			return { status: UserStatus.Offline };
+		}
+
+		for (const client of this.subscribed[user_uuid]) {
+			if (client.readyState !== client.OPEN) {
+				continue;
+			}
+			if (client.lobby.uuid) {
+				return { status: UserStatus.InGame, lobby: client.lobby.uuid };
+			}
+			return { status: UserStatus.Online };
+		}
+		return { status: UserStatus.Offline };
 	}
 
 	public readonly dispatch = {
@@ -609,7 +630,7 @@ export class WsService {
 			// 	}
 
 			// 	for (const client of this.subscribed[uuid]) {
-			// 		if (client.lobby_uuid !== lobby.uuid) {
+			// 		if (client.lobby.uuid !== lobby.uuid) {
 			// 			continue;
 			// 		}
 

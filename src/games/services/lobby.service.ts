@@ -251,7 +251,7 @@ export class GamesLobbyService {
 				throw new InternalServerErrorException();
 			});
 
-			this.wsService.setLobby(jwt, new_lobby.uuid);
+			this.wsService.setLobby(jwt, new_lobby.uuid, false);
 			this.wsService.dispatch.lobby(lobby, {
 				namespace: WsNamespace.Game,
 				action: GameAction.Join,
@@ -327,15 +327,19 @@ export class GamesLobbyService {
 			}
 
 			let wasSpectator = lobby.spectators.map((u) => u.uuid).includes(remote_user.uuid);
+			let isSpectator = false;
 
 			if (!lobby.player2 || lobby.player2.uuid !== remote_user.uuid) {
 				if (wasSpectator) {
 					throw new BadRequestException(ApiResponseError.AlreadyIn);
 				}
+
 				if (lobby.spectators.length > max_spectators) {
 					throw new BadRequestException(ApiResponseError.GameFull);
 				}
+
 				lobby.addSpectator(remote_user);
+				isSpectator = true;
 			} else if (lobby.player2.uuid === remote_user.uuid) {
 				lobby.player2_status = LobbyPlayerReadyState.Joined;
 
@@ -352,7 +356,7 @@ export class GamesLobbyService {
 				throw new InternalServerErrorException();
 			});
 
-			this.wsService.setLobby(jwt, lobby.uuid);
+			this.wsService.setLobby(jwt, lobby.uuid, isSpectator);
 			if (!lobby.player2 || lobby.player2.uuid !== remote_user.uuid) {
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,

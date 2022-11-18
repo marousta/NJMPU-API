@@ -205,6 +205,20 @@ export class UsersService {
 	}
 
 	public readonly get = {
+		format: (current_user: UsersInfos, remote_user: UsersInfos) => {
+			const state = this.wsService.getUserStatus(remote_user.uuid);
+			return {
+				uuid: remote_user.uuid,
+				identifier: remote_user.identifier,
+				username: remote_user.username,
+				avatar: remote_user.avatar,
+				is_online: state.status,
+				lobby: state.status === UserStatus.InGame ? state.lobby : undefined,
+				friendship: this.usersAreFriends(current_user, remote_user),
+				is_blocked: this.isCurrentlyBlocked(current_user, remote_user),
+				has_blocked: this.isRemotelyBlocked(current_user, remote_user)
+			};
+		},
 		ByUUID: async (
 			current_user: UsersInfos,
 			remote_user_uuid: string
@@ -214,16 +228,7 @@ export class UsersService {
 				'Unable to find user by uuid ' + remote_user_uuid
 			);
 
-			return {
-				uuid: remote_user.uuid,
-				identifier: remote_user.identifier,
-				username: remote_user.username,
-				avatar: remote_user.avatar,
-				is_online: remote_user.is_online,
-				friendship: this.usersAreFriends(current_user, remote_user),
-				is_blocked: this.isCurrentlyBlocked(current_user, remote_user),
-				has_blocked: this.isRemotelyBlocked(current_user, remote_user)
-			};
+			return this.get.format(current_user, remote_user);
 		},
 		ByIdentifier: async (
 			current_user: UsersInfos,
@@ -235,16 +240,7 @@ export class UsersService {
 				'Unable to find user by identifier ' + remote_username + '#' + remote_identifier
 			);
 
-			return {
-				uuid: remote_user.uuid,
-				identifier: remote_user.identifier,
-				username: remote_user.username,
-				avatar: remote_user.avatar,
-				is_online: remote_user.is_online,
-				friendship: this.usersAreFriends(current_user, remote_user),
-				is_blocked: this.isCurrentlyBlocked(current_user, remote_user),
-				has_blocked: this.isRemotelyBlocked(current_user, remote_user)
-			};
+			return this.get.format(current_user, remote_user);
 		}
 	};
 
@@ -419,6 +415,7 @@ export class UsersService {
 						break;
 				}
 
+				this.wsService.updateClient({ user: current_user });
 				return { friendship: friendship_status };
 			},
 			remove: async (current_user: UsersInfos, remote_user: UsersInfos) => {
@@ -455,6 +452,7 @@ export class UsersService {
 					action: UserAction.Unfriend,
 					user: current_user.uuid
 				});
+				this.wsService.updateClient({ user: current_user });
 			}
 		},
 		blocklist: {
@@ -483,6 +481,7 @@ export class UsersService {
 					user: current_user.uuid,
 					direction: BlockDirection.HasBlocked
 				});
+				this.wsService.updateClient({ user: current_user });
 			},
 			remove: async (current_user: UsersInfos, remote_user: UsersInfos) => {
 				if (!this.isCurrentlyBlocked(current_user, remote_user)) {
@@ -516,6 +515,7 @@ export class UsersService {
 					user: current_user.uuid,
 					direction: BlockDirection.HasUnblocked
 				});
+				this.wsService.updateClient({ user: current_user });
 			}
 		}
 	};
