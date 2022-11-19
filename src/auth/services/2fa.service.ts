@@ -16,22 +16,20 @@ import * as QRCode from 'qrcode';
 
 import { UsersService } from '../../users/services/users.service';
 
-import { UsersTwofactorReq, UsersTwofactorReqID } from '../entities/2fa.entity';
+import { UsersTwofactorReq } from '../entities/2fa';
 import { UsersInfos } from '../../users/entities/users.entity';
 
 import { hash_token_config } from '../config';
 
 import { hash, hash_verify } from '../utils';
-import { dateFromOffset } from '../../utils';
 
 import { ApiResponseError, TwoFactorRequest, TwoFactorSetupRequest } from '../types';
 
 @Injectable()
 export class TwoFactorService {
 	private readonly logger = new Logger(TwoFactorService.name);
+	private twofactor: { [uuid: string]: UsersTwofactorReq } = {};
 	constructor(
-		@InjectRepository(UsersTwofactorReq)
-		private readonly twofactorRepository: Repository<UsersTwofactorReq>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly usersService: UsersService,
@@ -46,7 +44,7 @@ export class TwoFactorService {
 
 	private twoFactorToken(uuid: string): string {
 		return this.jwtService.sign(
-			{ uuid },
+			{ tuuid: uuid },
 			{
 				algorithm: 'RS256',
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
@@ -59,71 +57,43 @@ export class TwoFactorService {
 
 	private async saveToken(request: UsersTwofactorReq): Promise<string> {
 		const token = this.twoFactorToken(request.uuid);
-		await this.twofactorRepository
-			.save({
-				...request,
-				token_hash: await hash(token, hash_token_config)
-			})
-			.catch((e) => {
-				this.logger.error('Could not insert token', e);
-				throw new InternalServerErrorException();
-			});
+		request.token_hash = await hash(token, hash_token_config);
+		this.twofactor[request.uuid] = request;
 		return token;
 	}
 
-	private async getRequest(uuid: string): Promise<UsersTwofactorReqID> {
-		return await this.twofactorRepository
-			.createQueryBuilder('request')
-			.loadAllRelationIds()
-			.where({ uuid })
-			.getOneOrFail()
-			.catch((e) => {
-				this.logger.verbose("2FA request doesn't exist " + uuid, e);
-				throw new NotFoundException(ApiResponseError.TwoFactorInvalidRequest);
-			});
+	private getRequest(request_uuid: string): UsersTwofactorReq {
+		const request = this.twofactor[request_uuid];
+		if (!request) {
+			this.logger.verbose("2FA request doesn't exist " + request_uuid);
+			throw new NotFoundException(ApiResponseError.TwoFactorInvalidRequest);
+		}
+		return request;
 	}
 
-	async getUserFromRequest(uuid: string) {
-		const request = await this.getRequest(uuid);
-		const user = await this.usersService.findWithRelationsOrNull(
-			{ uuid: request.user_uuid },
-			'Unable to find user ' + request.user_uuid + ' from 2FA request ' + uuid
-		);
-		if (!user) {
+	getUserFromRequest(request_uuid: string): UsersInfos {
+		const request = this.getRequest(request_uuid);
+		if (!request.user) {
 			throw new InternalServerErrorException();
 		}
 
-		return user;
+		return request.user;
 	}
 
 	// Remove expired requests
-	private async garbageCollect() {
-		const exist = await this.twofactorRepository.find().catch((e) => {
-			this.logger.error('Could not fetch existing requests', e);
-			return null;
-		});
+	private garbageCollect() {
+		const exist = Object.values(this.twofactor);
 
-		if (exist) {
-			let requests = [];
+		if (exist.length > 0) {
 			const now = new Date().valueOf();
 
 			for (const request of exist) {
 				if (request.expiration.valueOf() > now) {
 					continue;
 				}
-				requests.push(
-					this.twofactorRepository
-						.delete(request)
-						.then(() => {
-							this.logger.debug('Deleted 2FA request ' + request.uuid);
-						})
-						.catch((e) => {
-							this.logger.error('Unable to delete 2FA request ' + request.uuid);
-						})
-				);
+				this.delete(request.uuid);
+				this.logger.debug('Deleted 2FA request ' + request.uuid);
 			}
-
-			await Promise.all(requests);
 		}
 	}
 	//#endregion
@@ -133,21 +103,24 @@ export class TwoFactorService {
 	 */
 	//#region
 
-	private async requestCreator(uuid: string, secret?: string): Promise<TwoFactorRequest> {
-		await this.garbageCollect();
+	private async requestCreator(
+		current_user_uuid: string,
+		secret?: string
+	): Promise<TwoFactorRequest> {
+		this.garbageCollect();
 
-		const new_request = this.twofactorRepository.create({
-			user_uuid: uuid,
-			secret, // undefined for login request
-			expiration: dateFromOffset(60 * 4)
-		});
-		const request = await this.twofactorRepository.save(new_request).catch((e) => {
-			this.logger.error('Could not insert request', e);
-			throw new InternalServerErrorException();
+		const user = await this.usersService.findWithRelationsOrNull(
+			{ uuid: current_user_uuid },
+			'Unable to find user ' + current_user_uuid + ' from 2FA request ' + current_user_uuid
+		);
+
+		const request = new UsersTwofactorReq({
+			user,
+			secret // undefined for login request
 		});
 		const token = await this.saveToken(request);
 
-		return { interface: 'TwoFactorRequest', uuid: request.uuid, token };
+		return { interface: 'TwoFactorRequest', tuuid: request.uuid, token };
 	}
 
 	private async create(user: UsersInfos): Promise<TwoFactorSetupRequest> {
@@ -164,7 +137,7 @@ export class TwoFactorService {
 		const qr = requests[0];
 		const request = requests[1];
 
-		this.logger.debug('Created 2FA request ' + request.uuid);
+		this.logger.debug('Created 2FA request ' + request.tuuid);
 
 		return {
 			...request,
@@ -173,77 +146,79 @@ export class TwoFactorService {
 		};
 	}
 
-	async delete(uuid: string) {
-		await this.twofactorRepository.delete({ uuid }).catch((e) => {
-			this.logger.error('Could not delete request  ' + uuid, e);
-			throw new InternalServerErrorException();
-		});
+	delete(uuid: string) {
+		delete this.twofactor[uuid];
 	}
 
-	async remove(user: UsersInfos) {
-		if (!user.twofactor) {
+	async remove(current_user: UsersInfos) {
+		if (!current_user.twofactor) {
 			throw new ForbiddenException(ApiResponseError.TwoFactorNotSet);
 		}
 
-		user.twofactor = null;
+		current_user.twofactor = null;
 
-		await this.usersRepository.save(user).catch((e) => {
-			this.logger.error('Unable to remove 2FA from user account ' + user.uuid, e);
+		await this.usersRepository.save(current_user).catch((e) => {
+			this.logger.error('Unable to remove 2FA from user account ' + current_user.uuid, e);
 			throw new InternalServerErrorException();
 		});
+		this.logger.verbose('Removed 2FA for user ' + current_user.uuid);
 	}
 
-	async demand(user: UsersInfos): Promise<TwoFactorSetupRequest | TwoFactorRequest> {
-		if (user.twofactor) {
+	async demand(current_user: UsersInfos): Promise<TwoFactorSetupRequest | TwoFactorRequest> {
+		if (current_user.twofactor) {
 			// Create 2FA login request
-			return await this.requestCreator(user.uuid);
+			return await this.requestCreator(current_user.uuid);
 		}
 		// Create 2FA setup request
-		return await this.create(user);
+		return await this.create(current_user);
 	}
 
 	public readonly verify = {
-		token: async (payload: { uuid: string; token: string }) => {
-			const request = await this.twofactorRepository
-				.findOneByOrFail({ uuid: payload.uuid })
-				.catch((e) => {
-					this.logger.verbose('Request not found ' + payload.uuid);
-					throw new UnauthorizedException();
-				});
+		token: async (payload: { uuid: string; token: string }): Promise<UsersInfos> => {
+			const request = this.getRequest(payload.uuid);
 
 			const verif = await hash_verify(request.token_hash, payload.token);
 			if (!verif) {
-				return false;
+				return null;
 			}
 
-			return await this.getUserFromRequest(payload.uuid);
+			return this.getUserFromRequest(payload.uuid);
 		},
-		code: async (user: UsersInfos, request_uuid: string, code: string): Promise<boolean> => {
-			const request = await this.getRequest(request_uuid);
+		code: async (
+			current_user: UsersInfos,
+			request_uuid: string,
+			code: string
+		): Promise<boolean> => {
+			const request = this.getRequest(request_uuid);
+			const user = request.user;
 
-			if (request.user_uuid !== user.uuid) {
+			if (user.uuid !== current_user.uuid) {
 				throw new InternalServerErrorException();
 			}
 
 			// 2FA set
 			if (user.twofactor) {
-				return TwoFactor.verifyToken(user.twofactor, code, 2) !== null;
+				const verify = TwoFactor.verifyToken(user.twofactor, code, 2) !== null;
+				if (verify) {
+					this.logger.debug('2FA request is valid ' + request_uuid);
+					this.delete(request.uuid);
+				}
+
+				return verify;
 			}
 
 			// 2FA setup
 			if (TwoFactor.verifyToken(request.secret, code, 2) !== null) {
-				const update = this.usersRepository.create({
-					...user,
-					twofactor: request.secret
-				});
+				user.twofactor = request.secret;
 
-				await this.usersRepository.save(update).catch((e) => {
-					this.logger.error('Could not update secret token for user ' + update.uuid, e);
+				await this.usersRepository.save(user).catch((e) => {
+					this.logger.error('Could not update secret token for user ' + user.uuid, e);
 					throw new InternalServerErrorException();
 				});
 
 				this.logger.debug('2FA set for user ' + user.uuid);
 
+				this.delete(request.uuid);
 				return true;
 			}
 			return false;

@@ -212,13 +212,7 @@ export class AuthService {
 
 			return (await this.twoFactorService.demand(user)) as TwoFactorSetupRequest;
 		},
-		login: async (request_uuid: string, fingerprint: UserFingerprint) => {
-			this.logger.debug('2FA request is valid ' + request_uuid);
-
-			const user = await this.twoFactorService.getUserFromRequest(request_uuid);
-
-			await this.twoFactorService.delete(request_uuid);
-
+		login: async (user: UsersInfos, fingerprint: UserFingerprint) => {
 			return await this.tokensService.create({
 				uuid: user.uuid,
 				fingerprint

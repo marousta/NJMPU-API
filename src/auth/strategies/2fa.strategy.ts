@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
 
 import { TwoFactorService } from '../services/2fa.service';
 
-import { JwtData, Jwt2FA } from '../types';
+import { Jwt, JwtData } from '../types';
 
 @Injectable()
 export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
@@ -32,9 +32,9 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
 	}
 
 	// callback after JWT is validated
-	async validate(req: Request, payload: Jwt2FA): Promise<JwtData> {
+	async validate(req: Request, payload: Jwt): Promise<JwtData> {
 		const verif = await this.twoFactorService.verify.token({
-			uuid: payload.uuid,
+			uuid: payload.tuuid,
 			token: req.cookies['twofactor_token']
 		});
 		if (!verif) {

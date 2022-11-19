@@ -25,7 +25,6 @@ import { TwoFactorStrategy } from './strategies/2fa.strategy';
 
 import { UsersInfos } from '../users/entities/users.entity';
 import { UsersTokens } from './tokens/tokens.entity';
-import { UsersTwofactorReq } from './entities/2fa.entity';
 
 import { authMethods } from './authMethods';
 
@@ -58,7 +57,7 @@ const modules: Array<any> = methods[2];
 			},
 			inject: [ConfigService]
 		}),
-		TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersTwofactorReq]),
+		TypeOrmModule.forFeature([UsersInfos, UsersTokens]),
 		TokensModule,
 		forwardRef(() => UsersModule),
 		forwardRef(() => WsModule)

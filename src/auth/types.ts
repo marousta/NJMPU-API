@@ -29,10 +29,6 @@ export interface Jwt {
 	exp: number;
 }
 
-export interface Jwt2FA extends Jwt {
-	uuid: string;
-}
-
 export interface JwtData {
 	token: Jwt;
 	infos: UsersInfos;
@@ -166,7 +162,7 @@ export interface TwitterUser {
 
 export interface TwoFactorRequest {
 	interface: 'TwoFactorRequest';
-	uuid: string;
+	tuuid: string;
 	token: string;
 }
 

@@ -55,7 +55,8 @@ import {
 	WsGameInvite,
 	WsUserStatus,
 	WsUserStatusInGame,
-	WsGameDisband
+	WsGameDisband,
+	WsGameDecline
 } from './types';
 import { colors } from '../types';
 @Injectable()
@@ -163,9 +164,16 @@ export class WsService {
 			if (client.jwt.token.tuuid !== token_uuid) {
 				continue;
 			}
+
+			if (!lobby_uuid) {
+				this.logger
+					.set(client.uuid)
+					.debug('Cleared lobby ' + client.lobby.uuid)
+					.unset();
+			}
+
 			client.lobby = { uuid: lobby_uuid, spectate };
 		}
-
 		if (lobby_uuid && !spectate) {
 			this.updateUserStatus(jwt.infos, UserStatus.InGame, lobby_uuid);
 		}
@@ -180,7 +188,10 @@ export class WsService {
 		users.map((user_uuid) => {
 			this.subscribed[user_uuid]?.map((client) => {
 				if (client.lobby.uuid === lobby.uuid) {
-					this.logger.debug('CLEARED LOBBY ' + user_uuid);
+					this.logger
+						.set(client.uuid)
+						.debug('Cleared lobby ' + lobby.uuid)
+						.unset();
 					client.lobby = { uuid: null, spectate: false };
 				}
 			});
@@ -352,8 +363,6 @@ export class WsService {
 							}
 							break;
 					}
-				case WsNamespace.Chat:
-					return;
 			}
 		},
 		user: (
@@ -508,95 +517,94 @@ export class WsService {
 				return;
 			}
 
-			if (data.namespace === WsNamespace.Chat) {
-				switch (data.action) {
-					case ChatAction.Join:
-						return this.logger.verbose(
-							`${user_uuid} JOIN channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Leave:
-						return this.logger.verbose(
-							`${user_uuid} LEAVE channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Send:
-						return this.logger.verbose(
-							`New message in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Delete:
-						return this.logger.verbose(
-							`Deleted message id ${
-								data.uuid
-							} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Remove:
-						return this.logger.verbose(
-							`Removed channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Promote:
-						return this.logger.verbose(
-							`Promoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Demote:
-						return this.logger.verbose(
-							`Demoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Ban:
-						return this.logger.verbose(
-							`Banned ${user_uuid} in channel ${channel_uuid} ${
-								data.expiration ? 'until ' + data.expiration : 'permanently'
-							} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
-						);
-					case ChatAction.Unban:
-						return this.logger.verbose(
-							`Unbanned ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Mute:
-						return this.logger.verbose(
-							`Muted ${user_uuid} in channel ${channel_uuid} ${
-								data.expiration ? 'until ' + data.expiration : 'permanently'
-							} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
-						);
-					case ChatAction.Unmute:
-						return this.logger.verbose(
-							`Unmuted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-								i
-							)}`
-						);
-					case ChatAction.Avatar:
-						this.logger.verbose(
-							`Updated channel avatar for channel ${
-								data.channel
-							} dispatched to ${i} connected ${PeerOrPeers(i)}`
-						);
-						break;
-				}
+			switch (data.action) {
+				case ChatAction.Join:
+					return this.logger.verbose(
+						`${user_uuid} JOIN channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Leave:
+					return this.logger.verbose(
+						`${user_uuid} LEAVE channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Send:
+					return this.logger.verbose(
+						`New message in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Delete:
+					return this.logger.verbose(
+						`Deleted message id ${
+							data.uuid
+						} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Remove:
+					return this.logger.verbose(
+						`Removed channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Promote:
+					return this.logger.verbose(
+						`Promoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Demote:
+					return this.logger.verbose(
+						`Demoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Ban:
+					return this.logger.verbose(
+						`Banned ${user_uuid} in channel ${channel_uuid} ${
+							data.expiration ? 'until ' + data.expiration : 'permanently'
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case ChatAction.Unban:
+					return this.logger.verbose(
+						`Unbanned ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Mute:
+					return this.logger.verbose(
+						`Muted ${user_uuid} in channel ${channel_uuid} ${
+							data.expiration ? 'until ' + data.expiration : 'permanently'
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case ChatAction.Unmute:
+					return this.logger.verbose(
+						`Unmuted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
+							i
+						)}`
+					);
+				case ChatAction.Avatar:
+					this.logger.verbose(
+						`Updated channel avatar for channel ${
+							data.channel
+						} dispatched to ${i} connected ${PeerOrPeers(i)}`
+					);
+					break;
 			}
 		},
 		lobby: (
 			lobby: GamesLobby,
 			data:
-				| WsGameJoin
 				| WsGameInvite
-				| WsGameLeave
-				| WsGameReady
+				| WsGameDecline
+				| WsGameJoin
 				| WsGameSpectate
+				| WsGameReady
 				| WsGameStart
+				| WsGameLeave
 				| WsGameDisband
 		) => {
 			let i: number | null = 0;
@@ -619,6 +627,7 @@ export class WsService {
 				this.logger.verbose(`No data sent`);
 				return;
 			}
+
 			//
 			// Dispatch to lobby users only
 			//
@@ -650,21 +659,21 @@ export class WsService {
 			}
 
 			switch (data.action) {
+				case GameAction.Invite:
+					return this.logger.verbose(
+						`${data.user_uuid} INVITED in lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case GameAction.Decline:
+					return this.logger.verbose(
+						`${data.user_uuid} DECLINE invitation to lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
 				case GameAction.Join:
 					return this.logger.verbose(
 						`${data.user_uuid} JOIN lobby ${
-							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
-					);
-				case GameAction.Invite:
-					return this.logger.verbose(
-						`${data.user_uuid} INVITED lobby ${
-							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
-					);
-				case GameAction.Leave:
-					return this.logger.verbose(
-						`${data.user_uuid} LEAVE lobby ${
 							lobby.uuid
 						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 					);
@@ -676,7 +685,7 @@ export class WsService {
 					);
 				case GameAction.Ready:
 					return this.logger.verbose(
-						`Player ${data.user_uuid} is ready for lobby ${
+						`Player ${data.user_uuid} is READY for lobby ${
 							lobby.uuid
 						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 					);
@@ -684,11 +693,17 @@ export class WsService {
 					return this.logger.verbose(
 						`Game for lobby ${
 							lobby.uuid
-						} has started broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} has STARTED broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+					);
+				case GameAction.Leave:
+					return this.logger.verbose(
+						`${data.user_uuid} LEAVE lobby ${
+							lobby.uuid
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
 					);
 				case GameAction.Disband:
 					return this.logger.verbose(
-						`Lobby ${lobby.uuid} disband broadcasted to ${i} subscribed ${PeerOrPeers(
+						`Lobby ${lobby.uuid} DISBAND broadcasted to ${i} subscribed ${PeerOrPeers(
 							i
 						)}`
 					);
@@ -704,7 +719,7 @@ export class WsService {
 
 		if (!this.subscribed[user_uuid]) {
 			let channels: Array<ChatsChannels> = null;
-			if (process.env['PRODUCTION']) {
+			if (!process.env['PRODUCTION']) {
 				channels = await this.channelRepository
 					.find({
 						select: { uuid: true },

@@ -14,9 +14,10 @@ import { DisabledLogger } from './app/services/disabledLogger.service';
 import { ValidateEnv } from './validateEnv';
 import { max_spectators } from './games/config';
 
-import { parseUnsignedNull } from './utils';
+import { parseUnsignedNull, isEmpty } from './utils';
 
 import { colors } from './types';
+import { oauth_error } from './auth/config';
 
 async function bootstrap() {
 	const env = new ValidateEnv();
@@ -36,6 +37,11 @@ async function bootstrap() {
 
 	if (!parseUnsignedNull(max_spectators)) {
 		console.error(colors.red + 'Invalid game/config: max_spectators' + colors.end);
+		process.exit(1);
+	}
+
+	if (isEmpty(oauth_error)) {
+		console.error(colors.red + 'Invalid auth/config: oauth_error' + colors.end);
 		process.exit(1);
 	}
 

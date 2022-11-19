@@ -14,5 +14,6 @@ export enum ApiResponseError {
 	LobbyNotFound = "Lobby doesn't exist",
 	NotInLobby = "You're not in this lobby",
 	AlreadyIn = "You're already in this lobby",
+	InvalidInvitation = 'Invalid invitation',
 	GameFull = 'This game is full'
 }

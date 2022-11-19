@@ -21,6 +21,9 @@ export class UsersNotifications {
 	@Column({ nullable: false })
 	read: boolean;
 
+	@Column({ nullable: true })
+	lobby: string;
+
 	/**
 	 * Relation notifications -> Users
 	 */
@@ -35,13 +38,4 @@ export class UsersNotifications {
 		nullable: false
 	})
 	interact_w_user: string;
-
-	/**
-	 * Relation notifications -> Games Lobby
-	 */
-	// @ManyToOne((type) => GamesLobby, (lobby) => lobby.uuid, {
-	// 	onDelete: 'SET NULL',
-	// 	nullable: true
-	// })
-	lobby: string;
 }

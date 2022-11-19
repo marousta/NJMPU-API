@@ -255,8 +255,9 @@ export interface WsUserStatusInGame extends WsUser {
  */
 
 export enum GameAction {
-	Join = 'JOIN',
 	Invite = 'INVITE',
+	Decline = 'DECLINE',
+	Join = 'JOIN',
 	Spectate = 'SPECTATE',
 	Ready = 'READY',
 	Start = 'START',
@@ -276,6 +277,11 @@ export interface WsGame {
 
 export interface WsGameInvite extends WsGame {
 	action: GameAction.Invite;
+	user_uuid: string;
+}
+
+export interface WsGameDecline extends WsGame {
+	action: GameAction.Decline;
 	user_uuid: string;
 }
 

@@ -19,3 +19,5 @@ export const token_time = {
 	refresh: (new_date = new Date()) => new Date(new_date.valueOf() + 60 * 60 * 24 * 3 * 1000), // 3d
 	twofactor: (new_date = new Date()) => new Date(new_date.valueOf() + 60 * 4 * 1000) // 4m
 };
+
+export const oauth_error = '/#/login/oauth-error';

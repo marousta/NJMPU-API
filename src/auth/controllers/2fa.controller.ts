@@ -77,14 +77,14 @@ export class TwoFactorController {
 			throw new HttpException(ApiResponseError.TwoFactorInvalidCode, 417);
 		}
 
-		const jwt = req.user as any;
-		const uuid = jwt.token.uuid;
+		const jwt = req.user as JwtData;
+		const uuid = jwt.token.tuuid;
 		const user = jwt.infos;
-		const code = body.code ? body.code : '';
+		const code = body.code ?? '';
 
 		if (await this.twoFactorService.verify.code(user, uuid, code)) {
 			const fingerprint = getFingerprint(req, headers);
-			const tokens = await this.authService.twoFactor.login(uuid, fingerprint);
+			const tokens = await this.authService.twoFactor.login(user, fingerprint);
 			const { access_token, refresh_token } = tokens;
 			this.authService.cookie.delete(res, 'twofactor_token');
 			this.authService.cookie.create(res, { access_token });

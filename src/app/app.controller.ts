@@ -8,4 +8,10 @@ export class AppController {
 	stats(@Request() req) {
 		return req.times;
 	}
+
+	@ApiTags('ping')
+	@Get('ping')
+	ping() {
+		return 'PONG';
+	}
 }

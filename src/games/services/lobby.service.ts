@@ -314,19 +314,9 @@ export class GamesLobbyService {
 		delete: async (jwt: JwtData, lobby: GamesLobby, is_leaving?: boolean) => {
 			const current_user = jwt.infos;
 
-			if (lobby.player2) {
-				await this.notifcationsService.read.ByRelation(
-					lobby.player1.uuid,
-					lobby.player2.uuid
-				);
-			}
-
 			const was_spectator = this.isSpectator(lobby, current_user);
 			if (!was_spectator && (lobby.player1.uuid === current_user.uuid || lobby.in_game)) {
 				//TODO: Game history
-				delete this.lobbies[lobby.uuid];
-
-				this.logger.debug('Removed lobby ' + lobby.uuid);
 
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
@@ -335,10 +325,17 @@ export class GamesLobbyService {
 				});
 				this.wsService.unsetAllLobby(lobby);
 
-				this.wsService.updateUserStatus(lobby.player1, UserStatus.Online);
+				await this.wsService.updateUserStatus(lobby.player1, UserStatus.Online);
 				if (lobby.player2) {
-					this.wsService.updateUserStatus(lobby.player2, UserStatus.Online);
+					await this.notifcationsService.read.ByRelation(
+						lobby.player1.uuid,
+						lobby.player2.uuid
+					);
+					await this.wsService.updateUserStatus(lobby.player2, UserStatus.Online);
 				}
+
+				delete this.lobbies[lobby.uuid];
+				this.logger.debug('Removed lobby ' + lobby.uuid);
 
 				return true;
 			}
@@ -356,20 +353,46 @@ export class GamesLobbyService {
 			this.wsService.unsetLobby(jwt);
 			return false;
 		},
-		leave: (jwt: JwtData, uuid: string) => {
-			const user = jwt.infos;
+		decline: async (jwt: JwtData, uuid: string) => {
+			const current_user = jwt.infos;
 			const lobby = this.findWithRelations(uuid);
 
-			const deleted = this.lobby.delete(jwt, lobby, true);
+			if (
+				lobby.player2?.uuid !== current_user.uuid &&
+				lobby.player2_status !== LobbyPlayerReadyState.Invited
+			) {
+				throw new BadRequestException(ApiResponseError.InvalidInvitation);
+			}
+
+			await this.notifcationsService.read.ByRelation(lobby.player1.uuid, lobby.player2.uuid);
+
+			this.wsService.dispatch.lobby(lobby, {
+				namespace: WsNamespace.Game,
+				action: GameAction.Decline,
+				lobby_uuid: lobby.uuid,
+				user_uuid: current_user.uuid
+			});
+
+			lobby.player2 = null;
+			this.lobbies[lobby.uuid] = lobby;
+		},
+		leave: async (jwt: JwtData, uuid: string) => {
+			const current_user = jwt.infos;
+			const lobby = this.findWithRelations(uuid);
+
+			const deleted = await this.lobby.delete(jwt, lobby, true);
 			if (deleted) {
 				return;
 			}
 
-			if (lobby.player2?.uuid === user.uuid) {
+			const was_spectator = this.isSpectator(lobby, current_user);
+			if (!was_spectator && lobby.player2?.uuid === current_user.uuid) {
 				lobby.player2 = null;
 				lobby.player2_status = LobbyPlayerReadyState.Invited;
-			} else if (lobby.spectators.map((u) => u.uuid).includes(user.uuid)) {
-				lobby.spectators = lobby.spectators.filter((u) => u.uuid !== user.uuid);
+
+				await this.wsService.updateUserStatus(current_user, UserStatus.Online);
+			} else if (was_spectator) {
+				lobby.spectators = lobby.spectators.filter((u) => u.uuid !== current_user.uuid);
 			} else {
 				throw new ForbiddenException(ApiResponseError.NotInLobby);
 			}
@@ -380,7 +403,7 @@ export class GamesLobbyService {
 				namespace: WsNamespace.Game,
 				action: GameAction.Leave,
 				lobby_uuid: lobby.uuid,
-				user_uuid: user.uuid
+				user_uuid: current_user.uuid
 			});
 			this.wsService.unsetLobby(jwt);
 		}

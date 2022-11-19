@@ -101,13 +101,29 @@ export class GamesLobbyController {
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Post('join/:uuid')
 	@HttpCode(200)
-	async inviteHandler(@Request() req: Req, @Param('uuid') uuid: string) {
+	async joinLobby(@Request() req: Req, @Param('uuid') uuid: string) {
 		if (!isUUID(uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const jwt = req.user as JwtData;
 		return await this.lobbyService.lobby.join(jwt, uuid);
+	}
+
+	@ApiTags('games · lobby')
+	@ApiResponse({ status: 200, description: 'Decline invite' })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.InvalidInvitation })
+	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
+	@Delete('join/:uuid')
+	@HttpCode(200)
+	async inviteDecline(@Request() req: Req, @Param('uuid') uuid: string) {
+		if (!isUUID(uuid, 4)) {
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
+		}
+
+		const jwt = req.user as JwtData;
+		await this.lobbyService.lobby.decline(jwt, uuid);
 	}
 
 	/**
@@ -185,13 +201,13 @@ export class GamesLobbyController {
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Put(':uuid')
 	@HttpCode(200)
-	async accept(@Request() req: Req, @Param('uuid') uuid: string) {
+	ready(@Request() req: Req, @Param('uuid') uuid: string) {
 		if (!isUUID(uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const jwt = req.user as JwtData;
-		await this.lobbyService.lobby.start(jwt, uuid);
+		this.lobbyService.lobby.start(jwt, uuid);
 	}
 	//#endregion
 }
