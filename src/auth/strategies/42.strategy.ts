@@ -19,7 +19,8 @@ export class Intra42Strategy extends PassportStrategy(Strategy, '42') {
 		});
 	}
 
-	validate(access_token: string, refresh_token: string, user: Intra42User): Intra42User {
-		return { interface: 'Intra42User', ...user };
+	validate(access_token: string, refresh_token: string, ret: any): Intra42User {
+		const intra42User: Intra42User = ret._json;
+		return { interface: 'Intra42User', ...intra42User };
 	}
 }

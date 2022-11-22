@@ -29,9 +29,9 @@ export function getPartialUser(user: Intra42User | DiscordUser | TwitterUser): P
 	switch (user.interface) {
 		case 'Intra42User':
 			return {
-				username: user.username,
-				email: user.emails[0].value,
-				avatar: user.photos[0].value
+				username: user.login,
+				email: user.email,
+				avatar: user.image.versions.large
 			};
 		case 'DiscordUser':
 			return {
