@@ -5,17 +5,22 @@ import {
 	Request,
 	UseGuards,
 	BadRequestException,
-	Delete
+	Delete,
+	Body
 } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
+import { isUUID } from 'class-validator';
 
 import { GamesMatchmakingService } from '../services/matchmaking.service';
 
 import { AccessAuthGuard } from '../../auth/guards/access.guard';
 
+import { GamesJoinProperty } from '../properties/lobby.add.property';
+
 import { JwtData } from '../../auth/types';
 import { ApiResponseError } from '../types';
+import { ApiResponseError as ApiResponseErrorGlobal } from '../../types';
 
 @UseGuards(AccessAuthGuard)
 @Controller('games/matchmaking')
@@ -30,15 +35,20 @@ export class GamesMatchmakingController {
 	 * Join a queue
 	 */
 	@ApiTags('games · matchmaking')
-	@ApiResponse({ status: 400.1, description: ApiResponseError.NotConnected })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyInGame })
-	@ApiResponse({ status: 400.3, description: ApiResponseError.NotOnline })
-	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyInQueue })
+	@ApiBody({ type: GamesJoinProperty })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.NotConnected })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.AlreadyInGame })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.NotOnline })
+	@ApiResponse({ status: 400.5, description: ApiResponseError.AlreadyInQueue })
 	@Post()
 	@HttpCode(200)
-	matchmaking(@Request() req: Req) {
+	matchmaking(@Request() req: Req, @Body() body: GamesJoinProperty) {
+		if (!isUUID(body.websocket_uuid, 4)) {
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
+		}
 		const jwt = req.user as JwtData;
-		this.matchmakingService.queue.add(jwt);
+		this.matchmakingService.queue.add(jwt, body.websocket_uuid);
 	}
 
 	/**

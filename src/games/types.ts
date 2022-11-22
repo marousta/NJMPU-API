@@ -20,5 +20,6 @@ export enum ApiResponseError {
 	AlreadyInGame = 'Already in game',
 	NotOnline = 'No online client',
 	AlreadyInQueue = 'Already in queue',
-	NotInQueue = 'Not in queue'
+	NotInQueue = 'Not in queue',
+	NoConnection = 'non-existent connection'
 }

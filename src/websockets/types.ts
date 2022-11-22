@@ -25,7 +25,8 @@ export interface SubscribedDictionary {
 export enum WsNamespace {
 	Chat = 'Chat',
 	User = 'User',
-	Game = 'Game'
+	Game = 'Game',
+	Meta = 'Meta'
 }
 
 /**
@@ -326,4 +327,13 @@ export interface WsGameMatch {
 	namespace: WsNamespace.Game;
 	action: GameAction.Match;
 	lobby: GamesLobbyGetResponse;
+}
+
+/**
+ * Lobby
+ */
+
+export interface WsMeta {
+	namespace: WsNamespace.Meta;
+	uuid: string;
 }

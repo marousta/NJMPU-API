@@ -19,7 +19,7 @@ import { GamesLobbyService } from '../services/lobby.service';
 
 import { AccessAuthGuard } from '../../auth/guards/access.guard';
 
-import { GamesLobbyInviteProperty } from '../properties/lobby.add.property';
+import { GamesJoinProperty, GamesLobbyInviteProperty } from '../properties/lobby.add.property';
 import { GamesLobbyGetResponse } from '../properties/lobby.get.property';
 import { GamesLobbyKickProperty } from '../properties/lobby.kick.property';
 
@@ -51,8 +51,8 @@ export class GamesLobbyController {
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Get('all')
 	@HttpCode(200)
-	async getAll() {
-		return await this.lobbyService.lobby.getAll();
+	getAll() {
+		return this.lobbyService.lobby.getAll();
 	}
 
 	/**
@@ -65,12 +65,12 @@ export class GamesLobbyController {
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Get(':uuid')
 	@HttpCode(200)
-	async get(@Param('uuid') uuid: string) {
+	get(@Param('uuid') uuid: string) {
 		if (!isUUID(uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
-		return await this.lobbyService.lobby.get(uuid);
+		return this.lobbyService.lobby.get(uuid);
 	}
 	//#endregion
 
@@ -80,34 +80,40 @@ export class GamesLobbyController {
 	//#region
 
 	@ApiTags('games · lobby')
-	@ApiResponse({
-		status: 200,
-		description: 'Created lobby',
-		type: GamesLobbyGetResponse
-	})
+	@ApiBody({ type: GamesJoinProperty })
+	@ApiResponse({ status: 200, description: 'Created lobby', type: GamesLobbyGetResponse })
 	@Post()
 	@HttpCode(200)
-	async create(@Request() req: Req) {
+	create(@Request() req: Req, @Body() body: GamesJoinProperty) {
+		if (!isUUID(body.websocket_uuid, 4)) {
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
+		}
+
 		const jwt = req.user as JwtData;
-		return await this.lobbyService.lobby.createFormat(jwt);
+		return this.lobbyService.lobby.createFormat(jwt, body.websocket_uuid);
 	}
 
 	/**
 	 * Join
 	 */
 	@ApiTags('games · lobby')
+	@ApiBody({ type: GamesJoinProperty })
 	@ApiResponse({ status: 200, description: 'Lobby joined', type: GamesLobbyGetResponse })
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Post('join/:uuid')
 	@HttpCode(200)
-	async joinLobby(@Request() req: Req, @Param('uuid') uuid: string) {
-		if (!isUUID(uuid, 4)) {
+	async joinLobby(
+		@Request() req: Req,
+		@Param('uuid') uuid: string,
+		@Body() body: GamesJoinProperty
+	) {
+		if (!isUUID(uuid, 4) || !isUUID(body.websocket_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const jwt = req.user as JwtData;
-		return await this.lobbyService.lobby.join(jwt, uuid);
+		return await this.lobbyService.lobby.join(jwt, uuid, body.websocket_uuid);
 	}
 
 	@ApiTags('games · lobby')
@@ -141,12 +147,12 @@ export class GamesLobbyController {
 	@Post('invite')
 	@HttpCode(200)
 	async invite(@Request() req: Req, @Body() body: GamesLobbyInviteProperty) {
-		if (!isUUID(body.user_uuid, 4)) {
+		if (!isUUID(body.user_uuid, 4) || !isUUID(body.websocket_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
 		const jwt = req.user as JwtData;
-		return await this.lobbyService.lobby.invite(jwt, body.user_uuid);
+		return await this.lobbyService.lobby.invite(jwt, body.websocket_uuid, body.user_uuid);
 	}
 	//#endregion
 

@@ -1,11 +1,12 @@
-import { Logger, Request, InternalServerErrorException } from '@nestjs/common';
+import { Logger, Request, InternalServerErrorException, Body } from '@nestjs/common';
 import {
 	WebSocketGateway,
 	WebSocketServer,
 	OnGatewayConnection,
 	OnGatewayDisconnect,
 	OnGatewayInit,
-	ConnectedSocket
+	ConnectedSocket,
+	SubscribeMessage
 } from '@nestjs/websockets';
 import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
 import { Server } from 'ws';
@@ -21,6 +22,7 @@ import { UsersService } from '../users/services/users.service';
 
 import { UserAction, WebSocketUser, WsNamespace } from './types';
 import { Jwt } from '../auth/types';
+import { isUUID } from 'class-validator';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -95,12 +97,16 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	}
 	//#endregion
 
-	// @SubscribeMessage(WsNamespace.Game)
-	// onGame(@ConnectedSocket() client: WebSocket, @Request() req: Req, @Body() data: any) {
-	// 	console.log('onMessage ' + data);
-	// }
-
 	async handleConnection(@ConnectedSocket() client: WebSocketUser, @Request() req: Req) {
+		client.onmessage = (e) => {
+			const that = client;
+			const uuid = that.uuid;
+
+			if (!isUUID(uuid, 4)) {
+				return;
+			}
+		};
+
 		// Validation
 		const headers = getHeaders.array(req.rawHeaders);
 		const ip = getClientIp(req);
@@ -144,6 +150,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	}
 
 	handleDisconnect(client: WebSocketUser) {
+		client.onmessage = undefined;
+
 		const user = client.jwt?.infos;
 		if (!user) {
 			this.logger.verbose('Disconnected unauthenticated client');

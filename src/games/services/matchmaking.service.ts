@@ -14,9 +14,9 @@ export class GamesMatchmakingService {
 	private readonly waiting_queue: { [uuid: string]: WebSocketUser } = {};
 	private waiting_loop: NodeJS.Timer = null;
 	constructor(
+		private readonly lobbyService: GamesLobbyService,
 		@Inject(forwardRef(() => WsService))
-		private readonly wsService: WsService,
-		private readonly lobbyService: GamesLobbyService
+		private readonly wsService: WsService
 	) {}
 
 	/**
@@ -48,7 +48,7 @@ export class GamesMatchmakingService {
 	};
 
 	public readonly queue = {
-		add: (jwt: JwtData) => {
+		add: (jwt: JwtData, websocket_uuid: string) => {
 			const user = jwt.infos;
 			let current_client: WebSocketUser = null;
 
@@ -61,7 +61,7 @@ export class GamesMatchmakingService {
 				case UserStatus.Online:
 					if (
 						!state.clients.map((client) => {
-							if (jwt.token.tuuid === jwt.token.tuuid) {
+							if (client.uuid === websocket_uuid) {
 								current_client = client;
 								return true;
 							}

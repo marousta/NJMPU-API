@@ -2,39 +2,59 @@ import { randomUUID } from 'crypto';
 import { UsersInfos } from '../../users/entities/users.entity';
 
 import { LobbyPlayerReadyState } from '../types';
+import { WebSocketUser } from '../../websockets/types';
 
 export class GamesLobby {
 	constructor(arg: {
 		uuid?: string;
 		in_game?: boolean;
-		player1_status: LobbyPlayerReadyState;
-		player2_status: LobbyPlayerReadyState;
+		matchmaking?: boolean;
 		player1: UsersInfos;
 		player2?: UsersInfos;
-		spectators?: UsersInfos[];
+		player1_status: LobbyPlayerReadyState;
+		player2_status: LobbyPlayerReadyState;
+		player1_ws?: WebSocketUser;
+		player2_ws?: WebSocketUser;
+		spectators?: Array<UsersInfos>;
+		spectators_ws?: Array<WebSocketUser>;
 	}) {
 		this.uuid = arg.uuid ?? randomUUID();
 		this.in_game = arg.in_game ?? false;
-		this.player1_status = arg.player1_status;
-		this.player2_status = arg.player2_status;
+		this.matchmaking = arg.matchmaking ?? false;
 		this.player1 = arg.player1;
 		this.player2 = arg.player2 ?? null;
+		this.player1_status = arg.player1_status;
+		this.player2_status = arg.player2_status;
+		this.player1_ws = arg.player1_ws ?? null;
+		this.player2_ws = arg.player2_ws ?? null;
 		this.spectators = arg.spectators ?? [];
+		this.spectators_ws = arg.spectators_ws ?? [];
 	}
 
 	uuid: string;
 	in_game: boolean;
-	player1_status: LobbyPlayerReadyState;
-	player2_status: LobbyPlayerReadyState;
+	matchmaking: boolean;
 	player1: UsersInfos;
 	player2: UsersInfos;
-	spectators: UsersInfos[];
+	player1_status: LobbyPlayerReadyState;
+	player2_status: LobbyPlayerReadyState;
+	player1_ws: WebSocketUser;
+	player2_ws: WebSocketUser;
+	spectators: Array<UsersInfos>;
+	spectators_ws: Array<WebSocketUser>;
 
 	addSpectator(user: UsersInfos) {
 		if (this.spectators === undefined) {
 			this.spectators = new Array<UsersInfos>();
 		}
 		this.spectators.push(user);
+	}
+
+	addSpectatorWs(client: WebSocketUser) {
+		if (this.spectators_ws === undefined) {
+			this.spectators_ws = new Array<WebSocketUser>();
+		}
+		this.spectators_ws.push(client);
 	}
 }
 

@@ -59,7 +59,8 @@ import {
 	WsGameDisband,
 	WsGameDecline,
 	WsGameWait,
-	WsGameMatch
+	WsGameMatch,
+	WsMeta
 } from './types';
 import { colors } from '../types';
 @Injectable()
@@ -135,7 +136,7 @@ export class WsService {
 		return true;
 	}
 
-	private processSend(user_uuid: string, data: any) {
+	private processSend(user_uuid: string, data: any, ignore_list?: Array<string>) {
 		if (!this.subscribed[user_uuid]) {
 			this.logger.verbose(`No connected client to dispatch data`);
 			return null;
@@ -143,6 +144,9 @@ export class WsService {
 
 		let i = 0;
 		this.subscribed[user_uuid].forEach((client) => {
+			if (ignore_list?.includes(client.uuid)) {
+				return;
+			}
 			this.send(client, data);
 			++i;
 		});
@@ -156,7 +160,7 @@ export class WsService {
 	 */
 	//#region
 
-	async setLobby(jwt: JwtData, lobby_uuid: string, spectate: boolean) {
+	setLobby(jwt: JwtData, websocket_uuid: string, lobby_uuid: string, spectate: boolean) {
 		const user_uuid = jwt.infos.uuid;
 		const token_uuid = jwt.token.tuuid;
 
@@ -164,10 +168,15 @@ export class WsService {
 		if (!this.subscribed[user_uuid]) {
 			return;
 		}
+
+		let ret: Array<WebSocketUser> = [];
 		for (const client of this.subscribed[user_uuid]) {
-			if (client.jwt.token.tuuid !== token_uuid) {
+			if (client.uuid !== websocket_uuid || client.jwt.token.tuuid !== token_uuid) {
 				continue;
 			}
+
+			client.lobby = { uuid: lobby_uuid, spectate };
+			ret.push(client);
 
 			if (!lobby_uuid) {
 				this.logger
@@ -175,16 +184,12 @@ export class WsService {
 					.debug('Cleared lobby ' + client.lobby.uuid)
 					.unset();
 			}
-
-			client.lobby = { uuid: lobby_uuid, spectate };
 		}
-		if (lobby_uuid && !spectate) {
-			this.updateUserStatus(jwt.infos, UserStatus.InGame, lobby_uuid);
-		}
+		return ret.length === 1 ? ret[0] : null;
 	}
 
-	unsetLobby(jwt: JwtData) {
-		this.setLobby(jwt, null, false);
+	unsetLobby(jwt: JwtData, websocket_uuid: string) {
+		this.setLobby(jwt, websocket_uuid, null, false);
 	}
 
 	unsetAllLobby(lobby: GamesLobby) {
@@ -649,14 +654,12 @@ export class WsService {
 				| WsGameStart
 				| WsGameLeave
 				| WsGameDisband,
-			not_uuid?: Array<string>
+			ignore_list?: Array<string>
 		) => {
 			let i: number | null = 0;
-			for (const [key] of Object.entries(this.subscribed)) {
-				if (not_uuid?.includes(key)) {
-					continue;
-				}
-				const ret = this.processSend(key, data);
+
+			for (const key of Object.keys(this.subscribed)) {
+				const ret = this.processSend(key, data, ignore_list);
 
 				if (ret === null) {
 					continue;
@@ -810,6 +813,12 @@ export class WsService {
 			this.subscribed[user_uuid].push(client);
 			this.logger.verbose('Connected ' + user_uuid);
 		}
+		client.send(
+			JSON.stringify({
+				namespace: WsNamespace.Meta,
+				uuid: client.uuid
+			} as WsMeta)
+		);
 	}
 
 	async disconnected(client: WebSocketUser) {
