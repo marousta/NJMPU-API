@@ -28,15 +28,13 @@ import {
 } from '../../users/types';
 import { ApiResponseError, LobbyPlayerReadyState } from '../types';
 import { JwtData } from '../../auth/types';
-import { GameAction, WsNamespace } from '../../websockets/types';
+import { GameAction, WebSocketUser, WsNamespace } from '../../websockets/types';
 
 @Injectable()
 export class GamesLobbyService {
 	private readonly logger = new Logger(GamesLobbyService.name);
 	private readonly lobbies: { [uuid: string]: GamesLobby } = {};
 	constructor(
-		// @InjectRepository(GamesLobby)
-		// private readonly lobbyRepository: Repository<GamesLobby>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		@Inject(forwardRef(() => NotifcationsService))
@@ -157,6 +155,70 @@ export class GamesLobbyService {
 			});
 
 			return lobby;
+		},
+		createMatch: (current_client: WebSocketUser, remote_client: WebSocketUser) => {
+			const current_jwt = current_client.jwt;
+			const remote_jwt = remote_client.jwt;
+			const current_user = current_jwt.infos;
+			const remote_user = remote_jwt.infos;
+
+			this.removeFromLobbies(current_jwt);
+			this.removeFromLobbies(remote_jwt);
+
+			const lobby = new GamesLobby({
+				in_game: false,
+				player1: current_user,
+				player1_status: LobbyPlayerReadyState.Joined,
+				player2: remote_user,
+				player2_status: LobbyPlayerReadyState.Joined
+			});
+
+			this.lobbies[lobby.uuid] = lobby;
+
+			this.wsService.setLobby(current_jwt, lobby.uuid, false);
+			this.wsService.setLobby(remote_jwt, lobby.uuid, false);
+			this.wsService.dispatch.client([current_client, remote_client], {
+				namespace: WsNamespace.Game,
+				action: GameAction.Match,
+				lobby: this.formatResponse(lobby)
+			});
+			this.wsService.dispatch.client([current_client, remote_client], {
+				namespace: WsNamespace.Game,
+				action: GameAction.Match,
+				lobby: this.formatResponse(lobby)
+			});
+
+			// For front compatibility
+			this.wsService.dispatch.lobby(
+				lobby,
+				{
+					namespace: WsNamespace.Game,
+					action: GameAction.Join,
+					lobby_uuid: lobby.uuid,
+					user_uuid: current_user.uuid
+				},
+				[current_user.uuid, remote_user.uuid]
+			);
+			this.wsService.dispatch.lobby(
+				lobby,
+				{
+					namespace: WsNamespace.Game,
+					action: GameAction.Invite,
+					lobby_uuid: lobby.uuid,
+					user_uuid: remote_user.uuid
+				},
+				[current_user.uuid, remote_user.uuid]
+			);
+			this.wsService.dispatch.lobby(
+				lobby,
+				{
+					namespace: WsNamespace.Game,
+					action: GameAction.Join,
+					lobby_uuid: lobby.uuid,
+					user_uuid: remote_user.uuid
+				},
+				[current_user.uuid, remote_user.uuid]
+			);
 		},
 		createFormat: (jwt: JwtData, remote_user?: UsersInfos) => {
 			const lobby = this.lobby.create(jwt, remote_user);

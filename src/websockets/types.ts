@@ -1,5 +1,7 @@
 import { WebSocket } from 'ws';
 
+import { GamesLobbyGetResponse } from '../games/properties/lobby.get.property';
+
 import { NotifcationType, UserStatus } from '../users/types';
 import { JwtData } from '../auth/types';
 
@@ -262,6 +264,8 @@ export enum GameAction {
 	Ready = 'READY',
 	Start = 'START',
 	Leave = 'LEAVE',
+	Wait = 'WAIT',
+	Match = 'MATCH',
 	Disband = 'DISBAND'
 }
 
@@ -311,4 +315,15 @@ export interface WsGameLeave extends WsGame {
 
 export interface WsGameDisband extends WsGame {
 	action: GameAction.Disband;
+}
+
+export interface WsGameWait {
+	namespace: WsNamespace.Game;
+	action: GameAction.Wait;
+}
+
+export interface WsGameMatch {
+	namespace: WsNamespace.Game;
+	action: GameAction.Match;
+	lobby: GamesLobbyGetResponse;
 }

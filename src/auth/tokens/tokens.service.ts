@@ -167,7 +167,7 @@ export class TokensService {
 			});
 		});
 
-		this.logger.debug('User as sign in ' + payload.uuid);
+		this.logger.debug('User has sign in ' + payload.uuid);
 		this.wsService.dispatch.user(payload.uuid, {
 			namespace: WsNamespace.User,
 			action: UserAction.Session,

@@ -41,8 +41,7 @@ export class TwoFactorController {
 		status: 202,
 		description: 'Create a 2FA request and return QRCode image in base64'
 	})
-	@ApiResponse({ status: 401 })
-	@ApiResponse({ status: 403, description: ApiResponseError.TwoFactorAlreadySet })
+	@ApiResponse({ status: 400, description: ApiResponseError.TwoFactorAlreadySet })
 	@HttpCode(202)
 	@Get()
 	async twoFactorCreator(@Request() req: Req, @Response({ passthrough: true }) res: Res) {

@@ -15,5 +15,10 @@ export enum ApiResponseError {
 	NotInLobby = "You're not in this lobby",
 	AlreadyIn = "You're already in this lobby",
 	InvalidInvitation = 'Invalid invitation',
-	GameFull = 'This game is full'
+	GameFull = 'This game is full',
+	NotConnected = 'Not connected',
+	AlreadyInGame = 'Already in game',
+	NotOnline = 'No online client',
+	AlreadyInQueue = 'Already in queue',
+	NotInQueue = 'Not in queue'
 }

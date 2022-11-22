@@ -5,6 +5,7 @@ import { Server } from 'ws';
 
 import { GamesLobbyService } from '../games/services/lobby.service';
 import { UsersService } from '../users/services/users.service';
+import { GamesMatchmakingService } from '../games/services/matchmaking.service';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
 import { GamesLobby } from '../games/entities/lobby';
@@ -56,7 +57,9 @@ import {
 	WsUserStatus,
 	WsUserStatusInGame,
 	WsGameDisband,
-	WsGameDecline
+	WsGameDecline,
+	WsGameWait,
+	WsGameMatch
 } from './types';
 import { colors } from '../types';
 @Injectable()
@@ -70,7 +73,8 @@ export class WsService {
 		private readonly channelRepository: Repository<ChatsChannels>,
 		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService,
-		private readonly lobbyService: GamesLobbyService
+		private readonly lobbyService: GamesLobbyService,
+		private readonly matchmakingService: GamesMatchmakingService
 	) {}
 
 	/**
@@ -246,6 +250,29 @@ export class WsService {
 		}
 	}
 
+	findAllConnected(user_uuid: string) {
+		if (!this.subscribed[user_uuid]) {
+			return { status: UserStatus.Offline };
+		}
+
+		let clients: Array<WebSocketUser> = [];
+
+		for (const client of this.subscribed[user_uuid]) {
+			if (client.readyState !== client.OPEN) {
+				continue;
+			}
+			if (client.lobby.uuid) {
+				return { status: UserStatus.InGame, lobby: client.lobby.uuid };
+			}
+
+			clients.push(client);
+		}
+		if (clients.length === 0) {
+			return { status: UserStatus.Offline };
+		}
+		return { status: UserStatus.Online, clients };
+	}
+
 	getUserStatus(user_uuid: string) {
 		if (!this.subscribed[user_uuid]) {
 			return { status: UserStatus.Offline };
@@ -258,7 +285,7 @@ export class WsService {
 			if (client.lobby.uuid) {
 				return { status: UserStatus.InGame, lobby: client.lobby.uuid };
 			}
-			return { status: UserStatus.Online };
+			return { status: UserStatus.Online, jwt: client.jwt };
 		}
 		return { status: UserStatus.Offline };
 	}
@@ -378,6 +405,8 @@ export class WsService {
 				| WsUserUnblock
 				| WsUserNotificationRead
 				| WsUserUnfriend
+				| WsGameWait
+				| WsGameMatch
 		) => {
 			const i = this.processSend(uuid, data);
 			if (i === null) {
@@ -401,6 +430,21 @@ export class WsService {
 						} dispatched to ${i} connected ${PeerOrPeers(i)}`
 					);
 					break;
+				case WsNamespace.Game:
+					switch (data.action) {
+						case GameAction.Wait:
+							return this.logger.verbose(
+								`User ${uuid} WAITING for a game broadcasted to ${i} subscribed ${PeerOrPeers(
+									i
+								)}`
+							);
+						case GameAction.Match:
+							return this.logger.verbose(
+								`Lobby ${
+									data.lobby.uuid
+								} FOUND broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+							);
+					}
 				case WsNamespace.User:
 					switch (data.action) {
 						case UserAction.Refresh:
@@ -441,7 +485,6 @@ export class WsService {
 									);
 									break;
 							}
-
 							break;
 						case UserAction.Block:
 							this.logger.verbose(
@@ -605,10 +648,14 @@ export class WsService {
 				| WsGameReady
 				| WsGameStart
 				| WsGameLeave
-				| WsGameDisband
+				| WsGameDisband,
+			not_uuid?: Array<string>
 		) => {
 			let i: number | null = 0;
 			for (const [key] of Object.entries(this.subscribed)) {
+				if (not_uuid?.includes(key)) {
+					continue;
+				}
 				const ret = this.processSend(key, data);
 
 				if (ret === null) {
@@ -708,6 +755,18 @@ export class WsService {
 						)}`
 					);
 			}
+		},
+		client: (clients: Array<WebSocketUser>, data: any) => {
+			let i: number | null = 0;
+			for (const client of clients) {
+				this.send(client, data);
+				i++;
+			}
+
+			if (i === 0) {
+				this.logger.verbose(`No data sent`);
+				return;
+			}
 		}
 	};
 
@@ -755,6 +814,8 @@ export class WsService {
 
 	async disconnected(client: WebSocketUser) {
 		const user_uuid = client.jwt.infos.uuid;
+
+		this.matchmakingService.queue.remove(client.jwt);
 
 		const offline = await this.updateUserStatus(client.jwt.infos, UserStatus.Offline);
 		if (offline) {

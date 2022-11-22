@@ -24,6 +24,7 @@ import { hash_token_config } from '../config';
 import { hash, hash_verify } from '../utils';
 
 import { ApiResponseError, TwoFactorRequest, TwoFactorSetupRequest } from '../types';
+import { WsService } from '../../websockets/ws.service';
 
 @Injectable()
 export class TwoFactorService {
@@ -34,6 +35,7 @@ export class TwoFactorService {
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly usersService: UsersService,
 		private readonly configService: ConfigService,
+		private readonly wsService: WsService,
 		private readonly jwtService: JwtService
 	) {}
 
@@ -161,6 +163,8 @@ export class TwoFactorService {
 			this.logger.error('Unable to remove 2FA from user account ' + current_user.uuid, e);
 			throw new InternalServerErrorException();
 		});
+		this.wsService.updateClient({ user: current_user });
+
 		this.logger.verbose('Removed 2FA for user ' + current_user.uuid);
 	}
 
@@ -215,6 +219,7 @@ export class TwoFactorService {
 					this.logger.error('Could not update secret token for user ' + user.uuid, e);
 					throw new InternalServerErrorException();
 				});
+				this.wsService.updateClient({ user });
 
 				this.logger.debug('2FA set for user ' + user.uuid);
 

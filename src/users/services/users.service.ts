@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
+const ProgressBar = require('progress');
 
 import { NotifcationsService } from './notifications.service';
 import { WsService } from '../../websockets/ws.service';
@@ -48,6 +49,56 @@ export class UsersService {
 		private readonly wsService: WsService
 	) {}
 
+	private async benchmark(limit: number) {
+		let bar = new ProgressBar('inserting [:bar] :rate users/s :percent :etas', {
+			total: limit + 1
+		});
+
+		let awaited = [];
+		for (let i = 0; i <= limit; i++) {
+			const start = new Date().valueOf();
+			awaited.push(
+				await this.create({
+					adam: false,
+					avatar: null,
+					confirm: 'pass',
+					email: randomUUID(),
+					password: 'pass',
+					username: 'aa',
+					identifier: undefined,
+					twofactor: null
+				})
+					.then((r) => {
+						const end = new Date().valueOf();
+						bar.tick();
+						return end - start;
+					})
+					.catch((e) => {
+						this.logger.error(e);
+						return null;
+					})
+			);
+		}
+		let average = 0;
+		let i = 0;
+		for (const time of awaited) {
+			if (time) {
+				average += time;
+				++i;
+				console.log(i + '\t\t' + time);
+			}
+		}
+		console.log(
+			'added ' +
+				i +
+				' accounts to database in ' +
+				average / 1000 +
+				's with an average of ' +
+				(average / i).toFixed(0) +
+				'ms per query'
+		);
+	}
+
 	/**
 	 * Utils
 	 */
@@ -65,9 +116,10 @@ export class UsersService {
 			const id = genIdentifier(exclude);
 			if (id === null) {
 				username += Math.floor(Math.random() * 10);
+				console.log('retrying with a extended username');
 				continue;
 			}
-			return id;
+			return { id, username };
 		}
 	}
 
@@ -155,8 +207,8 @@ export class UsersService {
 		]);
 		const new_user = this.usersRepository.create({
 			adam: params.adam ? true : false,
-			identifier: params.identifier !== undefined ? params.identifier : requests[0],
-			username: params.username,
+			identifier: params.identifier !== undefined ? params.identifier : requests[0].id,
+			username: requests[0].username,
 			email: params.email,
 			password: requests[1],
 			twofactor: params.twofactor,
@@ -171,7 +223,7 @@ export class UsersService {
 				throw new InternalServerErrorException();
 			}
 		});
-		this.logger.debug('User created ' + new_user.uuid);
+		// this.logger.debug('User created ' + new_user.uuid);
 
 		if (params.avatar) {
 			const hash = createHash('sha1').update(created_user.uuid).digest('hex');
