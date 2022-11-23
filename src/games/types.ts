@@ -1,3 +1,6 @@
+import { GamesLobby } from './entities/queue';
+import { PongServer } from './logic/PongServer';
+
 export enum LobbyPlayerReadyState {
 	Invited,
 	Joined,
@@ -8,6 +11,17 @@ export enum LobbyWinner {
 	Player1,
 	Player2,
 	Tie,
+}
+
+export interface LobbyDictionary {
+	[uuid: string]: GamesLobby;
+}
+
+export interface GameDictionary {
+	[uuid: string]: {
+		pong: PongServer;
+		interval: NodeJS.Timer;
+	};
 }
 
 export enum ApiResponseError {

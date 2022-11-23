@@ -26,15 +26,16 @@ import {
 	NotifcationType,
 	UserStatus,
 } from '../../users/types';
-import { ApiResponseError, LobbyPlayerReadyState } from '../types';
+import { ApiResponseError, GameDictionary, LobbyPlayerReadyState } from '../types';
 import { JwtData } from '../../auth/types';
 import { GameAction, WebSocketUser, WsNamespace } from '../../websockets/types';
+import { PongServer } from '../logic/PongServer';
 
 @Injectable()
 export class GamesLobbyService {
 	private readonly logger = new Logger(GamesLobbyService.name);
 	private readonly lobbies: { [uuid: string]: GamesLobby } = {};
-	private waiting_loop: NodeJS.Timer = null;
+	private readonly games: GameDictionary = {};
 	constructor(
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
@@ -125,6 +126,30 @@ export class GamesLobbyService {
 	 * Service
 	 */
 	//#region
+
+	public readonly game = {
+		start: (lobby: GamesLobby) => {
+			if (this.games[lobby.uuid]) {
+				throw new InternalServerErrorException(); //FIXME
+			}
+
+			this.games[lobby.uuid] = {
+				pong: new PongServer(lobby.player1_ws, lobby.player2_ws, lobby.spectators_ws),
+				interval: setInterval(() => {
+					this.games[lobby.uuid].pong.update(1 / 8);
+				}, 1000 / 8),
+			};
+		},
+		end: (lobby_uuid: string) => {
+			if (!this.games[lobby_uuid]) {
+				throw new InternalServerErrorException(); //FIXME
+			}
+
+			delete this.games[lobby_uuid].pong;
+			clearInterval(this.games[lobby_uuid].interval);
+			delete this.games[lobby_uuid];
+		},
+	};
 
 	public readonly lobby = {
 		get: (uuid: string): GamesLobbyGetResponse => {
@@ -417,7 +442,7 @@ export class GamesLobbyService {
 					lobby_uuid: lobby.uuid,
 				});
 
-				// TODO: Game
+				this.game.start(lobby);
 			} else {
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
@@ -435,7 +460,9 @@ export class GamesLobbyService {
 				!was_spectator &&
 				(lobby.player1.uuid === current_user.uuid || lobby.in_game || lobby.matchmaking)
 			) {
+				//TODO: Game end
 				//TODO: Game history
+				this.game.end(lobby.uuid);
 
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
