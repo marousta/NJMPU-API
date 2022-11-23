@@ -94,7 +94,7 @@ export interface Intra42User {
 				name: string;
 				slug: string;
 			};
-		}
+		},
 	];
 	projects_users: any[];
 	languages_users: [
@@ -104,7 +104,7 @@ export interface Intra42User {
 			user_id: number;
 			position: number;
 			created_at: Date;
-		}
+		},
 	];
 	achievements: any[];
 	titles: any[];
@@ -118,7 +118,7 @@ export interface Intra42User {
 			ongoing: boolean;
 			created_at: Date;
 			updated_at: Date;
-		}
+		},
 	];
 	patroning: any[];
 	expertises_users: [
@@ -130,7 +130,7 @@ export interface Intra42User {
 			contact_me: boolean;
 			created_at: Date;
 			user_id: number;
-		}
+		},
 	];
 	roles: any[];
 	campus: [
@@ -147,7 +147,7 @@ export interface Intra42User {
 			};
 			users_count: number;
 			vogsphere_id: number;
-		}
+		},
 	];
 	campus_users: [
 		{
@@ -155,7 +155,7 @@ export interface Intra42User {
 			user_id: number;
 			campus_id: number;
 			is_primary: boolean;
-		}
+		},
 	];
 }
 
@@ -283,5 +283,5 @@ export enum ApiResponseError {
 	TwoFactorAlreadySet = '2FA already set',
 	TwoFactorNotSet = '2FA not set',
 	MissingSession = 'Missing session uuid',
-	InvalidSession = 'Invalid session uuid'
+	InvalidSession = 'Invalid session uuid',
 }

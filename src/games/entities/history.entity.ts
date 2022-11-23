@@ -12,17 +12,17 @@ export class GamesHistory {
 	@Column({
 		type: 'enum',
 		enum: LobbyWinner,
-		nullable: false
+		nullable: false,
 	})
 	winner: LobbyWinner;
 
 	@Column({
-		nullable: false
+		nullable: false,
 	})
 	player1_score: number;
 
 	@Column({
-		nullable: false
+		nullable: false,
 	})
 	player2_score: number;
 
@@ -31,7 +31,7 @@ export class GamesHistory {
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'SET NULL',
-		nullable: true
+		nullable: true,
 	})
 	@JoinColumn()
 	player1: UsersInfos;
@@ -41,7 +41,7 @@ export class GamesHistory {
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'SET NULL',
-		nullable: true
+		nullable: true,
 	})
 	@JoinColumn()
 	player2: UsersInfos;

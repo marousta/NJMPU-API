@@ -16,7 +16,7 @@ export class AppService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly usersService: UsersService,
-		private readonly channelsService: ChannelsService
+		private readonly channelsService: ChannelsService,
 	) {
 		this.createAdmin();
 	}
@@ -79,7 +79,7 @@ export class AppService {
 
 		const token = TwoFactor.generateSecret({
 			name: 'NEW SHINJI MEGA PONG ULTIMATE',
-			account: email
+			account: email,
 		});
 
 		const root = await this.usersService.create({
@@ -90,7 +90,7 @@ export class AppService {
 			confirm: password,
 			email,
 			avatar: null,
-			twofactor: token.secret
+			twofactor: token.secret,
 		});
 
 		this.rootInfos(root, token);
@@ -101,7 +101,7 @@ export class AppService {
 				identifier: 0,
 				current_user: root,
 				type: ChannelType.Public,
-				name: channel_name ? channel_name : 'General'
+				name: channel_name ? channel_name : 'General',
 			});
 			this.logger.log('Created default channel');
 		}

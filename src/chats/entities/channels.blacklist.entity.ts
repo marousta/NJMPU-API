@@ -13,12 +13,12 @@ export class ChatsChannelsBlacklist {
 	@Column({
 		type: 'enum',
 		enum: BlacklistType,
-		nullable: true
+		nullable: true,
 	})
 	type: BlacklistType;
 
 	@Column({
-		nullable: true
+		nullable: true,
 	})
 	expiration: Date;
 
@@ -27,7 +27,7 @@ export class ChatsChannelsBlacklist {
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	@JoinColumn()
 	user: UsersInfos;
@@ -37,7 +37,7 @@ export class ChatsChannelsBlacklist {
 	 */
 	@ManyToOne((type) => ChatsChannels, (channel) => channel.uuid, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	@JoinColumn()
 	channel: ChatsChannels;

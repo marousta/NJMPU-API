@@ -26,7 +26,7 @@ export enum WsNamespace {
 	Chat = 'Chat',
 	User = 'User',
 	Game = 'Game',
-	Meta = 'Meta'
+	Meta = 'Meta',
 }
 
 /**
@@ -46,7 +46,7 @@ export enum ChatAction {
 	Unban = 'UNBAN',
 	Mute = 'MUTE',
 	Unmute = 'UNMUTE',
-	Avatar = 'AVATAR'
+	Avatar = 'AVATAR',
 }
 
 export interface WsChat {
@@ -150,7 +150,7 @@ export enum UserAction {
 	Session = 'SESSION',
 	Notification = 'NOTIFICATION',
 	Read = 'READ',
-	Status = 'STATUS'
+	Status = 'STATUS',
 }
 
 export interface WsUser {
@@ -191,7 +191,7 @@ export enum BlockDirection {
 	IsBlocked = 0,
 	IsUnblocked = 0,
 	HasBlocked = 1,
-	HasUnblocked = 1
+	HasUnblocked = 1,
 }
 
 export interface WsUserBlock extends WsUser {
@@ -267,7 +267,7 @@ export enum GameAction {
 	Leave = 'LEAVE',
 	Wait = 'WAIT',
 	Match = 'MATCH',
-	Disband = 'DISBAND'
+	Disband = 'DISBAND',
 }
 
 export interface WsGame {

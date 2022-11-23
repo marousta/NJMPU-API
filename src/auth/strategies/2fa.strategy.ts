@@ -14,20 +14,20 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
 	private readonly logger = new Logger(TwoFactorStrategy.name);
 	constructor(
 		private readonly configService: ConfigService,
-		private readonly twoFactorService: TwoFactorService
+		private readonly twoFactorService: TwoFactorService,
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				(req: Request) => {
 					return req.cookies['twofactor_token'];
-				}
+				},
 			]),
 			ignoreExpiration: false,
 			secretOrKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
-				encoding: 'utf8'
+				encoding: 'utf8',
 			}),
 			algorithms: 'RS256',
-			passReqToCallback: true
+			passReqToCallback: true,
 		});
 	}
 
@@ -35,7 +35,7 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
 	async validate(req: Request, payload: Jwt): Promise<JwtData> {
 		const verif = await this.twoFactorService.verify.token({
 			uuid: payload.tuuid,
-			token: req.cookies['twofactor_token']
+			token: req.cookies['twofactor_token'],
 		});
 		if (!verif) {
 			this.logger.verbose('Invalid 2FA JWT');
@@ -44,7 +44,7 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, 'twofactor') {
 
 		return {
 			token: payload,
-			infos: verif
+			infos: verif,
 		};
 	}
 }

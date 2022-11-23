@@ -6,7 +6,7 @@ import {
 	NotFoundException,
 	ForbiddenException,
 	Inject,
-	forwardRef
+	forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -27,11 +27,11 @@ import {
 	ChannelDirectGetResponse,
 	ChannelData,
 	DirectData,
-	ChannelPrivateGetResponse
+	ChannelPrivateGetResponse,
 } from '../properties/channels.get.property';
 import {
 	ChannelModerationPropertyEX,
-	ChannelSettingProperty
+	ChannelSettingProperty,
 } from '../properties/channels.update.property';
 import { ChannelLeaveProperty, LeaveAction } from '../properties/channels.delete.property';
 import { BlacklistGetProperty } from '../properties/channels.blacklist.get.property';
@@ -45,7 +45,7 @@ import {
 	ChatsDirect,
 	ChatsGroupPrivate,
 	ChatsGroupPublic,
-	ApiResponseError
+	ApiResponseError,
 } from '../types';
 import { WsNamespace, ChatAction } from '../../websockets/types';
 
@@ -62,7 +62,7 @@ export class ChannelsService {
 		private readonly blacklistService: ChannelsBlacklistService,
 		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -87,7 +87,7 @@ export class ChannelsService {
 		},
 		WithUsersAndRelationsID: async (
 			where: object,
-			error_msg: string
+			error_msg: string,
 		): Promise<ChatsChannelsID> => {
 			return await this.channelRepository
 				.createQueryBuilder('channels')
@@ -105,7 +105,7 @@ export class ChannelsService {
 		},
 		WithAllAndRelationsID: async (
 			where: object,
-			error_msg: string
+			error_msg: string,
 		): Promise<ChatsChannelsID> => {
 			return await this.channelRepository
 				.createQueryBuilder('channels')
@@ -127,7 +127,7 @@ export class ChannelsService {
 				this.logger.error('Channel not found ' + uuid, e);
 				throw new InternalServerErrorException();
 			});
-		}
+		},
 	};
 
 	private async save(channel: ChatsChannels, error_msg: string) {
@@ -218,7 +218,7 @@ export class ChannelsService {
 			const channels = await this.channelRepository
 				.find({
 					select: { identifier: true },
-					where: { name: name }
+					where: { name: name },
 				})
 				.catch((e) => {
 					this.logger.error(`Unable to find channels`, e);
@@ -247,7 +247,7 @@ export class ChannelsService {
 		inChannelFind: async (channel_uuid: string, user_uuid: string): Promise<boolean> => {
 			const channel = await this.findOne.WithRelationsID(
 				{ uuid: channel_uuid },
-				'Unable to find channel ' + channel_uuid
+				'Unable to find channel ' + channel_uuid,
 			);
 			return this.user.inChannel(channel.usersID, user_uuid);
 		},
@@ -273,7 +273,7 @@ export class ChannelsService {
 		hasPermissionsGet: async (channel_uuid: string, user_uuid: string) => {
 			const channel = await this.findOne.WithAllAndRelationsID(
 				{ uuid: channel_uuid },
-				'Unable to find channel ' + channel_uuid
+				'Unable to find channel ' + channel_uuid,
 			);
 
 			if (
@@ -291,7 +291,7 @@ export class ChannelsService {
 				this.user.inChannel(channel.usersID, user_uuid)
 				&& (this.user.isAdministrator(channel.administratorID, user_uuid) || this.user.isModerator(channel.moderatorsID, user_uuid))
 			);
-		}
+		},
 	};
 	//#endregion
 
@@ -303,7 +303,7 @@ export class ChannelsService {
 	async getAll(
 		page: number = 1,
 		limit: number = 0,
-		offset: number = 0
+		offset: number = 0,
 	): Promise<ChannelsDataGetResponse> {
 		if (page === 0) {
 			page = 1;
@@ -335,7 +335,7 @@ export class ChannelsService {
 				message_count,
 				administrator: channel.administratorID,
 				moderators: channel.moderatorsID,
-				users: channel.usersID
+				users: channel.usersID,
 			});
 		}
 		const count = ret[0].length;
@@ -348,7 +348,7 @@ export class ChannelsService {
 		uuid: string,
 		page: number = 1,
 		limit: number = 0,
-		offset: number = 0
+		offset: number = 0,
 	): Promise<ChannelsDataGetResponse> {
 		if (page === 0) {
 			page = 1;
@@ -381,7 +381,7 @@ export class ChannelsService {
 					uuid: channel.uuid,
 					type: channel.type,
 					message_count,
-					users: channel.usersID
+					users: channel.usersID,
 				});
 			} else {
 				data.push({
@@ -395,7 +395,7 @@ export class ChannelsService {
 					message_count,
 					administrator: channel.administratorID,
 					moderators: channel.moderatorsID,
-					users: channel.usersID
+					users: channel.usersID,
 				});
 			}
 		}
@@ -407,7 +407,7 @@ export class ChannelsService {
 
 	async getOne(
 		channel_uuid: string,
-		user_uuid: string
+		user_uuid: string,
 	): Promise<ChannelGetResponse | ChannelDirectGetResponse> {
 		const channel: ChatsChannelsID = await this.channelRepository
 			.createQueryBuilder('channels')
@@ -435,7 +435,7 @@ export class ChannelsService {
 				uuid: channel.uuid,
 				type: channel.type,
 				message_count,
-				users: channel.usersID
+				users: channel.usersID,
 			};
 		} else {
 			return {
@@ -448,7 +448,7 @@ export class ChannelsService {
 				message_count,
 				administrator: channel.administratorID,
 				moderators: channel.moderatorsID,
-				users: channel.usersID
+				users: channel.usersID,
 			};
 		}
 	}
@@ -461,7 +461,7 @@ export class ChannelsService {
 			.catch((e) => {
 				this.logger.verbose(
 					`Unable to find channel ${params.name} #${params.identifier}`,
-					e
+					e,
 				);
 				throw new NotFoundException(ApiResponseError.ChannelNotFound);
 			});
@@ -470,7 +470,7 @@ export class ChannelsService {
 			uuid: channel.uuid,
 			identifier: channel.identifier,
 			name: channel.name,
-			avatar: channel.avatar
+			avatar: channel.avatar,
 		};
 	}
 
@@ -483,7 +483,7 @@ export class ChannelsService {
 			if (!isEmpty(params.password)) {
 				password = await argon2.hash(params.password, {
 					timeCost: 11,
-					saltLength: 128
+					saltLength: 128,
 				});
 			}
 
@@ -494,7 +494,7 @@ export class ChannelsService {
 				identifier: params.current_user.adam ? 0 : await this.getIdentifier(params.name),
 				name: params.name,
 				password,
-				administrator: user
+				administrator: user,
 			});
 			request.addUser(user);
 
@@ -505,7 +505,7 @@ export class ChannelsService {
 				this.wsService.dispatch.all({
 					namespace: WsNamespace.Chat,
 					action: ChatAction.Create,
-					channel: new_channel.uuid
+					channel: new_channel.uuid,
 				});
 			}
 
@@ -514,11 +514,11 @@ export class ChannelsService {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Join,
 				channel: new_channel.uuid,
-				user: user.uuid
+				user: user.uuid,
 			});
 
 			return {
-				uuid: new_channel.uuid
+				uuid: new_channel.uuid,
 			};
 		},
 		direct: async (params: ChatsDirect) => {
@@ -529,7 +529,7 @@ export class ChannelsService {
 			const current_user = params.current_user;
 			const remote_user = await this.usersService.findWithRelations(
 				{ uuid: params.user_uuid },
-				'Unable to find relatiom user ' + params.user_uuid
+				'Unable to find relatiom user ' + params.user_uuid,
 			);
 
 			const isBlocked = this.usersService.isBlocked(current_user, remote_user);
@@ -560,7 +560,7 @@ export class ChannelsService {
 				type: params.type,
 				default: false,
 				identifier: await this.getIdentifier(name),
-				name
+				name,
 			});
 			request.addUser(current_user);
 			request.addUser(remote_user);
@@ -570,18 +570,18 @@ export class ChannelsService {
 			this.wsService.dispatch.user(current_user.uuid, {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Create,
-				channel: new_direct.uuid
+				channel: new_direct.uuid,
 			});
 			this.wsService.dispatch.user(remote_user.uuid, {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Create,
-				channel: new_direct.uuid
+				channel: new_direct.uuid,
 			});
 
 			return {
-				uuid: new_direct.uuid
+				uuid: new_direct.uuid,
 			};
-		}
+		},
 	};
 
 	async join(params: ChannelsCreateProperty) {
@@ -603,7 +603,7 @@ export class ChannelsService {
 				else {
 					channel = await this.findOne.WithUsersAndRelationsID(
 						{ uuid: parsed.channel_uuid },
-						`Unable to find public channel ${parsed.channel_uuid}`
+						`Unable to find public channel ${parsed.channel_uuid}`,
 					);
 				}
 				break;
@@ -616,7 +616,7 @@ export class ChannelsService {
 				else {
 					channel = await this.findOne.WithUsersAndRelationsID(
 						{ identifier: parsed.identifier, name: parsed.name },
-						`Unable to find private channel ${parsed.name}#${parsed.identifier}`
+						`Unable to find private channel ${parsed.name}#${parsed.identifier}`,
 					);
 				}
 				break;
@@ -631,7 +631,7 @@ export class ChannelsService {
 
 		const isBanned = await this.blacklistService.isBanned(
 			channel.uuid,
-			params.current_user.uuid
+			params.current_user.uuid,
 		);
 		if (isBanned) {
 			throw new ForbiddenException(ApiResponseError.Banned);
@@ -655,7 +655,7 @@ export class ChannelsService {
 		// Update database relation
 		const { channelObj, userObj } = await this.updateRelation(
 			channel,
-			parsed.current_user.uuid
+			parsed.current_user.uuid,
 		);
 
 		// Dispatch user joined to all members of channel
@@ -665,8 +665,8 @@ export class ChannelsService {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Join,
 				channel: channelObj.uuid,
-				user: userObj.uuid
-			}
+				user: userObj.uuid,
+			},
 		);
 	}
 
@@ -699,7 +699,7 @@ export class ChannelsService {
 		get: async (params: BlacklistGetProperty) => {
 			const channel = await this.findOne.WithRelationsID(
 				{ uuid: params.channel_uuid },
-				'Unable to find channel ' + params.channel_uuid
+				'Unable to find channel ' + params.channel_uuid,
 			);
 
 			if (
@@ -710,14 +710,14 @@ export class ChannelsService {
 			}
 
 			return await this.blacklistService.get(channel.uuid);
-		}
+		},
 	};
 
 	readonly moderation = {
 		dispatch: async (params: ChannelModerationPropertyEX) => {
 			let channel = await this.findOne.WithAllAndRelationsID(
 				{ uuid: params.channel_uuid },
-				'Unable to find channel ' + params.channel_uuid
+				'Unable to find channel ' + params.channel_uuid,
 			);
 
 			let error_msg: string;
@@ -758,7 +758,7 @@ export class ChannelsService {
 				action: params.action,
 				user: params.user_uuid,
 				channel: channel.uuid,
-				expiration
+				expiration,
 			});
 		},
 		promote: async (params: ChannelModerationPropertyEX, channel: ChatsChannelsID) => {
@@ -842,7 +842,7 @@ export class ChannelsService {
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Avatar,
 						channel: channel.uuid,
-						avatar: filename
+						avatar: filename,
 					});
 					break;
 				case ChannelType.Private:
@@ -850,19 +850,19 @@ export class ChannelsService {
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Avatar,
 						channel: channel.uuid,
-						avatar: filename
+						avatar: filename,
 					});
 					break;
 			}
 
 			return { new: filename, old: old_avatar };
-		}
+		},
 	};
 
 	async password(params: ChannelSettingProperty) {
 		const channel = await this.findOne.WithRelationsID(
 			{ uuid: params.channel_uuid },
-			'Unable to find channel ' + params.channel_uuid
+			'Unable to find channel ' + params.channel_uuid,
 		);
 
 		//  prettier-ignore
@@ -877,7 +877,7 @@ export class ChannelsService {
 		} else {
 			channel.password = await argon2.hash(params.password, {
 				timeCost: 11,
-				saltLength: 128
+				saltLength: 128,
 			});
 		}
 
@@ -887,7 +887,7 @@ export class ChannelsService {
 	async leave(params: ChannelLeaveProperty) {
 		const channel = await this.findOne.WithAllAndRelationsID(
 			{ uuid: params.channel_uuid },
-			'Unable to find channel ' + params.channel_uuid
+			'Unable to find channel ' + params.channel_uuid,
 		);
 
 		if (channel.type === ChannelType.Direct) {
@@ -948,7 +948,7 @@ export class ChannelsService {
 
 			await this.save(
 				channel,
-				'Unable to remove user ' + remove_user.uuid + ' from channel ' + channel.uuid
+				'Unable to remove user ' + remove_user.uuid + ' from channel ' + channel.uuid,
 			);
 		}
 
@@ -965,14 +965,14 @@ export class ChannelsService {
 					this.wsService.dispatch.all({
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Remove,
-						channel: params.channel_uuid
+						channel: params.channel_uuid,
 					});
 					break;
 				case ChannelType.Private:
 					this.wsService.dispatch.channel(channel.usersID, {
 						namespace: WsNamespace.Chat,
 						action: ChatAction.Remove,
-						channel: params.channel_uuid
+						channel: params.channel_uuid,
 					});
 					break;
 			}
@@ -981,7 +981,7 @@ export class ChannelsService {
 				namespace: WsNamespace.Chat,
 				action: ChatAction.Leave,
 				channel: params.channel_uuid,
-				user: removed_user_uuid
+				user: removed_user_uuid,
 			});
 		}
 	}

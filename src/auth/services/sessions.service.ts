@@ -2,7 +2,7 @@ import {
 	Injectable,
 	Logger,
 	NotFoundException,
-	InternalServerErrorException
+	InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,7 +21,7 @@ export class SessionsService {
 	private readonly logger = new Logger(SessionsService.name);
 	constructor(
 		@InjectRepository(UsersTokens) private readonly tokenRepository: Repository<UsersTokens>,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -45,7 +45,7 @@ export class SessionsService {
 		uuid: string,
 		page: number = 1,
 		limit: number = 0,
-		offset: number = 0
+		offset: number = 0,
 	): Promise<SessionsGetResponse> {
 		if (page === 0) {
 			page = 1;
@@ -67,9 +67,9 @@ export class SessionsService {
 				platform: token.platform,
 				creation_date: token.creation_date,
 				active: this.isActive(
-					token.refresh_date ? token.refresh_date : token.creation_date
+					token.refresh_date ? token.refresh_date : token.creation_date,
 				),
-				current: false
+				current: false,
 			};
 			if (token.uuid === tuuid) {
 				ret.current = true;
@@ -105,7 +105,7 @@ export class SessionsService {
 
 		this.wsService.dispatch.user(uuuid, {
 			namespace: WsNamespace.User,
-			action: UserAction.Refresh
+			action: UserAction.Refresh,
 		});
 	}
 	//#endregion

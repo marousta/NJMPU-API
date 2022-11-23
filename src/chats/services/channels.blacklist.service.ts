@@ -5,7 +5,7 @@ import {
 	InternalServerErrorException,
 	NotFoundException,
 	Inject,
-	forwardRef
+	forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -29,7 +29,7 @@ export class ChannelsBlacklistService {
 		@InjectRepository(ChatsChannelsBlacklist)
 		private readonly blacklistRepository: Repository<ChatsChannelsBlacklist>,
 		@Inject(forwardRef(() => ChannelsService))
-		private readonly channelsService: ChannelsService
+		private readonly channelsService: ChannelsService,
 	) {}
 
 	/**
@@ -70,7 +70,7 @@ export class ChannelsBlacklistService {
 				('Unable to delete entry ' +
 					entry.uuid +
 					' in blacklist for channel ' +
-					entry.channel) as string
+					entry.channel) as string,
 			);
 		}
 
@@ -82,7 +82,7 @@ export class ChannelsBlacklistService {
 			.findOneByOrFail({
 				type: BlacklistType.Ban,
 				user: { uuid: user_uuid },
-				channel: { uuid: channel_uuid }
+				channel: { uuid: channel_uuid },
 			})
 			.catch((e) => false);
 
@@ -95,7 +95,7 @@ export class ChannelsBlacklistService {
 			.findOneByOrFail({
 				type: BlacklistType.Mute,
 				user: { uuid: user_uuid },
-				channel: { uuid: channel_uuid }
+				channel: { uuid: channel_uuid },
 			})
 			.catch((e) => false);
 
@@ -144,7 +144,7 @@ export class ChannelsBlacklistService {
 			type,
 			channel: channel,
 			user: user,
-			expiration
+			expiration,
 		});
 
 		// Save to database
@@ -154,7 +154,7 @@ export class ChannelsBlacklistService {
 					params.action +
 					' entry in blacklist for channel ' +
 					channel.uuid,
-				e
+				e,
 			);
 			throw new InternalServerErrorException();
 		});
@@ -168,21 +168,21 @@ export class ChannelsBlacklistService {
 			.where({
 				type: this.validateType(params.action),
 				user: params.user_uuid,
-				channel: channel.uuid
+				channel: channel.uuid,
 			})
 			.loadAllRelationIds()
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose(
 					'Unable to find entry in blacklist for channel ' + channel.uuid,
-					e
+					e,
 				);
 				throw new NotFoundException(ApiResponseError.BlacklistEntryNotFound);
 			});
 
 		await this.remove(
 			entry.uuid,
-			'Unable to delete entry ' + entry.uuid + ' in blacklist for channel ' + channel.uuid
+			'Unable to delete entry ' + entry.uuid + ' in blacklist for channel ' + channel.uuid,
 		);
 
 		return channel;
@@ -197,27 +197,27 @@ export class ChannelsBlacklistService {
 			.catch((e) => {
 				this.logger.error(
 					'Unable to find entry in blacklist for channel ' + channel_uuid,
-					e
+					e,
 				);
 				throw new InternalServerErrorException();
 			});
 
 		let filtered: BlacklistGetResponse = {
 			banned: [],
-			muted: []
+			muted: [],
 		};
 		entries.forEach((e) => {
 			switch (e.type) {
 				case BlacklistType.Ban:
 					filtered.banned.push({
 						user: e.user as any as string,
-						expiration: e.expiration
+						expiration: e.expiration,
 					});
 					break;
 				case BlacklistType.Mute:
 					filtered.muted.push({
 						user: e.user as any as string,
-						expiration: e.expiration
+						expiration: e.expiration,
 					});
 					break;
 				default:

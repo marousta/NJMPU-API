@@ -2,29 +2,29 @@ export enum UsersFriendship {
 	False,
 	True,
 	Pending,
-	Requested
+	Requested,
 }
 
 export enum NotifcationType {
 	GameInvite,
 	FriendRequest,
-	AcceptedFriendRequest
+	AcceptedFriendRequest,
 }
 
 export enum UserStatus {
 	Offline,
 	Online,
-	InGame
+	InGame,
 }
 
 export enum RelationType {
 	Friends,
-	Blocklist
+	Blocklist,
 }
 
 export enum RelationDispatch {
 	Add,
-	Remove
+	Remove,
 }
 
 export enum ApiResponseError {
@@ -39,5 +39,5 @@ export enum ApiResponseError {
 	NotFound = "User doesn't exist",
 	PasswordsIdentical = "Passwords can't be identical",
 	PasswordMismatch = 'Password mismatch',
-	ConfirmMismatch = 'New password mismatch confirmation input'
+	ConfirmMismatch = 'New password mismatch confirmation input',
 }

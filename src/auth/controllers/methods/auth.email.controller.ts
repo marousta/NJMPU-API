@@ -30,7 +30,7 @@ export class AuthEmailController {
 	async function(
 		@Request() req: Req,
 		@Headers() headers: Headers,
-		@Response({ passthrough: true }) res: Res
+		@Response({ passthrough: true }) res: Res,
 	) {
 		const user = req.user as UsersInfos;
 		const fingerprint = getFingerprint(req, headers);

@@ -5,7 +5,7 @@ import { UsersInfos } from '../../users/entities/users.entity';
 export enum LeaveAction {
 	Leave = 'LEAVE',
 	Remove = 'REMOVE',
-	Kick = 'KICK'
+	Kick = 'KICK',
 }
 
 export class ChannelLeaveProperty {

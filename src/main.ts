@@ -46,7 +46,7 @@ async function bootstrap() {
 	}
 
 	const app = await NestFactory.create(AppModule, {
-		logger: process.env['PRODUCTION'] ? new DisabledLogger() : undefined
+		logger: process.env['PRODUCTION'] ? new DisabledLogger() : undefined,
 	});
 
 	app.setGlobalPrefix('api');
@@ -73,8 +73,8 @@ async function bootstrap() {
 		SwaggerModule.setup('/api', app, document, {
 			customSiteTitle: 'API - NEW SHINJI MEGA PONG ULTIMATE',
 			swaggerOptions: {
-				tagsSorter: 'alpha'
-			}
+				tagsSorter: 'alpha',
+			},
 		});
 	}
 

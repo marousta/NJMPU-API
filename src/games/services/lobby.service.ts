@@ -6,7 +6,7 @@ import {
 	BadRequestException,
 	ForbiddenException,
 	Inject,
-	forwardRef
+	forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,7 +24,7 @@ import { max_spectators } from '../config';
 import {
 	ApiResponseError as ApiResponseErrorUser,
 	NotifcationType,
-	UserStatus
+	UserStatus,
 } from '../../users/types';
 import { ApiResponseError, LobbyPlayerReadyState } from '../types';
 import { JwtData } from '../../auth/types';
@@ -41,7 +41,7 @@ export class GamesLobbyService {
 		@Inject(forwardRef(() => NotifcationsService))
 		private readonly notifcationsService: NotifcationsService,
 		@Inject(forwardRef(() => WsService))
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -70,7 +70,7 @@ export class GamesLobbyService {
 		const lobbies = Object.values(this.lobbies)
 			.map((lobby) => lobby)
 			.filter(
-				(lobby) => lobby.player1.uuid === user_uuid || lobby.player2?.uuid === user_uuid
+				(lobby) => lobby.player1.uuid === user_uuid || lobby.player2?.uuid === user_uuid,
 			);
 		return lobbies.length !== 0 ? lobbies : null;
 	}
@@ -82,7 +82,7 @@ export class GamesLobbyService {
 			players: [lobby.player1.uuid, lobby.player2 ? lobby.player2.uuid : null],
 			players_status: [lobby.player1_status, lobby.player2_status],
 			spectators: lobby.spectators?.map((u) => u.uuid),
-			max_spectators
+			max_spectators,
 		};
 	}
 
@@ -153,7 +153,7 @@ export class GamesLobbyService {
 				player1: current_user,
 				player1_status: LobbyPlayerReadyState.Joined,
 				player2: remote_user,
-				player2_status: LobbyPlayerReadyState.Invited
+				player2_status: LobbyPlayerReadyState.Invited,
 			});
 
 			lobby.player1_ws = this.wsService.setLobby(jwt, websocket_uuid, lobby.uuid, false);
@@ -167,7 +167,7 @@ export class GamesLobbyService {
 				namespace: WsNamespace.Game,
 				action: GameAction.Join,
 				lobby_uuid: lobby.uuid,
-				user_uuid: current_user.uuid
+				user_uuid: current_user.uuid,
 			});
 
 			await this.wsService.updateUserStatus(jwt.infos, UserStatus.InGame, lobby.uuid);
@@ -189,20 +189,20 @@ export class GamesLobbyService {
 				player1: current_user,
 				player1_status: LobbyPlayerReadyState.Joined,
 				player2: remote_user,
-				player2_status: LobbyPlayerReadyState.Joined
+				player2_status: LobbyPlayerReadyState.Joined,
 			});
 
 			lobby.player1_ws = this.wsService.setLobby(
 				current_jwt,
 				current_client.uuid,
 				lobby.uuid,
-				false
+				false,
 			);
 			lobby.player2_ws = this.wsService.setLobby(
 				remote_jwt,
 				remote_client.uuid,
 				lobby.uuid,
-				false
+				false,
 			);
 			if (!lobby.player1_ws || !lobby.player2_ws) {
 				throw new BadRequestException(ApiResponseError.NoConnection);
@@ -213,7 +213,7 @@ export class GamesLobbyService {
 			this.wsService.dispatch.client([current_client, remote_client], {
 				namespace: WsNamespace.Game,
 				action: GameAction.Match,
-				lobby: this.formatResponse(lobby)
+				lobby: this.formatResponse(lobby),
 			});
 
 			// For front compatibility
@@ -223,9 +223,9 @@ export class GamesLobbyService {
 					namespace: WsNamespace.Game,
 					action: GameAction.Join,
 					lobby_uuid: lobby.uuid,
-					user_uuid: current_user.uuid
+					user_uuid: current_user.uuid,
 				},
-				[lobby.player1_ws.uuid, lobby.player2_ws.uuid]
+				[lobby.player1_ws.uuid, lobby.player2_ws.uuid],
 			);
 			this.wsService.dispatch.lobby(
 				lobby,
@@ -233,9 +233,9 @@ export class GamesLobbyService {
 					namespace: WsNamespace.Game,
 					action: GameAction.Invite,
 					lobby_uuid: lobby.uuid,
-					user_uuid: remote_user.uuid
+					user_uuid: remote_user.uuid,
 				},
-				[lobby.player1_ws.uuid, lobby.player2_ws.uuid]
+				[lobby.player1_ws.uuid, lobby.player2_ws.uuid],
 			);
 			this.wsService.dispatch.lobby(
 				lobby,
@@ -243,9 +243,9 @@ export class GamesLobbyService {
 					namespace: WsNamespace.Game,
 					action: GameAction.Join,
 					lobby_uuid: lobby.uuid,
-					user_uuid: remote_user.uuid
+					user_uuid: remote_user.uuid,
 				},
-				[lobby.player1_ws.uuid, lobby.player2_ws.uuid]
+				[lobby.player1_ws.uuid, lobby.player2_ws.uuid],
 			);
 
 			await this.wsService.updateUserStatus(lobby.player1, UserStatus.InGame, lobby.uuid);
@@ -293,13 +293,13 @@ export class GamesLobbyService {
 				NotifcationType.GameInvite,
 				current_user,
 				remote_user,
-				lobby.uuid
+				lobby.uuid,
 			);
 			this.wsService.dispatch.lobby(lobby, {
 				namespace: WsNamespace.Game,
 				action: GameAction.Invite,
 				lobby_uuid: lobby.uuid,
-				user_uuid: remote_user_uuid
+				user_uuid: remote_user_uuid,
 			});
 
 			return this.formatResponse(lobby);
@@ -340,7 +340,7 @@ export class GamesLobbyService {
 					jwt,
 					websocket_uuid,
 					lobby.uuid,
-					is_spectator
+					is_spectator,
 				);
 				if (!lobby.player2_ws) {
 					throw new BadRequestException(ApiResponseError.NoConnection);
@@ -351,7 +351,7 @@ export class GamesLobbyService {
 				if (was_spectator) {
 					lobby.spectators = lobby.spectators.filter((u) => u.uuid !== remote_user.uuid);
 					lobby.spectators_ws = lobby.spectators_ws.filter(
-						(u) => u.uuid !== websocket_uuid
+						(u) => u.uuid !== websocket_uuid,
 					);
 				}
 			}
@@ -363,7 +363,7 @@ export class GamesLobbyService {
 					namespace: WsNamespace.Game,
 					action: GameAction.Spectate,
 					lobby_uuid: lobby.uuid,
-					user_uuid: remote_user.uuid
+					user_uuid: remote_user.uuid,
 				});
 			} else {
 				if (was_spectator) {
@@ -371,14 +371,14 @@ export class GamesLobbyService {
 						namespace: WsNamespace.Game,
 						action: GameAction.Leave,
 						lobby_uuid: lobby.uuid,
-						user_uuid: remote_user.uuid
+						user_uuid: remote_user.uuid,
 					});
 				}
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
 					action: GameAction.Join,
 					lobby_uuid: lobby.uuid,
-					user_uuid: remote_user.uuid
+					user_uuid: remote_user.uuid,
 				});
 			}
 
@@ -414,7 +414,7 @@ export class GamesLobbyService {
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
 					action: GameAction.Start,
-					lobby_uuid: lobby.uuid
+					lobby_uuid: lobby.uuid,
 				});
 
 				// TODO: Game
@@ -423,7 +423,7 @@ export class GamesLobbyService {
 					namespace: WsNamespace.Game,
 					action: GameAction.Ready,
 					lobby_uuid: lobby.uuid,
-					user_uuid: user.uuid
+					user_uuid: user.uuid,
 				});
 			}
 		},
@@ -440,7 +440,7 @@ export class GamesLobbyService {
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
 					action: GameAction.Disband,
-					lobby_uuid: lobby.uuid
+					lobby_uuid: lobby.uuid,
 				});
 				this.wsService.unsetAllLobby(lobby);
 
@@ -448,7 +448,7 @@ export class GamesLobbyService {
 				if (lobby.player2) {
 					await this.notifcationsService.read.ByRelation(
 						lobby.player1.uuid,
-						lobby.player2.uuid
+						lobby.player2.uuid,
 					);
 					await this.wsService.updateUserStatus(lobby.player2, UserStatus.Online);
 				}
@@ -467,7 +467,7 @@ export class GamesLobbyService {
 				namespace: WsNamespace.Game,
 				action: GameAction.Leave,
 				lobby_uuid: lobby.uuid,
-				user_uuid: current_user.uuid
+				user_uuid: current_user.uuid,
 			});
 			if (was_spectator) {
 				lobby.spectators_ws = this.unsetSpectator(jwt, lobby);
@@ -494,7 +494,7 @@ export class GamesLobbyService {
 				namespace: WsNamespace.Game,
 				action: GameAction.Decline,
 				lobby_uuid: lobby.uuid,
-				user_uuid: current_user.uuid
+				user_uuid: current_user.uuid,
 			});
 
 			lobby.player2 = null;
@@ -530,9 +530,9 @@ export class GamesLobbyService {
 				namespace: WsNamespace.Game,
 				action: GameAction.Leave,
 				lobby_uuid: lobby.uuid,
-				user_uuid: current_user.uuid
+				user_uuid: current_user.uuid,
 			});
-		}
+		},
 	};
 	//#endregion
 }

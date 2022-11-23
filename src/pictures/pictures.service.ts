@@ -4,7 +4,7 @@ import {
 	BadRequestException,
 	Inject,
 	forwardRef,
-	InternalServerErrorException
+	InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
@@ -31,7 +31,7 @@ export class PicturesService {
 		@Inject(forwardRef(() => ChannelsService))
 		private readonly channelsService: ChannelsService,
 		@Inject(forwardRef(() => UsersService))
-		private readonly usersService: UsersService
+		private readonly usersService: UsersService,
 	) {
 		this.folder = configService.get<string>('IMG_PATH');
 	}
@@ -65,7 +65,7 @@ export class PicturesService {
 			default:
 				throw new BadRequestException(
 					'Unsupported file format expected [jpg, jpeg, jfif, png, apng, gif, webp] got ' +
-						arr[1]
+						arr[1],
 				);
 		}
 	}
@@ -178,7 +178,7 @@ export class PicturesService {
 			.axiosRef({
 				url: path,
 				method: 'get',
-				responseType: 'arraybuffer'
+				responseType: 'arraybuffer',
 			})
 			.then((res) => {
 				const content_type = PicturesService.parseContentType(res.headers['content-type']);
@@ -200,13 +200,13 @@ export class PicturesService {
 
 			await this.resize({
 				filename: hash,
-				originalname: final
+				originalname: final,
 			});
 			resolve(
 				this.stripExif({
 					filename: hash,
-					originalname: final
-				})
+					originalname: final,
+				}),
 			);
 		});
 	}
@@ -215,7 +215,7 @@ export class PicturesService {
 		channel: async (user: UsersInfos, filename: string, channel_uuid: string) => {
 			const channel = await this.channelsService.user.hasPermissionsGet(
 				channel_uuid,
-				user.uuid
+				user.uuid,
 			);
 
 			const avatar = await this.channelsService.moderation.avatar(filename, channel);
@@ -230,7 +230,7 @@ export class PicturesService {
 			this.remove(avatar.old);
 
 			return { avatar: avatar.new };
-		}
+		},
 	};
 
 	private remove(old_avatar: string) {

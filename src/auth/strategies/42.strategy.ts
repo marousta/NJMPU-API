@@ -15,7 +15,7 @@ export class Intra42Strategy extends PassportStrategy(Strategy, '42') {
 				configService.get<string>('PROTOCOL') +
 				'://' +
 				configService.get<string>('DOMAIN') +
-				'/api/auth/oauth2/42/callback'
+				'/api/auth/oauth2/42/callback',
 		});
 	}
 

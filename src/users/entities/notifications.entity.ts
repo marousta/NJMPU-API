@@ -11,7 +11,7 @@ export class UsersNotifications {
 
 	@Column({
 		type: 'enum',
-		enum: NotifcationType
+		enum: NotifcationType,
 	})
 	type: NotifcationType;
 
@@ -29,13 +29,13 @@ export class UsersNotifications {
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	notified_user: string;
 
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	interact_w_user: string;
 }

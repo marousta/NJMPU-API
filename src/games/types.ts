@@ -1,13 +1,13 @@
 export enum LobbyPlayerReadyState {
 	Invited,
 	Joined,
-	Ready
+	Ready,
 }
 
 export enum LobbyWinner {
 	Player1,
 	Player2,
-	Tie
+	Tie,
 }
 
 export enum ApiResponseError {
@@ -21,5 +21,5 @@ export enum ApiResponseError {
 	NotOnline = 'No online client',
 	AlreadyInQueue = 'Already in queue',
 	NotInQueue = 'Not in queue',
-	NoConnection = 'non-existent connection'
+	NoConnection = 'non-existent connection',
 }

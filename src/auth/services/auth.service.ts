@@ -23,7 +23,7 @@ import {
 	UserFingerprint,
 	TwoFactorRequest,
 	ApiResponseError,
-	TwoFactorSetupRequest
+	TwoFactorSetupRequest,
 } from '../types';
 import { UserAction, WsNamespace } from '../../websockets/types';
 import { JwtData, TwitterUser } from '../types';
@@ -39,7 +39,7 @@ export class AuthService {
 		private readonly usersService: UsersService,
 		private readonly tokensService: TokensService,
 		private readonly twoFactorService: TwoFactorService,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -70,7 +70,7 @@ export class AuthService {
 	public readonly login = {
 		byPassword: async (
 			user: UsersInfos,
-			fingerprint: UserFingerprint
+			fingerprint: UserFingerprint,
 		): Promise<GeneratedTokens | TwoFactorSetupRequest | TwoFactorRequest> => {
 			if (user.twofactor) {
 				return await this.twoFactorService.demand(user);
@@ -78,12 +78,12 @@ export class AuthService {
 
 			return await this.tokensService.create({
 				uuid: user.uuid,
-				fingerprint
+				fingerprint,
 			});
 		},
 		byAPI: async (
 			user: Intra42User | DiscordUser | TwitterUser,
-			fingerprint: UserFingerprint
+			fingerprint: UserFingerprint,
 		): Promise<GeneratedTokens | TwoFactorSetupRequest | TwoFactorRequest> => {
 			const parital_user = getPartialUser(user);
 
@@ -104,15 +104,15 @@ export class AuthService {
 
 			return await this.tokensService.create({
 				uuid: exist.uuid,
-				fingerprint
+				fingerprint,
 			});
-		}
+		},
 	};
 
 	public readonly cookie = {
 		create: (
 			res: Response,
-			obj: { access_token: string } | { refresh_token: string } | { twofactor_token: string }
+			obj: { access_token: string } | { refresh_token: string } | { twofactor_token: string },
 		) => {
 			const name = Object.keys(obj)[0];
 
@@ -130,7 +130,7 @@ export class AuthService {
 				domain: this.configService.get<string>('DOMAIN'),
 				sameSite: 'strict',
 				httpOnly: true,
-				expires
+				expires,
 			});
 		},
 		delete: (res: Response, name: string) => {
@@ -138,9 +138,9 @@ export class AuthService {
 				domain: this.configService.get<string>('DOMAIN'),
 				sameSite: 'strict',
 				httpOnly: true,
-				expires: new Date()
+				expires: new Date(),
 			});
-		}
+		},
 	};
 
 	public readonly user = {
@@ -172,14 +172,14 @@ export class AuthService {
 				namespace: WsNamespace.User,
 				action: UserAction.Session,
 				uuid: payload.token.tuuid,
-				active: false
+				active: false,
 			});
-		}
+		},
 	};
 
 	async APIHandler(
 		user: Intra42User | DiscordUser | TwitterUser,
-		http: { req: Request; headers: Headers; res: Response }
+		http: { req: Request; headers: Headers; res: Response },
 	) {
 		const fingerprint = getFingerprint(http.req, http.headers);
 
@@ -188,7 +188,7 @@ export class AuthService {
 			const partial_user = getPartialUser(user);
 
 			http.res.redirect(
-				`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&avatar=${partial_user.avatar}`
+				`/#/postsignup/with?username=${partial_user.username}&email=${partial_user.email}&avatar=${partial_user.avatar}`,
 			);
 		} else if (ret.interface === 'TwoFactorRequest') {
 			this.cookie.create(http.res, { twofactor_token: ret.token });
@@ -215,9 +215,9 @@ export class AuthService {
 		login: async (user: UsersInfos, fingerprint: UserFingerprint) => {
 			return await this.tokensService.create({
 				uuid: user.uuid,
-				fingerprint
+				fingerprint,
 			});
-		}
+		},
 	};
 	//#endregion
 }

@@ -6,7 +6,7 @@ import {
 	OnGatewayDisconnect,
 	OnGatewayInit,
 	ConnectedSocket,
-	SubscribeMessage
+	SubscribeMessage,
 } from '@nestjs/websockets';
 import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
 import { Server } from 'ws';
@@ -26,7 +26,7 @@ import { isUUID } from 'class-validator';
 
 @WebSocketGateway({
 	path: '/api/streaming',
-	cors: true
+	cors: true,
 })
 export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
 	private readonly logger = new Logger(WsGateway.name);
@@ -34,7 +34,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		private readonly jwtService: JwtService,
 		private readonly tokensService: TokensService,
 		private readonly usersService: UsersService,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	@WebSocketServer()
@@ -53,7 +53,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	async validate(cookies: any, ua: string, ip: string): Promise<Jwt> {
 		const config = {
 			algorithms: ['RS256'],
-			ignoreExpiration: false
+			ignoreExpiration: false,
 		};
 
 		const valid_jwt_token = await Promise.all([
@@ -62,7 +62,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 				.catch((e) => null),
 			this.jwtService
 				.verifyAsync(cookies['refresh_token'], config as JwtVerifyOptions)
-				.catch((e) => null)
+				.catch((e) => null),
 		]);
 		if (!valid_jwt_token[0] || !valid_jwt_token[1]) {
 			return null;
@@ -74,7 +74,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 					valid_jwt_token[0].tuuid,
 					{ access_token: cookies['access_token'] },
 					ua,
-					ip
+					ip,
 				)
 				.then((r) => true)
 				.catch((e) => false),
@@ -83,10 +83,10 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 					valid_jwt_token[1].tuuid,
 					{ refresh_token: cookies['refresh_token'] },
 					ua,
-					ip
+					ip,
 				)
 				.then((r) => true)
-				.catch((e) => false)
+				.catch((e) => false),
 		]);
 
 		if (!valid_token[0] || !valid_token[1]) {
@@ -116,8 +116,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 			client.send(
 				JSON.stringify({
 					namespace: WsNamespace.User,
-					action: UserAction.Refresh
-				})
+					action: UserAction.Refresh,
+				}),
 			);
 			client.close();
 			return;
@@ -131,7 +131,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		}
 		const user = await this.usersService.findWithRelationsOrNull(
 			{ uuid },
-			'Cannot get user, this should not happen'
+			'Cannot get user, this should not happen',
 		);
 		if (!user) {
 			throw new InternalServerErrorException();
@@ -139,11 +139,11 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		client.uuid = randomUUID();
 		client.jwt = {
 			infos: user,
-			token: jwt[1]
+			token: jwt[1],
 		};
 		client.lobby = {
 			uuid: null,
-			spectate: false
+			spectate: false,
 		};
 
 		await this.wsService.connected(client);

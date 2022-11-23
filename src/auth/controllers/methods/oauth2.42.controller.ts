@@ -24,7 +24,7 @@ export class OAuth2Intra42Controller {
 	async intra42AuthCallback(
 		@Request() req: Req,
 		@Headers() headers: Headers,
-		@Response({ passthrough: true }) res: Res
+		@Response({ passthrough: true }) res: Res,
 	) {
 		const user = req.user as Intra42User;
 		await this.authService.APIHandler(user, { req, headers, res });

@@ -6,7 +6,7 @@ import {
 	ManyToMany,
 	ManyToOne,
 	OneToMany,
-	PrimaryGeneratedColumn
+	PrimaryGeneratedColumn,
 } from 'typeorm';
 
 import { UsersInfos } from '../../users/entities/users.entity';
@@ -25,7 +25,7 @@ export class ChatsChannels {
 	@Column({
 		type: 'enum',
 		enum: ChannelType,
-		nullable: false
+		nullable: false,
 	})
 	type: ChannelType;
 
@@ -45,7 +45,7 @@ export class ChatsChannels {
 	 * Relation Channel administrator -> User
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
-		onDelete: 'SET NULL'
+		onDelete: 'SET NULL',
 	})
 	@JoinColumn()
 	administrator: UsersInfos;
@@ -55,10 +55,10 @@ export class ChatsChannels {
 	 */
 	@ManyToMany((type) => UsersInfos, (user) => user.moderator, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	@JoinTable({
-		name: 'chats_channels_moderators-users_infos'
+		name: 'chats_channels_moderators-users_infos',
 	})
 	moderators: UsersInfos[];
 
@@ -74,10 +74,10 @@ export class ChatsChannels {
 	 */
 	@ManyToMany((type) => UsersInfos, (user) => user.channel, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	@JoinTable({
-		name: 'chats_channels_users-users_infos'
+		name: 'chats_channels_users-users_infos',
 	})
 	users: UsersInfos[];
 
@@ -93,10 +93,10 @@ export class ChatsChannels {
 	 */
 	@OneToMany((type) => ChatsChannelsBlacklist, (entry) => entry.channel, {
 		onDelete: 'CASCADE',
-		nullable: true
+		nullable: true,
 	})
 	@JoinTable({
-		name: 'chats_channels-chats_channels_blacklist'
+		name: 'chats_channels-chats_channels_blacklist',
 	})
 	blacklist: ChatsChannelsBlacklist[];
 

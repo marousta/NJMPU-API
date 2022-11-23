@@ -34,7 +34,7 @@ export class UsersInfos {
 	@Column({
 		type: 'enum',
 		enum: UserStatus,
-		nullable: false
+		nullable: false,
 	})
 	is_online: UserStatus;
 
@@ -43,10 +43,10 @@ export class UsersInfos {
 	 */
 	@OneToMany((type) => ChatsChannels, (channel) => channel.moderators, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	@JoinTable({
-		name: 'chats_channels_moderators-users_infos'
+		name: 'chats_channels_moderators-users_infos',
 	})
 	moderator: ChatsChannels;
 
@@ -55,7 +55,7 @@ export class UsersInfos {
 	 */
 	@OneToMany((type) => ChatsChannels, (channel) => channel.users, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	channel: ChatsChannels;
 
@@ -64,10 +64,10 @@ export class UsersInfos {
 	 */
 	@ManyToMany((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',
-		nullable: true
+		nullable: true,
 	})
 	@JoinTable({
-		name: 'users_infos_friends'
+		name: 'users_infos_friends',
 	})
 	friends: UsersInfos[];
 
@@ -83,10 +83,10 @@ export class UsersInfos {
 	 */
 	@ManyToMany((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',
-		nullable: true
+		nullable: true,
 	})
 	@JoinTable({
-		name: 'users_infos_blocklist'
+		name: 'users_infos_blocklist',
 	})
 	blocklist: UsersInfos[];
 
@@ -102,7 +102,7 @@ export class UsersInfos {
 	 */
 	@OneToMany((type) => GamesHistory, (channel) => channel.player1, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	player1_history: GamesHistory;
 
@@ -111,7 +111,7 @@ export class UsersInfos {
 	 */
 	@OneToMany((type) => GamesHistory, (channel) => channel.player2, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	player2_history: GamesHistory;
 }

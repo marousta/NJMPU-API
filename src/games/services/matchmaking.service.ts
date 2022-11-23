@@ -16,7 +16,7 @@ export class GamesMatchmakingService {
 	constructor(
 		private readonly lobbyService: GamesLobbyService,
 		@Inject(forwardRef(() => WsService))
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -44,7 +44,7 @@ export class GamesMatchmakingService {
 			}
 			clearInterval(this.waiting_loop);
 			this.waiting_loop = null;
-		}
+		},
 	};
 
 	public readonly queue = {
@@ -80,7 +80,7 @@ export class GamesMatchmakingService {
 
 			this.wsService.dispatch.client([current_client], {
 				namespace: WsNamespace.Game,
-				action: GameAction.Wait
+				action: GameAction.Wait,
 			});
 
 			this.loop.start();
@@ -113,13 +113,13 @@ export class GamesMatchmakingService {
 			const player2 = found[1];
 
 			this.logger.debug(
-				'Match found for ' + player1.jwt.infos.uuid + ' and ' + player2.jwt.infos.uuid
+				'Match found for ' + player1.jwt.infos.uuid + ' and ' + player2.jwt.infos.uuid,
 			);
 
 			this.lobbyService.lobby.createMatch(player1, player2);
 			this.queue.remove(player1.jwt);
 			this.queue.remove(player2.jwt);
-		}
+		},
 	};
 
 	//#endregion

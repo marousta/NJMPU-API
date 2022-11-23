@@ -9,7 +9,7 @@ import {
 	Get,
 	Body,
 	Delete,
-	Put
+	Put,
 } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
@@ -46,7 +46,7 @@ export class GamesLobbyController {
 		status: 200,
 		description: 'All active lobbies infos',
 		type: GamesLobbyGetResponse,
-		isArray: true
+		isArray: true,
 	})
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Get('all')
@@ -106,7 +106,7 @@ export class GamesLobbyController {
 	async joinLobby(
 		@Request() req: Req,
 		@Param('uuid') uuid: string,
-		@Body() body: GamesJoinProperty
+		@Body() body: GamesJoinProperty,
 	) {
 		if (!isUUID(uuid, 4) || !isUUID(body.websocket_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -140,7 +140,7 @@ export class GamesLobbyController {
 	@ApiResponse({
 		status: 200,
 		description: 'Create lobby if not exist and invite user',
-		type: GamesLobbyGetResponse
+		type: GamesLobbyGetResponse,
 	})
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseErrorUser.NotFound })
@@ -170,14 +170,14 @@ export class GamesLobbyController {
 		type: GamesLobbyKickProperty,
 		examples: {
 			['Leave']: {
-				value: {} as GamesLobbyKickProperty
+				value: {} as GamesLobbyKickProperty,
 			},
 			['Kick']: {
 				value: {
-					user_uuid: 'string'
-				} as GamesLobbyKickProperty
-			}
-		}
+					user_uuid: 'string',
+				} as GamesLobbyKickProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'Left' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -188,7 +188,7 @@ export class GamesLobbyController {
 	async leave(
 		@Request() req: Req,
 		@Param('uuid') uuid: string,
-		@Body() body: GamesLobbyKickProperty
+		@Body() body: GamesLobbyKickProperty,
 	) {
 		if (!isUUID(uuid, 4) || (body.user_uuid && !isUUID(body.user_uuid, 4))) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);

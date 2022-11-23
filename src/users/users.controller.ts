@@ -10,7 +10,7 @@ import {
 	Request,
 	Body,
 	Query,
-	BadRequestException
+	BadRequestException,
 } from '@nestjs/common';
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
@@ -24,7 +24,7 @@ import { AccessAuthGuard } from '../auth/guards/access.guard';
 import { UsersGetResponse, UsersMeResponse } from './properties/users.get.property';
 import {
 	UsersFriendshipResponse,
-	UsersRelationsResponse
+	UsersRelationsResponse,
 } from './properties/users.relations.get.property';
 import { NotificationsGetResponse } from './properties/notifications.get.property';
 import { GlobalQueryProperty } from '../app/properties/global.property';
@@ -41,7 +41,7 @@ import { JwtData } from '../auth/types';
 export class UsersController {
 	constructor(
 		private readonly usersService: UsersService,
-		private readonly notifcationsService: NotifcationsService
+		private readonly notifcationsService: NotifcationsService,
 	) {}
 
 	/**
@@ -93,7 +93,7 @@ export class UsersController {
 	async getByIdentifier(
 		@Request() req: Req,
 		@Param('username') remote_username: string,
-		@Param('identifier') remote_identifier: number
+		@Param('identifier') remote_identifier: number,
 	) {
 		if (isEmpty(remote_username)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -129,7 +129,7 @@ export class UsersController {
 			user,
 			body.current_password,
 			body.new_password,
-			body.confirm
+			body.confirm,
 		);
 	}
 
@@ -152,7 +152,7 @@ export class UsersController {
 	@ApiResponse({
 		status: 200,
 		description: 'relations status',
-		type: UsersRelationsResponse
+		type: UsersRelationsResponse,
 	})
 	@HttpCode(200)
 	@Get('relations')
@@ -185,7 +185,7 @@ export class UsersController {
 			RelationType.Friends,
 			RelationDispatch.Add,
 			user,
-			remote_user_uuid
+			remote_user_uuid,
 		);
 	}
 
@@ -212,7 +212,7 @@ export class UsersController {
 			RelationType.Friends,
 			RelationDispatch.Remove,
 			user,
-			remote_user_uuid
+			remote_user_uuid,
 		);
 	}
 
@@ -238,7 +238,7 @@ export class UsersController {
 			RelationType.Blocklist,
 			RelationDispatch.Add,
 			user,
-			remote_user_uuid
+			remote_user_uuid,
 		);
 	}
 
@@ -264,7 +264,7 @@ export class UsersController {
 			RelationType.Blocklist,
 			RelationDispatch.Remove,
 			user,
-			remote_user_uuid
+			remote_user_uuid,
 		);
 	}
 	//#endregion
@@ -282,7 +282,7 @@ export class UsersController {
 	@ApiResponse({
 		status: 200,
 		description: 'Unread notifications',
-		type: NotificationsGetResponse
+		type: NotificationsGetResponse,
 	})
 	@HttpCode(200)
 	@Get('notifications')
@@ -290,7 +290,7 @@ export class UsersController {
 		@Request() req: Req,
 		@Query('page') page: any,
 		@Query('limit') limit: any,
-		@Query('offset') offset: any
+		@Query('offset') offset: any,
 	) {
 		const user = (req.user as JwtData).infos;
 
@@ -307,7 +307,7 @@ export class UsersController {
 	@ApiTags('users · notifications')
 	@ApiResponse({
 		status: 200,
-		description: 'Notification read'
+		description: 'Notification read',
 	})
 	@HttpCode(200)
 	@Delete('notifications/:uuid')

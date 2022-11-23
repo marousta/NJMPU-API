@@ -14,9 +14,9 @@ import { UsersTokens } from './tokens.entity';
 		JwtModule,
 		TypeOrmModule.forFeature([UsersTokens]),
 		forwardRef(() => WsModule),
-		forwardRef(() => UsersModule)
+		forwardRef(() => UsersModule),
 	],
 	providers: [TokensService, JwtService],
-	exports: [TokensService]
+	exports: [TokensService],
 })
 export class TokensModule {}

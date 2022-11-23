@@ -9,7 +9,7 @@ import {
 	Response,
 	UseGuards,
 	HttpException,
-	Delete
+	Delete,
 } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response as Res, Request as Req } from 'express';
@@ -30,7 +30,7 @@ import { ApiResponseError, JwtData } from '../types';
 export class TwoFactorController {
 	constructor(
 		private readonly authService: AuthService,
-		private readonly twoFactorService: TwoFactorService
+		private readonly twoFactorService: TwoFactorService,
 	) {}
 
 	/**
@@ -39,7 +39,7 @@ export class TwoFactorController {
 	@UseGuards(AccessAuthGuard)
 	@ApiResponse({
 		status: 202,
-		description: 'Create a 2FA request and return QRCode image in base64'
+		description: 'Create a 2FA request and return QRCode image in base64',
 	})
 	@ApiResponse({ status: 400, description: ApiResponseError.TwoFactorAlreadySet })
 	@HttpCode(202)
@@ -52,7 +52,7 @@ export class TwoFactorController {
 
 		return {
 			image: request.image,
-			text: request.text
+			text: request.text,
 		};
 	}
 
@@ -70,7 +70,7 @@ export class TwoFactorController {
 		@Request() req: Req,
 		@Headers() headers: Headers,
 		@Response({ passthrough: true }) res: Res,
-		@Body() body: TwoFactorProperty
+		@Body() body: TwoFactorProperty,
 	) {
 		if (isEmpty(body.code)) {
 			throw new HttpException(ApiResponseError.TwoFactorInvalidCode, 417);
@@ -104,7 +104,7 @@ export class TwoFactorController {
 	async twoFactorRemove(
 		@Request() req: Req,
 		@Headers() headers: Headers,
-		@Response({ passthrough: true }) res: Res
+		@Response({ passthrough: true }) res: Res,
 	) {
 		const user = (req.user as JwtData).infos;
 

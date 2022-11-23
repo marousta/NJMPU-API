@@ -3,12 +3,12 @@ import { UsersInfos } from '../users/entities/users.entity';
 export enum ChannelType {
 	Public,
 	Private,
-	Direct
+	Direct,
 }
 
 export enum BlacklistType {
 	Ban,
-	Mute
+	Mute,
 }
 
 export interface ChatsGroupPublic {
@@ -54,5 +54,5 @@ export enum ApiResponseError {
 	DirectYourseft = "You can't DM yourself",
 	EmptyMessage = 'Empty message',
 	EmptyBody = 'Empty body',
-	isAdministrator = 'User is channel administrator'
+	isAdministrator = 'User is channel administrator',
 }

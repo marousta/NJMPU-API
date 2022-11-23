@@ -2,7 +2,7 @@ import {
 	Injectable,
 	Logger,
 	InternalServerErrorException,
-	NotFoundException
+	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -23,7 +23,7 @@ export class NotifcationsService {
 	constructor(
 		@InjectRepository(UsersNotifications)
 		private readonly notifcationsRepository: Repository<UsersNotifications>,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -41,7 +41,7 @@ export class NotifcationsService {
 		type: NotifcationType,
 		interact_w_user: UsersInfos,
 		notified_user: UsersInfos,
-		lobby_uuid?: string
+		lobby_uuid?: string,
 	) {
 		const request = this.notifcationsRepository.create({
 			type: type,
@@ -49,7 +49,7 @@ export class NotifcationsService {
 			interact_w_user: interact_w_user.uuid,
 			creation_date: new Date(),
 			lobby: lobby_uuid ?? null,
-			read: false
+			read: false,
 		});
 
 		const notif = await this.notifcationsRepository.save(request).catch((e) => {
@@ -60,7 +60,7 @@ export class NotifcationsService {
 				${request.notified_user} sending to remote user \
 				${request.interact_w_user} for lobby \
 				${lobby_uuid}`,
-					e
+					e,
 				);
 			} else {
 				this.logger.error(
@@ -68,7 +68,7 @@ export class NotifcationsService {
 				${request.type} for current user \
 				${request.notified_user} sending to remote user \
 				${request.interact_w_user}`,
-					e
+					e,
 				);
 			}
 			throw new InternalServerErrorException();
@@ -81,7 +81,7 @@ export class NotifcationsService {
 				type: request.type,
 				uuid: notif.uuid,
 				user: request.interact_w_user,
-				lobby: lobby_uuid
+				lobby: lobby_uuid,
 			});
 		} else {
 			this.wsService.dispatch.user(request.notified_user, {
@@ -90,7 +90,7 @@ export class NotifcationsService {
 				type: request.type,
 				uuid: notif.uuid,
 				user: request.interact_w_user,
-				creation_date: request.creation_date
+				creation_date: request.creation_date,
 			});
 		}
 	}
@@ -99,7 +99,7 @@ export class NotifcationsService {
 		user: UsersInfos,
 		page: number = 1,
 		limit: number = 0,
-		offset: number = 0
+		offset: number = 0,
 	): Promise<NotificationsGetResponse> {
 		if (page === 0) {
 			page = 1;
@@ -120,7 +120,7 @@ export class NotifcationsService {
 			const { lobby, ...filter } = r;
 			return {
 				...filter,
-				lobby: lobby ? lobby : undefined
+				lobby: lobby ? lobby : undefined,
 			};
 		});
 		const count = request[0].length;
@@ -156,20 +156,20 @@ export class NotifcationsService {
 			this.wsService.dispatch.user(user.uuid, {
 				namespace: WsNamespace.User,
 				action: UserAction.Read,
-				uuid: notif.uuid
+				uuid: notif.uuid,
 			});
 		},
 		ByType: async (
 			current_user: UsersInfos,
 			remote_user: UsersInfos,
-			notifcation_type: Array<NotifcationType>
+			notifcation_type: Array<NotifcationType>,
 		) => {
 			const notifs = await this.notifcationsRepository
 				.createQueryBuilder('notifs')
 				.where({
 					notified_user: current_user,
 					interact_w_user: remote_user,
-					read: false
+					read: false,
 				})
 				.getMany()
 				.then((r) => (r.length ? r : null))
@@ -198,15 +198,15 @@ export class NotifcationsService {
 							this.wsService.dispatch.user(current_user.uuid, {
 								namespace: WsNamespace.User,
 								action: UserAction.Read,
-								uuid: notif.uuid
+								uuid: notif.uuid,
 							});
 						})
 						.catch((e) => {
 							this.logger.error(
 								'Unable to read notifications for ' + current_user.uuid,
-								e
+								e,
 							);
-						})
+						}),
 				);
 			}
 
@@ -218,7 +218,7 @@ export class NotifcationsService {
 				.where({
 					interact_w_user: interact_w_user_uuid,
 					notified_user: notified_user_uuid,
-					read: false
+					read: false,
 				})
 				.loadAllRelationIds()
 				.getMany()
@@ -226,7 +226,7 @@ export class NotifcationsService {
 				.catch((e) => {
 					this.logger.error(
 						'Unable to get notifications for user ' + notified_user_uuid,
-						e
+						e,
 					);
 					return null;
 				});
@@ -247,19 +247,19 @@ export class NotifcationsService {
 							this.wsService.dispatch.user(notif.notified_user, {
 								namespace: WsNamespace.User,
 								action: UserAction.Read,
-								uuid: notif.uuid
+								uuid: notif.uuid,
 							});
 						})
 						.catch((e) => {
 							this.logger.error(
 								'Unable to read notifications for ' + notif.notified_user,
-								e
+								e,
 							);
-						})
+						}),
 				);
 			}
 			await Promise.all(promises);
-		}
+		},
 		//
 		//  Legacy code
 		//

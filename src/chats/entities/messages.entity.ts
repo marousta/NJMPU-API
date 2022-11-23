@@ -19,7 +19,7 @@ export class ChatsMessages {
 	 */
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'SET NULL',
-		nullable: false
+		nullable: false,
 	})
 	user: string;
 
@@ -28,7 +28,7 @@ export class ChatsMessages {
 	 */
 	@ManyToOne((type) => ChatsChannels, (channel) => channel.uuid, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	channel: string;
 }

@@ -4,7 +4,7 @@ import {
 	Logger,
 	NotFoundException,
 	UnauthorizedException,
-	ForbiddenException
+	ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -36,7 +36,7 @@ export class TwoFactorService {
 		private readonly usersService: UsersService,
 		private readonly configService: ConfigService,
 		private readonly wsService: WsService,
-		private readonly jwtService: JwtService
+		private readonly jwtService: JwtService,
 	) {}
 
 	/**
@@ -50,10 +50,10 @@ export class TwoFactorService {
 			{
 				algorithm: 'RS256',
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-					encoding: 'utf8'
+					encoding: 'utf8',
 				}),
-				expiresIn: '4m'
-			}
+				expiresIn: '4m',
+			},
 		);
 	}
 
@@ -107,18 +107,18 @@ export class TwoFactorService {
 
 	private async requestCreator(
 		current_user_uuid: string,
-		secret?: string
+		secret?: string,
 	): Promise<TwoFactorRequest> {
 		this.garbageCollect();
 
 		const user = await this.usersService.findWithRelationsOrNull(
 			{ uuid: current_user_uuid },
-			'Unable to find user ' + current_user_uuid + ' from 2FA request ' + current_user_uuid
+			'Unable to find user ' + current_user_uuid + ' from 2FA request ' + current_user_uuid,
 		);
 
 		const request = new UsersTwofactorReq({
 			user,
-			secret // undefined for login request
+			secret, // undefined for login request
 		});
 		const token = await this.saveToken(request);
 
@@ -128,12 +128,12 @@ export class TwoFactorService {
 	private async create(user: UsersInfos): Promise<TwoFactorSetupRequest> {
 		const token = TwoFactor.generateSecret({
 			name: 'NEW SHINJI MEGA PONG ULTIMATE',
-			account: user.email
+			account: user.email,
 		});
 
 		const requests = await Promise.all([
 			QRCode.toDataURL(token.uri),
-			this.requestCreator(user.uuid, token.secret)
+			this.requestCreator(user.uuid, token.secret),
 		]);
 
 		const qr = requests[0];
@@ -144,7 +144,7 @@ export class TwoFactorService {
 		return {
 			...request,
 			image: qr,
-			text: token.secret
+			text: token.secret,
 		};
 	}
 
@@ -191,7 +191,7 @@ export class TwoFactorService {
 		code: async (
 			current_user: UsersInfos,
 			request_uuid: string,
-			code: string
+			code: string,
 		): Promise<boolean> => {
 			const request = this.getRequest(request_uuid);
 			const user = request.user;
@@ -227,7 +227,7 @@ export class TwoFactorService {
 				return true;
 			}
 			return false;
-		}
+		},
 	};
 	//#endregion
 }

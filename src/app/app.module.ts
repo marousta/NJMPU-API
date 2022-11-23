@@ -22,7 +22,7 @@ import { AppService } from './services/app.service';
 	imports: [
 		HttpModule,
 		ConfigModule.forRoot({
-			isGlobal: true
+			isGlobal: true,
 		}),
 		TypeOrmModule.forRootAsync({
 			imports: [ConfigModule],
@@ -38,18 +38,18 @@ import { AppService } from './services/app.service';
 				synchronize: configService.get<boolean>('PSQL_SYNC'),
 				namingStrategy: new SnakeNamingStrategy(),
 				migrations: ['dist/database-migration/*{.ts,.js}'],
-				logging: false
-			})
+				logging: false,
+			}),
 		}),
 		WsModule,
 		AuthModule,
 		UsersModule,
 		ChatsModule,
 		PicturesModule,
-		GamesModule
+		GamesModule,
 	],
 	providers: [AppService],
-	controllers: [AppController]
+	controllers: [AppController],
 })
 export class AppModule {
 	constructor(private readonly config: ConfigService) {}
@@ -57,7 +57,7 @@ export class AppModule {
 	configure(consumer: MiddlewareConsumer) {
 		if (this.config.get<string>('DOMAIN') === 'localhost') {
 			HelmetMiddleware.configure({
-				hsts: false
+				hsts: false,
 			});
 		}
 		consumer.apply(HelmetMiddleware).forRoutes('*');

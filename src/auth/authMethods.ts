@@ -19,7 +19,7 @@ import { randomBytes } from 'crypto';
 export function authMethods(config: ConfigService = undefined) {
 	if (!config) {
 		ConfigModule.forRoot({
-			isGlobal: true
+			isGlobal: true,
 		});
 		config = new ConfigService();
 	}
@@ -62,10 +62,10 @@ export function authMethods(config: ConfigService = undefined) {
 					name: 'twitter_session',
 					unset: 'destroy',
 					resave: false,
-					saveUninitialized: false
+					saveUninitialized: false,
 				},
-				forRoutes: ['/auth/oauth2/twitter']
-			})
+				forRoutes: ['/auth/oauth2/twitter'],
+			}),
 		);
 	}
 

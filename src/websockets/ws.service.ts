@@ -60,7 +60,7 @@ import {
 	WsGameDecline,
 	WsGameWait,
 	WsGameMatch,
-	WsMeta
+	WsMeta,
 } from './types';
 import { colors } from '../types';
 @Injectable()
@@ -75,7 +75,7 @@ export class WsService {
 		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService,
 		private readonly lobbyService: GamesLobbyService,
-		private readonly matchmakingService: GamesMatchmakingService
+		private readonly matchmakingService: GamesMatchmakingService,
 	) {}
 
 	/**
@@ -97,7 +97,7 @@ export class WsService {
 					? 'jwt defined'
 					: 'jwt undefined' + ' | ' + user?.uuid
 					? 'user defined'
-					: 'user undefined' + ' |'
+					: 'user undefined' + ' |',
 			);
 			return;
 		}
@@ -124,7 +124,7 @@ export class WsService {
 			this.logger.warn(client.jwt.token.exp * 1000, new Date().valueOf());
 			const expired: WsUserExpired = {
 				namespace: WsNamespace.User,
-				action: UserAction.Expired
+				action: UserAction.Expired,
 			};
 			client.send(JSON.stringify(expired));
 			this.logger.verbose(`Token for client with user ${client.jwt.infos.uuid} has expired`);
@@ -216,7 +216,7 @@ export class WsService {
 				action: UserAction.Status,
 				user: user.uuid,
 				status: status,
-				lobby_uuid
+				lobby_uuid,
 			});
 
 			return false;
@@ -230,7 +230,7 @@ export class WsService {
 				namespace: WsNamespace.User,
 				action: UserAction.Status,
 				user: user.uuid,
-				status: UserStatus.Online
+				status: UserStatus.Online,
 			});
 
 			return false;
@@ -249,7 +249,7 @@ export class WsService {
 				namespace: WsNamespace.User,
 				action: UserAction.Status,
 				user: user.uuid,
-				status: UserStatus.Offline
+				status: UserStatus.Offline,
 			});
 			return true;
 		}
@@ -303,7 +303,7 @@ export class WsService {
 				| WsChatAvatar
 				| WsUserAvatar
 				| WsUserStatus
-				| WsUserStatusInGame
+				| WsUserStatusInGame,
 		) => {
 			let i: number | null = 0;
 			for (const [key] of Object.entries(this.subscribed)) {
@@ -313,7 +313,7 @@ export class WsService {
 					continue;
 				} else if (ret === 0) {
 					this.logger.warn(
-						'Websocket tried to send data on empty user, this should not happen'
+						'Websocket tried to send data on empty user, this should not happen',
 					);
 					continue;
 				}
@@ -333,21 +333,21 @@ export class WsService {
 							this.logger.verbose(
 								`Created channel ${
 									data.channel
-								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`,
 							);
 							break;
 						case ChatAction.Remove:
 							this.logger.verbose(
 								`Removed channel ${
 									data.channel
-								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`,
 							);
 							break;
 						case ChatAction.Avatar:
 							this.logger.verbose(
 								`Updated channel avatar for ${
 									data.channel
-								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`,
 							);
 							break;
 					}
@@ -358,7 +358,7 @@ export class WsService {
 							this.logger.verbose(
 								`Updated avatar for user ${
 									data.user
-								} dispatched to ${i} connected ${PeerOrPeers(i)}`
+								} dispatched to ${i} connected ${PeerOrPeers(i)}`,
 							);
 							break;
 						case UserAction.Status:
@@ -369,7 +369,7 @@ export class WsService {
 											colors.cyan
 										} dispatched to ${i} connected ${PeerOrPeers(i)}${
 											colors.end
-										}`
+										}`,
 									);
 									break;
 								case UserStatus.Online:
@@ -378,7 +378,7 @@ export class WsService {
 											colors.cyan
 										} dispatched to ${i} connected ${PeerOrPeers(i)}${
 											colors.end
-										}`
+										}`,
 									);
 									break;
 								case UserStatus.InGame:
@@ -389,7 +389,7 @@ export class WsService {
 											(data as WsUserStatusInGame).lobby_uuid
 										} dispatched to ${i} connected ${PeerOrPeers(i)}${
 											colors.end
-										}`
+										}`,
 									);
 									break;
 							}
@@ -411,14 +411,14 @@ export class WsService {
 				| WsUserNotificationRead
 				| WsUserUnfriend
 				| WsGameWait
-				| WsGameMatch
+				| WsGameMatch,
 		) => {
 			const i = this.processSend(uuid, data);
 			if (i === null) {
 				return;
 			} else if (i === 0) {
 				this.logger.warn(
-					'Websocket tried to send data on empty user, this should not happen'
+					'Websocket tried to send data on empty user, this should not happen',
 				);
 				return;
 			}
@@ -432,7 +432,7 @@ export class WsService {
 					this.logger.verbose(
 						`Created direct channel ${
 							data.channel
-						} dispatched to ${i} connected ${PeerOrPeers(i)}`
+						} dispatched to ${i} connected ${PeerOrPeers(i)}`,
 					);
 					break;
 				case WsNamespace.Game:
@@ -440,14 +440,14 @@ export class WsService {
 						case GameAction.Wait:
 							return this.logger.verbose(
 								`User ${uuid} WAITING for a game broadcasted to ${i} subscribed ${PeerOrPeers(
-									i
-								)}`
+									i,
+								)}`,
 							);
 						case GameAction.Match:
 							return this.logger.verbose(
 								`Lobby ${
 									data.lobby.uuid
-								} FOUND broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+								} FOUND broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 							);
 					}
 				case WsNamespace.User:
@@ -455,15 +455,15 @@ export class WsService {
 						case UserAction.Refresh:
 							this.logger.verbose(
 								`Token recheck forced on ${uuid} for ${i} connected ${PeerOrPeers(
-									i
-								)}`
+									i,
+								)}`,
 							);
 							break;
 						case UserAction.Session:
 							this.logger.verbose(
 								`Update session for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
-									i
-								)}`
+									i,
+								)}`,
 							);
 							break;
 						case UserAction.Notification:
@@ -472,21 +472,21 @@ export class WsService {
 									this.logger.verbose(
 										`${uuid} accepted a friend request from ${
 											data.user
-										} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+										} broadcasted to ${i} connected ${PeerOrPeers(i)}`,
 									);
 									break;
 								case NotifcationType.FriendRequest:
 									this.logger.verbose(
 										`${uuid} sent a friend request for ${
 											data.user
-										} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+										} broadcasted to ${i} connected ${PeerOrPeers(i)}`,
 									);
 									break;
 								case NotifcationType.GameInvite:
 									this.logger.verbose(
 										`${uuid} invite to game ${
 											data.user
-										} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+										} broadcasted to ${i} connected ${PeerOrPeers(i)}`,
 									);
 									break;
 							}
@@ -494,29 +494,29 @@ export class WsService {
 						case UserAction.Block:
 							this.logger.verbose(
 								`Blocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
-									i
-								)}`
+									i,
+								)}`,
 							);
 							break;
 						case UserAction.Unblock:
 							this.logger.verbose(
 								`Unblocked user for ${uuid} broadcasted to ${i} connected ${PeerOrPeers(
-									i
-								)}`
+									i,
+								)}`,
 							);
 							break;
 						case UserAction.Unfriend:
 							this.logger.verbose(
 								`Unfriend users ${uuid} <-> ${
 									data.user
-								} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+								} broadcasted to ${i} connected ${PeerOrPeers(i)}`,
 							);
 							break;
 						case UserAction.Read:
 							this.logger.verbose(
 								`Read notification ${
 									data.uuid
-								} broadcasted to ${i} connected ${PeerOrPeers(i)}`
+								} broadcasted to ${i} connected ${PeerOrPeers(i)}`,
 							);
 							break;
 					}
@@ -536,7 +536,7 @@ export class WsService {
 				| WsChatUnban
 				| WsChatMute
 				| WsChatUnmute
-				| WsChatAvatar
+				| WsChatAvatar,
 		) => {
 			const user_uuid = data.user;
 			const channel_uuid = data.channel;
@@ -553,7 +553,7 @@ export class WsService {
 					continue;
 				} else if (ret === 0) {
 					this.logger.warn(
-						'Websocket tried to send data on empty user, this should not happen'
+						'Websocket tried to send data on empty user, this should not happen',
 					);
 					continue;
 				}
@@ -569,76 +569,76 @@ export class WsService {
 				case ChatAction.Join:
 					return this.logger.verbose(
 						`${user_uuid} JOIN channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Leave:
 					return this.logger.verbose(
 						`${user_uuid} LEAVE channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Send:
 					return this.logger.verbose(
 						`New message in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Delete:
 					return this.logger.verbose(
 						`Deleted message id ${
 							data.uuid
 						} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Remove:
 					return this.logger.verbose(
 						`Removed channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Promote:
 					return this.logger.verbose(
 						`Promoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Demote:
 					return this.logger.verbose(
 						`Demoted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Ban:
 					return this.logger.verbose(
 						`Banned ${user_uuid} in channel ${channel_uuid} ${
 							data.expiration ? 'until ' + data.expiration : 'permanently'
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case ChatAction.Unban:
 					return this.logger.verbose(
 						`Unbanned ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Mute:
 					return this.logger.verbose(
 						`Muted ${user_uuid} in channel ${channel_uuid} ${
 							data.expiration ? 'until ' + data.expiration : 'permanently'
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case ChatAction.Unmute:
 					return this.logger.verbose(
 						`Unmuted ${user_uuid} in channel ${channel_uuid} broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 				case ChatAction.Avatar:
 					this.logger.verbose(
 						`Updated channel avatar for channel ${
 							data.channel
-						} dispatched to ${i} connected ${PeerOrPeers(i)}`
+						} dispatched to ${i} connected ${PeerOrPeers(i)}`,
 					);
 					break;
 			}
@@ -654,7 +654,7 @@ export class WsService {
 				| WsGameStart
 				| WsGameLeave
 				| WsGameDisband,
-			ignore_list?: Array<string>
+			ignore_list?: Array<string>,
 		) => {
 			let i: number | null = 0;
 
@@ -665,7 +665,7 @@ export class WsService {
 					continue;
 				} else if (ret === 0) {
 					this.logger.warn(
-						'Websocket tried to send data on empty user, this should not happen'
+						'Websocket tried to send data on empty user, this should not happen',
 					);
 					continue;
 				}
@@ -713,49 +713,49 @@ export class WsService {
 					return this.logger.verbose(
 						`${data.user_uuid} INVITED in lobby ${
 							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case GameAction.Decline:
 					return this.logger.verbose(
 						`${data.user_uuid} DECLINE invitation to lobby ${
 							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case GameAction.Join:
 					return this.logger.verbose(
 						`${data.user_uuid} JOIN lobby ${
 							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case GameAction.Spectate:
 					return this.logger.verbose(
 						`${data.user_uuid} SPECTATE lobby ${
 							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case GameAction.Ready:
 					return this.logger.verbose(
 						`Player ${data.user_uuid} is READY for lobby ${
 							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case GameAction.Start:
 					return this.logger.verbose(
 						`Game for lobby ${
 							lobby.uuid
-						} has STARTED broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} has STARTED broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case GameAction.Leave:
 					return this.logger.verbose(
 						`${data.user_uuid} LEAVE lobby ${
 							lobby.uuid
-						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`
+						} broadcasted to ${i} subscribed ${PeerOrPeers(i)}`,
 					);
 				case GameAction.Disband:
 					return this.logger.verbose(
 						`Lobby ${lobby.uuid} DISBAND broadcasted to ${i} subscribed ${PeerOrPeers(
-							i
-						)}`
+							i,
+						)}`,
 					);
 			}
 		},
@@ -770,7 +770,7 @@ export class WsService {
 				this.logger.verbose(`No data sent`);
 				return;
 			}
-		}
+		},
 	};
 
 	async connected(client: WebSocketUser) {
@@ -785,7 +785,7 @@ export class WsService {
 				channels = await this.channelRepository
 					.find({
 						select: { uuid: true },
-						where: { users: { uuid: user_uuid } }
+						where: { users: { uuid: user_uuid } },
 					})
 					.then((r) => (r.length ? r : null))
 					.catch((e) => {
@@ -802,8 +802,8 @@ export class WsService {
 			if (len) {
 				this.logger.verbose(
 					`Subscribed to ${len != 1 ? 'channels' : 'channel'} ${JSON.stringify(
-						channels.map((c) => c.uuid)
-					)}`
+						channels.map((c) => c.uuid),
+					)}`,
 				);
 			} else {
 				this.logger.verbose('Not subscribed to any channel');
@@ -816,8 +816,8 @@ export class WsService {
 		client.send(
 			JSON.stringify({
 				namespace: WsNamespace.Meta,
-				uuid: client.uuid
-			} as WsMeta)
+				uuid: client.uuid,
+			} as WsMeta),
 		);
 	}
 

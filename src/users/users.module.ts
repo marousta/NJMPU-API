@@ -24,10 +24,10 @@ import { UsersTokens } from '../auth/tokens/tokens.entity';
 		ConfigModule,
 		forwardRef(() => WsModule),
 		forwardRef(() => PicturesModule),
-		TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersNotifications])
+		TypeOrmModule.forFeature([UsersInfos, UsersTokens, UsersNotifications]),
 	],
 	controllers: [UsersController],
 	providers: [UsersService, NotifcationsService, ConfigService, AccessStrategy, TokensService],
-	exports: [UsersService, NotifcationsService]
+	exports: [UsersService, NotifcationsService],
 })
 export class UsersModule {}

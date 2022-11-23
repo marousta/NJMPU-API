@@ -3,7 +3,7 @@ import {
 	UnauthorizedException,
 	BadRequestException,
 	InternalServerErrorException,
-	Logger
+	Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -35,7 +35,7 @@ export class TokensService {
 		private readonly tokensRepository: Repository<UsersTokens>,
 		private readonly usersService: UsersService,
 		private readonly jwtService: JwtService,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -48,11 +48,11 @@ export class TokensService {
 			{ tuuid, uuuid },
 			{
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-					encoding: 'utf8'
+					encoding: 'utf8',
 				}),
 				algorithm: 'RS256',
-				expiresIn: '20m'
-			}
+				expiresIn: '20m',
+			},
 		);
 	}
 
@@ -61,11 +61,11 @@ export class TokensService {
 			{ tuuid },
 			{
 				privateKey: readFileSync(this.configService.get<string>('JWT_PRIVATE'), {
-					encoding: 'utf8'
+					encoding: 'utf8',
 				}),
 				algorithm: 'RS256',
-				expiresIn: '3d'
-			}
+				expiresIn: '3d',
+			},
 		);
 	}
 
@@ -83,7 +83,7 @@ export class TokensService {
 			});
 		const user = await this.usersService.findWithRelationsOrNull(
 			{ uuid: token.user_uuid },
-			'Failed to find related user ' + token.user_uuid + ' for token ' + uuid
+			'Failed to find related user ' + token.user_uuid + ' for token ' + uuid,
 		);
 		if (!user) {
 			throw new InternalServerErrorException();
@@ -101,7 +101,7 @@ export class TokensService {
 		uuid: string,
 		token: { access_token: string } | { refresh_token: string },
 		ua: string,
-		ip: string
+		ip: string,
 	) {
 		const token_type = Object.keys(token)[0];
 
@@ -122,7 +122,7 @@ export class TokensService {
 		const hashs_verif = await Promise.all([
 			hash_verify(user_token[token_type + '_hash'], Object.values(token)[0]),
 			hash_verify(user_token.ua_hash, ua),
-			hash_verify(user_token.ip_hash, ip)
+			hash_verify(user_token.ip_hash, ip),
 		]);
 
 		if (!hashs_verif[0] || !hashs_verif[1] || !hashs_verif[2]) {
@@ -143,7 +143,7 @@ export class TokensService {
 			hash(access_token, hash_token_config),
 			hash(refresh_token, hash_token_config),
 			hash(payload.fingerprint.ua, hash_token_config),
-			hash(payload.fingerprint.ip, hash_token_config)
+			hash(payload.fingerprint.ip, hash_token_config),
 		]);
 
 		const date = new Date();
@@ -155,7 +155,7 @@ export class TokensService {
 			access_token_hash: hashs[0],
 			refresh_token_hash: hashs[1],
 			ua_hash: hashs[2],
-			ip_hash: hashs[3]
+			ip_hash: hashs[3],
 		});
 
 		await this.tokensRepository.save(new_tokens).catch(async (e) => {
@@ -174,7 +174,7 @@ export class TokensService {
 			uuid: tuuid,
 			platform: payload.fingerprint.platform,
 			creation_date: date,
-			active: true
+			active: true,
 		});
 
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
@@ -188,7 +188,7 @@ export class TokensService {
 
 		const hashs = await Promise.all([
 			hash(access_token, hash_token_config),
-			hash(refresh_token, hash_token_config)
+			hash(refresh_token, hash_token_config),
 		]);
 
 		const refreshed_token = await this.tokensRepository
@@ -196,7 +196,7 @@ export class TokensService {
 				uuid,
 				refresh_date: new Date(),
 				access_token_hash: hashs[0],
-				refresh_token_hash: hashs[1]
+				refresh_token_hash: hashs[1],
 			})
 			.catch((e) => {
 				this.logger.error('Unable to update token', e);
@@ -208,8 +208,8 @@ export class TokensService {
 				tuuid: refreshed_token.uuid,
 				uuuid: user.uuid,
 				iat: Math.floor(refreshed_token.refresh_date.valueOf() / 1000),
-				exp: Math.floor(token_time.refresh().valueOf() / 1000)
-			}
+				exp: Math.floor(token_time.refresh().valueOf() / 1000),
+			},
 		});
 		this.logger.debug('Token refreshed for user ' + user.uuid);
 		return { interface: 'GeneratedTokens', access_token, refresh_token };
@@ -222,7 +222,7 @@ export class TokensService {
 				access_token_hash: null,
 				refresh_token_hash: null,
 				ua_hash: null,
-				ip_hash: null
+				ip_hash: null,
 			})
 			.catch((e) => {
 				this.logger.error('Failed to delete token', e);

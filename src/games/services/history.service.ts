@@ -3,7 +3,7 @@ import {
 	Logger,
 	NotFoundException,
 	InternalServerErrorException,
-	BadRequestException
+	BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -29,7 +29,7 @@ export class GamesHistoryService {
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly notifcationsService: NotifcationsService,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -75,7 +75,7 @@ export class GamesHistoryService {
 				uuid: h.uuid,
 				winner: h.winner,
 				players_scores: [h.player1_score, h.player2_score],
-				players: [h.player1.uuid, h.player2.uuid]
+				players: [h.player1.uuid, h.player2.uuid],
 			};
 		});
 	}
@@ -100,7 +100,7 @@ export class GamesHistoryService {
 			player1: lobby.player1,
 			player2: lobby.player2,
 			player1_score: lobby.player1_score,
-			player2_score: lobby.player2_score
+			player2_score: lobby.player2_score,
 		});
 
 		return await this.historyRepository

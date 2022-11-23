@@ -5,7 +5,7 @@ import {
 	NotFoundException,
 	ForbiddenException,
 	Inject,
-	forwardRef
+	forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -35,7 +35,7 @@ export class MessagesService {
 		private readonly blacklistService: ChannelsBlacklistService,
 		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	/**
@@ -63,7 +63,7 @@ export class MessagesService {
 		current_user: UsersInfos,
 		page: number = 1,
 		limit: number = 0,
-		offset: number = 0
+		offset: number = 0,
 	): Promise<MessagesGetResponse> {
 		if (page === 0) {
 			page = 1;
@@ -72,7 +72,7 @@ export class MessagesService {
 		if (!current_user.adam) {
 			const userInChannel = await this.channelsService.user.inChannelFind(
 				channel_uuid,
-				current_user.uuid
+				current_user.uuid,
 			);
 			if (!userInChannel) {
 				throw new ForbiddenException(ApiResponseError.NotAllowed);
@@ -99,25 +99,25 @@ export class MessagesService {
 		const requests = await Promise.all([
 			this.channelsService.findOne.WithRelationsID(
 				{ uuid: params.channel_uuid },
-				'Unable to find channel ' + params.channel_uuid
+				'Unable to find channel ' + params.channel_uuid,
 			),
-			this.blacklistService.isMuted(params.channel_uuid, params.current_user.uuid)
+			this.blacklistService.isMuted(params.channel_uuid, params.current_user.uuid),
 		]);
 
 		const channel = requests[0];
 		const muted = requests[1];
 		const userInChannel = this.channelsService.user.inChannel(
 			channel.usersID,
-			params.current_user.uuid
+			params.current_user.uuid,
 		);
 
 		if (channel.type === ChannelType.Direct) {
 			const remote_user_uuid = channel.usersID.filter(
-				(uuid) => uuid !== params.current_user.uuid
+				(uuid) => uuid !== params.current_user.uuid,
 			)[0];
 			const remote_user = await this.usersService.findWithRelations(
 				{ uuid: remote_user_uuid },
-				'Unable to find remote user for blocklist compare ' + remote_user_uuid
+				'Unable to find remote user for blocklist compare ' + remote_user_uuid,
 			);
 
 			const isBlocked = this.usersService.isBlocked(params.current_user, remote_user);
@@ -134,7 +134,7 @@ export class MessagesService {
 			user: params.current_user.uuid,
 			channel: params.channel_uuid,
 			creation_date: new Date(),
-			message: params.message
+			message: params.message,
 		});
 
 		const new_message = await this.messageRepository.save(request).catch((e) => {
@@ -150,8 +150,8 @@ export class MessagesService {
 			message: {
 				uuid: new_message.uuid,
 				text: new_message.message,
-				time: new_message.creation_date
-			}
+				time: new_message.creation_date,
+			},
 		});
 	}
 
@@ -165,8 +165,8 @@ export class MessagesService {
 				}),
 			this.channelsService.findOne.WithRelationsID(
 				{ uuid: channel_uuid },
-				'Unable to find channel ' + channel_uuid
-			)
+				'Unable to find channel ' + channel_uuid,
+			),
 		]);
 
 		const message = requests[0];
@@ -189,7 +189,7 @@ export class MessagesService {
 			action: ChatAction.Delete,
 			user: user_uuid,
 			channel: channel_uuid,
-			uuid: message.uuid
+			uuid: message.uuid,
 		});
 	}
 	//#endregion

@@ -24,7 +24,7 @@ export class OAuth2DiscordController {
 	async discordAuthCallback(
 		@Request() req: Req,
 		@Headers() headers: Headers,
-		@Response({ passthrough: true }) res: Res
+		@Response({ passthrough: true }) res: Res,
 	) {
 		const user = req.user as DiscordUser;
 		await this.authService.APIHandler(user, { req, headers, res });

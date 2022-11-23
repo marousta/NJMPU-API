@@ -5,10 +5,10 @@ export const colors = {
 	cyan: '\x1b[36m',
 	yellow: '\x1b[33m',
 	pink: '\x1b[35m',
-	end: '\x1b[0m'
+	end: '\x1b[0m',
 };
 
 export enum ApiResponseError {
 	BadRequest = 'Bad request format',
-	MissingParameters = 'Invalid or missing parameters'
+	MissingParameters = 'Invalid or missing parameters',
 }

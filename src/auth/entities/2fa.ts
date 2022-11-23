@@ -12,12 +12,8 @@ export class UsersTwofactorReq {
 	}
 
 	uuid: string;
-
 	user: UsersInfos;
-
 	secret: string;
-
 	token_hash: string;
-
 	expiration: Date;
 }

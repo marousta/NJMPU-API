@@ -14,21 +14,21 @@ import { PicturesUsersController, PicturesChatsController } from './pictures.con
 @Module({
 	imports: [
 		HttpModule.register({
-			timeout: 3000
+			timeout: 3000,
 		}),
 		MulterModule.registerAsync({
 			imports: [ConfigModule],
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => ({
 				dest: resolve(configService.get<string>('IMG_PATH')),
-				limits: { fileSize: 1024 * 1024 * configService.get<number>('IMG_MAX_SIZE') }
-			})
+				limits: { fileSize: 1024 * 1024 * configService.get<number>('IMG_MAX_SIZE') },
+			}),
 		}),
 		forwardRef(() => UsersModule),
-		forwardRef(() => ChatsModule)
+		forwardRef(() => ChatsModule),
 	],
 	providers: [PicturesService],
 	controllers: [PicturesUsersController, PicturesChatsController],
-	exports: [PicturesService]
+	exports: [PicturesService],
 })
 export class PicturesModule {}

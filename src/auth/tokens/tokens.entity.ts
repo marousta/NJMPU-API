@@ -9,7 +9,7 @@ export class UsersTokens {
 
 	@ManyToOne((type) => UsersInfos, (user) => user.uuid, {
 		onDelete: 'CASCADE',
-		nullable: false
+		nullable: false,
 	})
 	user_uuid: string;
 

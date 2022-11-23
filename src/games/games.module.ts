@@ -19,10 +19,10 @@ import { UsersInfos } from '../users/entities/users.entity';
 	imports: [
 		TypeOrmModule.forFeature([GamesHistory, UsersInfos]),
 		forwardRef(() => UsersModule),
-		forwardRef(() => WsModule)
+		forwardRef(() => WsModule),
 	],
 	controllers: [GamesLobbyController, GamesMatchmakingController, GamesHistoryController],
 	providers: [GamesLobbyService, GamesHistoryService, GamesMatchmakingService],
-	exports: [GamesLobbyService, GamesMatchmakingService]
+	exports: [GamesLobbyService, GamesMatchmakingService],
 })
 export class GamesModule {}

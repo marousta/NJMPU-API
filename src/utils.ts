@@ -7,7 +7,7 @@ import {
 	Intra42User,
 	PartialUsersInfos,
 	UserFingerprint,
-	TwitterUser
+	TwitterUser,
 } from './auth/types';
 
 export function getPlatform(headers: Headers): string {
@@ -21,7 +21,7 @@ export function getFingerprint(req: Request, headers: Headers): UserFingerprint 
 	return {
 		platform: getPlatform(headers),
 		ua: headers['user-agent'],
-		ip: req.clientIp
+		ip: req.clientIp,
 	};
 }
 
@@ -31,19 +31,19 @@ export function getPartialUser(user: Intra42User | DiscordUser | TwitterUser): P
 			return {
 				username: user.login,
 				email: user.email,
-				avatar: user.image.versions.large
+				avatar: user.image.versions.large,
 			};
 		case 'DiscordUser':
 			return {
 				username: user.username,
 				email: user.email,
-				avatar: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}?size=256`
+				avatar: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}?size=256`,
 			};
 		case 'TwitterUser':
 			return {
 				username: user.username,
 				email: user.emails[0].value,
-				avatar: user.photos[0].value.replace('_normal', '')
+				avatar: user.photos[0].value.replace('_normal', ''),
 			};
 		default:
 			new Logger('getPartialUser').error('unknown user type ', user);

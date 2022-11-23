@@ -5,7 +5,7 @@ import {
 	UseGuards,
 	BadRequestException,
 	Get,
-	Request
+	Request,
 } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { isUUID } from 'class-validator';
@@ -38,7 +38,7 @@ export class GamesHistoryController {
 	@ApiResponse({
 		status: 200,
 		description: 'Games history of given user',
-		type: GamesHistoryGetResponse
+		type: GamesHistoryGetResponse,
 	})
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })

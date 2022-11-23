@@ -3,7 +3,7 @@ import {
 	Logger,
 	NotFoundException,
 	InternalServerErrorException,
-	BadRequestException
+	BadRequestException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,7 +18,7 @@ import { UsersInfos } from '../entities/users.entity';
 
 import {
 	UsersFriendshipResponse,
-	UsersRelationsResponse
+	UsersRelationsResponse,
 } from '../properties/users.relations.get.property';
 import { UsersMeResponse, UsersGetResponse } from '../properties/users.get.property';
 import { SignupProperty } from 'src/auth/properties/signup.property';
@@ -35,7 +35,7 @@ import {
 	NotifcationType,
 	RelationType,
 	RelationDispatch,
-	UserStatus
+	UserStatus,
 } from '../types';
 
 @Injectable()
@@ -46,12 +46,12 @@ export class UsersService {
 		private readonly usersRepository: Repository<UsersInfos>,
 		private readonly picturesService: PicturesService,
 		private readonly notifcationsService: NotifcationsService,
-		private readonly wsService: WsService
+		private readonly wsService: WsService,
 	) {}
 
 	private async benchmark(limit: number) {
 		let bar = new ProgressBar('inserting [:bar] :rate users/s :percent :etas', {
-			total: limit + 1
+			total: limit + 1,
 		});
 
 		let awaited = [];
@@ -66,7 +66,7 @@ export class UsersService {
 					password: 'pass',
 					username: 'aa',
 					identifier: undefined,
-					twofactor: null
+					twofactor: null,
 				})
 					.then((r) => {
 						const end = new Date().valueOf();
@@ -76,7 +76,7 @@ export class UsersService {
 					.catch((e) => {
 						this.logger.error(e);
 						return null;
-					})
+					}),
 			);
 		}
 		let average = 0;
@@ -95,7 +95,7 @@ export class UsersService {
 				average / 1000 +
 				's with an average of ' +
 				(average / i).toFixed(0) +
-				'ms per query'
+				'ms per query',
 		);
 	}
 
@@ -108,7 +108,7 @@ export class UsersService {
 		while (true) {
 			const users = await this.usersRepository.find({
 				select: { identifier: true },
-				where: { username }
+				where: { username },
 			});
 			const exclude: number[] = [];
 			users?.forEach((u) => exclude.push(u.identifier));
@@ -203,7 +203,7 @@ export class UsersService {
 	async create(params: SignupProperty) {
 		const requests = await Promise.all([
 			this.getIdentfier(params.username),
-			hash(params.password, hash_password_config)
+			hash(params.password, hash_password_config),
 		]);
 		const new_user = this.usersRepository.create({
 			adam: params.adam ? true : false,
@@ -212,7 +212,7 @@ export class UsersService {
 			email: params.email,
 			password: requests[1],
 			twofactor: params.twofactor,
-			is_online: UserStatus.Offline
+			is_online: UserStatus.Offline,
 		});
 
 		let created_user = await this.usersRepository.save(new_user).catch((e) => {
@@ -252,7 +252,7 @@ export class UsersService {
 			email: user.email,
 			twofactor: user.twofactor !== null,
 			avatar: user.avatar,
-			adam: user.adam ? true : undefined
+			adam: user.adam ? true : undefined,
 		};
 	}
 
@@ -268,16 +268,16 @@ export class UsersService {
 				lobby: state.status === UserStatus.InGame ? state.lobby : undefined,
 				friendship: this.usersAreFriends(current_user, remote_user),
 				is_blocked: this.isCurrentlyBlocked(current_user, remote_user),
-				has_blocked: this.isRemotelyBlocked(current_user, remote_user)
+				has_blocked: this.isRemotelyBlocked(current_user, remote_user),
 			};
 		},
 		ByUUID: async (
 			current_user: UsersInfos,
-			remote_user_uuid: string
+			remote_user_uuid: string,
 		): Promise<UsersGetResponse> => {
 			const remote_user = await this.findWithRelations(
 				{ uuid: remote_user_uuid },
-				'Unable to find user by uuid ' + remote_user_uuid
+				'Unable to find user by uuid ' + remote_user_uuid,
 			);
 
 			return this.get.format(current_user, remote_user);
@@ -285,15 +285,15 @@ export class UsersService {
 		ByIdentifier: async (
 			current_user: UsersInfos,
 			remote_username: string,
-			remote_identifier: number
+			remote_identifier: number,
 		): Promise<UsersGetResponse> => {
 			const remote_user = await this.findWithRelations(
 				{ identifier: remote_identifier, username: remote_username },
-				'Unable to find user by identifier ' + remote_username + '#' + remote_identifier
+				'Unable to find user by identifier ' + remote_username + '#' + remote_identifier,
 			);
 
 			return this.get.format(current_user, remote_user);
-		}
+		},
 	};
 
 	async avatar(user: UsersInfos, filename: string) {
@@ -310,7 +310,7 @@ export class UsersService {
 			namespace: WsNamespace.User,
 			action: UserAction.Avatar,
 			user: user.uuid,
-			avatar: filename
+			avatar: filename,
 		});
 
 		return { new: filename, old: old_avatar };
@@ -320,7 +320,7 @@ export class UsersService {
 		user: UsersInfos,
 		current_password: string,
 		new_password: string,
-		new_password_confirm: string
+		new_password_confirm: string,
 	) {
 		if (new_password !== new_password_confirm) {
 			throw new BadRequestException(ApiResponseError.ConfirmMismatch);
@@ -348,7 +348,7 @@ export class UsersService {
 			type: RelationType,
 			action: RelationDispatch,
 			current_user: UsersInfos,
-			remote_user_uuid: string
+			remote_user_uuid: string,
 		) => {
 			if (current_user.uuid === remote_user_uuid) {
 				switch (type) {
@@ -361,12 +361,12 @@ export class UsersService {
 
 			const remote_user = await this.findWithRelations(
 				{ uuid: remote_user_uuid },
-				'Unable to find remote user in relation' + remote_user_uuid
+				'Unable to find remote user in relation' + remote_user_uuid,
 			);
 
 			const notifcation_type = [
 				NotifcationType.FriendRequest,
-				NotifcationType.AcceptedFriendRequest
+				NotifcationType.AcceptedFriendRequest,
 			];
 			await this.notifcationsService.read.ByType(current_user, remote_user, notifcation_type);
 
@@ -379,7 +379,7 @@ export class UsersService {
 							await this.notifcationsService.read.ByType(
 								remote_user,
 								current_user,
-								notifcation_type
+								notifcation_type,
 							);
 							return await this.relations.friends.remove(current_user, remote_user);
 					}
@@ -389,7 +389,7 @@ export class UsersService {
 							await this.notifcationsService.read.ByType(
 								remote_user,
 								current_user,
-								notifcation_type
+								notifcation_type,
 							);
 							return await this.relations.blocklist.add(current_user, remote_user);
 						case RelationDispatch.Remove:
@@ -405,7 +405,7 @@ export class UsersService {
 			for (let remote_user of users) {
 				remote_user = await this.findWithRelationsOrNull(
 					{ uuid: remote_user.uuid },
-					'Unable to find remote user ' + remote_user.uuid
+					'Unable to find remote user ' + remote_user.uuid,
 				);
 				if (!remote_user) {
 					this.logger.error('This should not happen');
@@ -419,7 +419,7 @@ export class UsersService {
 
 				friendship.push({
 					uuid: remote_user.uuid,
-					friendship: friendship_status
+					friendship: friendship_status,
 				});
 			}
 
@@ -427,7 +427,7 @@ export class UsersService {
 
 			return {
 				friendship,
-				blocklist
+				blocklist,
 			};
 		},
 		friends: {
@@ -444,7 +444,7 @@ export class UsersService {
 				await this.usersRepository.save(current_user).catch((e) => {
 					this.logger.error(
 						'Unable to update friendship status of user ' + current_user.uuid,
-						e
+						e,
 					);
 					throw new InternalServerErrorException();
 				});
@@ -455,14 +455,14 @@ export class UsersService {
 						this.notifcationsService.add(
 							NotifcationType.FriendRequest,
 							current_user,
-							remote_user
+							remote_user,
 						);
 						break;
 					case UsersFriendship.True:
 						this.notifcationsService.add(
 							NotifcationType.AcceptedFriendRequest,
 							current_user,
-							remote_user
+							remote_user,
 						);
 						break;
 				}
@@ -477,10 +477,10 @@ export class UsersService {
 				}
 
 				remote_user.friends = remote_user.friends.filter(
-					(user) => user.uuid !== current_user.uuid
+					(user) => user.uuid !== current_user.uuid,
 				);
 				current_user.friends = current_user.friends.filter(
-					(user) => user.uuid !== remote_user.uuid
+					(user) => user.uuid !== remote_user.uuid,
 				);
 
 				await this.usersRepository.save([current_user, remote_user]).catch((e) => {
@@ -489,7 +489,7 @@ export class UsersService {
 							current_user.uuid +
 							' and ' +
 							remote_user.uuid,
-						e
+						e,
 					);
 					throw new InternalServerErrorException();
 				});
@@ -497,15 +497,15 @@ export class UsersService {
 				this.wsService.dispatch.user(current_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Unfriend,
-					user: remote_user.uuid
+					user: remote_user.uuid,
 				});
 				this.wsService.dispatch.user(remote_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Unfriend,
-					user: current_user.uuid
+					user: current_user.uuid,
 				});
 				this.wsService.updateClient({ user: current_user });
-			}
+			},
 		},
 		blocklist: {
 			add: async (current_user: UsersInfos, remote_user: UsersInfos) => {
@@ -525,13 +525,13 @@ export class UsersService {
 					namespace: WsNamespace.User,
 					action: UserAction.Block,
 					user: remote_user.uuid,
-					direction: BlockDirection.IsBlocked
+					direction: BlockDirection.IsBlocked,
 				});
 				this.wsService.dispatch.user(remote_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Block,
 					user: current_user.uuid,
-					direction: BlockDirection.HasBlocked
+					direction: BlockDirection.HasBlocked,
 				});
 				this.wsService.updateClient({ user: current_user });
 			},
@@ -541,7 +541,7 @@ export class UsersService {
 				}
 
 				current_user.blocklist = current_user.blocklist.filter(
-					(user) => user.uuid !== remote_user.uuid
+					(user) => user.uuid !== remote_user.uuid,
 				);
 
 				await this.usersRepository.save(current_user).catch((e) => {
@@ -550,7 +550,7 @@ export class UsersService {
 							remote_user.uuid +
 							' for ' +
 							current_user.uuid,
-						e
+						e,
 					);
 					throw new InternalServerErrorException();
 				});
@@ -559,17 +559,17 @@ export class UsersService {
 					namespace: WsNamespace.User,
 					action: UserAction.Unblock,
 					user: remote_user.uuid,
-					direction: BlockDirection.IsUnblocked
+					direction: BlockDirection.IsUnblocked,
 				});
 				this.wsService.dispatch.user(remote_user.uuid, {
 					namespace: WsNamespace.User,
 					action: UserAction.Unblock,
 					user: current_user.uuid,
-					direction: BlockDirection.HasUnblocked
+					direction: BlockDirection.HasUnblocked,
 				});
 				this.wsService.updateClient({ user: current_user });
-			}
-		}
+			},
+		},
 	};
 	//#endregion
 }

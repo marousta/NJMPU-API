@@ -19,7 +19,7 @@ export class ResponseTimeMiddleware implements NestMiddleware {
 		return {
 			count: this.nbr,
 			average: this.calcAverage() || -1,
-			last: this.times[this.times.length - 1] || -1
+			last: this.times[this.times.length - 1] || -1,
 		};
 	}
 

@@ -13,20 +13,20 @@ import { Jwt, JwtData } from '../types';
 export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
 	constructor(
 		private readonly tokenService: TokensService,
-		private readonly configService: ConfigService
+		private readonly configService: ConfigService,
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				(req: Request) => {
 					return req.cookies['refresh_token'];
-				}
+				},
 			]),
 			ignoreExpiration: false,
 			secretOrKey: readFileSync(configService.get<string>('JWT_PUBLIC'), {
-				encoding: 'utf8'
+				encoding: 'utf8',
 			}),
 			algorithms: ['RS256'],
-			passReqToCallback: true
+			passReqToCallback: true,
 		});
 	}
 
@@ -36,11 +36,11 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
 			payload.tuuid,
 			{ refresh_token: req.cookies['refresh_token'] },
 			req.headers['user-agent'],
-			req.clientIp
+			req.clientIp,
 		);
 		return {
 			token: payload,
-			infos: user
+			infos: user,
 		};
 	}
 }

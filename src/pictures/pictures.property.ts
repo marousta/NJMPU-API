@@ -4,8 +4,8 @@ export const FileInterceptorBody = {
 		properties: {
 			avatar: {
 				type: 'string',
-				format: 'binary'
-			}
-		}
-	}
+				format: 'binary',
+			},
+		},
+	},
 };

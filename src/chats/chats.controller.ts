@@ -12,7 +12,7 @@ import {
 	UseGuards,
 	BadRequestException,
 	Put,
-	Patch
+	Patch,
 } from '@nestjs/common';
 import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req, Response as Res } from 'express';
@@ -29,7 +29,7 @@ import {
 	ChannelsDataGetResponse,
 	ChannelGetResponse,
 	ChannelPrivateGetResponse,
-	ChannelPrivateProperty
+	ChannelPrivateProperty,
 } from './properties/channels.get.property';
 import { MessageStoreProperty } from './properties/messages.store.property';
 import { MessagesGetProperty, MessagesGetResponse } from './properties/messages.get.propoerty';
@@ -51,7 +51,7 @@ import { ApiResponseError as ApiResponseErrorGlobal } from '../types';
 export class ChatsController {
 	constructor(
 		private readonly channelsService: ChannelsService,
-		private readonly messagesService: MessagesService
+		private readonly messagesService: MessagesService,
 	) {}
 
 	/**
@@ -71,7 +71,7 @@ export class ChatsController {
 	async getAll(
 		@Query('page') page: any,
 		@Query('limit') limit: any,
-		@Query('offset') offset: any
+		@Query('offset') offset: any,
 	) {
 		page = parseUnsigned({ page });
 		limit = parseUnsigned({ limit });
@@ -88,7 +88,7 @@ export class ChatsController {
 	@ApiResponse({
 		status: 200,
 		description: 'List of joined channels',
-		type: ChannelsDataGetResponse
+		type: ChannelsDataGetResponse,
 	})
 	@ApiResponse({ status: 400, description: ApiResponseError.InvalidQuery })
 	@HttpCode(200)
@@ -97,7 +97,7 @@ export class ChatsController {
 		@Request() req: Req,
 		@Query('page') page: any,
 		@Query('limit') limit: any,
-		@Query('offset') offset: any
+		@Query('offset') offset: any,
 	) {
 		const uuid = (req.user as JwtData).infos.uuid;
 
@@ -155,47 +155,47 @@ export class ChatsController {
 			['Create public']: {
 				value: {
 					type: ChannelType.Public,
-					name: 'string'
-				} as ChannelsCreateProperty
+					name: 'string',
+				} as ChannelsCreateProperty,
 			},
 			['Create public with password']: {
 				value: {
 					type: ChannelType.Public,
 					name: 'string',
-					password: 'string'
-				} as ChannelsCreateProperty
+					password: 'string',
+				} as ChannelsCreateProperty,
 			},
 			['Create private']: {
 				value: {
 					type: ChannelType.Private,
 					name: 'string',
-					password: 'string'
-				} as ChannelsCreateProperty
+					password: 'string',
+				} as ChannelsCreateProperty,
 			},
 			['Create direct']: {
 				value: {
-					user_uuid: 'string'
-				} as ChannelsCreateProperty
+					user_uuid: 'string',
+				} as ChannelsCreateProperty,
 			},
 			['Join public']: {
 				value: {
-					channel_uuid: 'string'
-				} as ChannelsCreateProperty
+					channel_uuid: 'string',
+				} as ChannelsCreateProperty,
 			},
 			['Join public with password']: {
 				value: {
 					channel_uuid: 'string',
-					password: 'string'
-				} as ChannelsCreateProperty
+					password: 'string',
+				} as ChannelsCreateProperty,
 			},
 			['Join private']: {
 				value: {
 					identifier: 9999,
 					name: 'string',
-					password: 'string'
-				} as ChannelsCreateProperty
-			}
-		}
+					password: 'string',
+				} as ChannelsCreateProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'Joined' })
 	@ApiResponse({ status: 201, description: 'Created' })
@@ -211,7 +211,7 @@ export class ChatsController {
 	async join(
 		@Request() req: Req,
 		@Response({ passthrough: true }) res: Res,
-		@Body() body: ChannelsCreateProperty
+		@Body() body: ChannelsCreateProperty,
 	) {
 		const user = (req.user as JwtData).infos;
 
@@ -222,7 +222,7 @@ export class ChatsController {
 			password: body.password,
 			current_user: user,
 			user_uuid: body.user_uuid,
-			channel_uuid: body.channel_uuid
+			channel_uuid: body.channel_uuid,
 		};
 
 		const joined = await this.channelsService.join(params);
@@ -241,21 +241,21 @@ export class ChatsController {
 		examples: {
 			['Leave channel']: {
 				value: {
-					action: LeaveAction.Leave
-				} as ChannelLeaveProperty
+					action: LeaveAction.Leave,
+				} as ChannelLeaveProperty,
 			},
 			['Delete channel']: {
 				value: {
-					action: LeaveAction.Remove
-				} as ChannelLeaveProperty
+					action: LeaveAction.Remove,
+				} as ChannelLeaveProperty,
 			},
 			['Kick user from channel']: {
 				value: {
 					action: LeaveAction.Kick,
-					user_uuid: 'string'
-				} as ChannelLeaveProperty
-			}
-		}
+					user_uuid: 'string',
+				} as ChannelLeaveProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'Left' })
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
@@ -266,7 +266,7 @@ export class ChatsController {
 	async leave(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelLeaveProperty
+		@Body() body: ChannelLeaveProperty,
 	) {
 		if (
 			!isUUID(channel_uuid, 4) ||
@@ -281,7 +281,7 @@ export class ChatsController {
 			action: body.action,
 			user_uuid: body.user_uuid,
 			current_user: user,
-			channel_uuid
+			channel_uuid,
 		});
 	}
 	//#endregion
@@ -311,7 +311,7 @@ export class ChatsController {
 
 		return await this.channelsService.blacklist.get({
 			current_user: user,
-			channel_uuid
+			channel_uuid,
 		});
 	}
 
@@ -324,10 +324,10 @@ export class ChatsController {
 		examples: {
 			['Add moderator']: {
 				value: {
-					user_uuid: 'string'
-				} as ChannelModerationProperty
-			}
-		}
+					user_uuid: 'string',
+				} as ChannelModerationProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'User promoted' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -339,7 +339,7 @@ export class ChatsController {
 	async addModerator(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelModerationProperty
+		@Body() body: ChannelModerationProperty,
 	) {
 		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -353,7 +353,7 @@ export class ChatsController {
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
-			avatar: null
+			avatar: null,
 		});
 	}
 
@@ -366,10 +366,10 @@ export class ChatsController {
 		examples: {
 			['Remove moderator']: {
 				value: {
-					user_uuid: 'string'
-				} as ChannelModerationProperty
-			}
-		}
+					user_uuid: 'string',
+				} as ChannelModerationProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'User demoted' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -381,7 +381,7 @@ export class ChatsController {
 	async removeModerator(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelModerationProperty
+		@Body() body: ChannelModerationProperty,
 	) {
 		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -395,7 +395,7 @@ export class ChatsController {
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
-			avatar: null
+			avatar: null,
 		});
 	}
 
@@ -409,10 +409,10 @@ export class ChatsController {
 			['Ban']: {
 				value: {
 					user_uuid: 'string',
-					expiration: 60
-				} as ChannelModerationProperty
-			}
-		}
+					expiration: 60,
+				} as ChannelModerationProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'User banned' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -424,7 +424,7 @@ export class ChatsController {
 	async ban(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelModerationProperty
+		@Body() body: ChannelModerationProperty,
 	) {
 		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -438,7 +438,7 @@ export class ChatsController {
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
-			avatar: null
+			avatar: null,
 		});
 	}
 
@@ -451,10 +451,10 @@ export class ChatsController {
 		examples: {
 			['Unban']: {
 				value: {
-					user_uuid: 'string'
-				} as ChannelModerationProperty
-			}
-		}
+					user_uuid: 'string',
+				} as ChannelModerationProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'User banned' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -465,7 +465,7 @@ export class ChatsController {
 	async unban(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelModerationProperty
+		@Body() body: ChannelModerationProperty,
 	) {
 		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -479,7 +479,7 @@ export class ChatsController {
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
-			avatar: null
+			avatar: null,
 		});
 	}
 
@@ -498,16 +498,16 @@ export class ChatsController {
 			['Mute']: {
 				value: {
 					user_uuid: 'string',
-					expiration: 60
-				} as ChannelModerationProperty
-			}
-		}
+					expiration: 60,
+				} as ChannelModerationProperty,
+			},
+		},
 	})
 	@Put(':uuid/mute')
 	async mute(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelModerationProperty
+		@Body() body: ChannelModerationProperty,
 	) {
 		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -521,7 +521,7 @@ export class ChatsController {
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
-			avatar: null
+			avatar: null,
 		});
 	}
 
@@ -534,10 +534,10 @@ export class ChatsController {
 		examples: {
 			['Unmute']: {
 				value: {
-					user_uuid: 'string'
-				} as ChannelModerationProperty
-			}
-		}
+					user_uuid: 'string',
+				} as ChannelModerationProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'User unmuted' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -548,7 +548,7 @@ export class ChatsController {
 	async unmute(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelModerationProperty
+		@Body() body: ChannelModerationProperty,
 	) {
 		if (!isUUID(channel_uuid, 4) || !isUUID(body.user_uuid, 4) || body.expiration) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -562,7 +562,7 @@ export class ChatsController {
 			user_uuid: body.user_uuid,
 			expiration: body.expiration,
 			channel_uuid,
-			avatar: null
+			avatar: null,
 		});
 	}
 
@@ -579,15 +579,15 @@ export class ChatsController {
 		examples: {
 			['Add/change password']: {
 				value: {
-					password: 'string'
-				} as ChannelSettingProperty
+					password: 'string',
+				} as ChannelSettingProperty,
 			},
 			['Remove password']: {
 				value: {
-					password: null
-				} as ChannelSettingProperty
-			}
-		}
+					password: null,
+				} as ChannelSettingProperty,
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'Setting successfully updated' })
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
@@ -597,7 +597,7 @@ export class ChatsController {
 	async password(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: ChannelSettingProperty
+		@Body() body: ChannelSettingProperty,
 	) {
 		if (!isUUID(channel_uuid, 4) || isEmpty(body.password) || !isEmpty(body.avatar)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -608,7 +608,7 @@ export class ChatsController {
 		await this.channelsService.password({
 			channel_uuid,
 			current_user: user,
-			password: body.password
+			password: body.password,
 		});
 	}
 
@@ -636,7 +636,7 @@ export class ChatsController {
 		@Param('uuid') channel_uuid: string,
 		@Query('page') page: any,
 		@Query('limit') limit: any,
-		@Query('offset') offset: any
+		@Query('offset') offset: any,
 	) {
 		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -666,7 +666,7 @@ export class ChatsController {
 	async addMessage(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: MessageStoreProperty
+		@Body() body: MessageStoreProperty,
 	) {
 		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
@@ -681,7 +681,7 @@ export class ChatsController {
 		await this.messagesService.store({
 			current_user: user,
 			channel_uuid,
-			message: body.message
+			message: body.message,
 		});
 	}
 
@@ -700,7 +700,7 @@ export class ChatsController {
 	async deleteMessage(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@Body() body: { uuid: string }
+		@Body() body: { uuid: string },
 	) {
 		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);

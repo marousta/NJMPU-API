@@ -20,7 +20,7 @@ export class TwitterAuthGuard extends AuthGuard('twitter') {
 
 		request.session.destroy(() => {});
 		response.cookie('twitter_session', '', {
-			expires: new Date()
+			expires: new Date(),
 		});
 
 		return user;

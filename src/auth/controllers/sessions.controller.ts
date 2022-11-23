@@ -7,7 +7,7 @@ import {
 	Request,
 	UseGuards,
 	Query,
-	Param
+	Param,
 } from '@nestjs/common';
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
@@ -35,7 +35,7 @@ export class SessionsController {
 	@ApiResponse({
 		status: 200,
 		description: 'Sessions of currently connected user',
-		type: SessionsGetResponse
+		type: SessionsGetResponse,
 	})
 	@ApiQuery({ type: GlobalQueryProperty })
 	@Get()
@@ -44,7 +44,7 @@ export class SessionsController {
 		@Request() req: Req,
 		@Query('page') page: any,
 		@Query('limit') limit: any,
-		@Query('offset') offset: any
+		@Query('offset') offset: any,
 	) {
 		const jwt = req.user as JwtData;
 		const tuuid = jwt.token.tuuid;

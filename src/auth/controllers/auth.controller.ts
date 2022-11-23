@@ -7,7 +7,7 @@ import {
 	Request,
 	Response,
 	UseGuards,
-	BadRequestException
+	BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -33,7 +33,7 @@ export class AuthController {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly authService: AuthService,
-		private readonly tokensService: TokensService
+		private readonly tokensService: TokensService,
 	) {}
 
 	/**
@@ -44,7 +44,7 @@ export class AuthController {
 		status: 200,
 		description: 'available auth methods',
 		type: String,
-		isArray: true
+		isArray: true,
 	})
 	@HttpCode(200)
 	authMethods() {
@@ -100,7 +100,7 @@ export class AuthController {
 	@Post('refresh')
 	async refresh(@Request() req: Req, @Response({ passthrough: true }) res: Res) {
 		const { access_token, refresh_token } = await this.tokensService.update(
-			(req.user as JwtData).token.tuuid
+			(req.user as JwtData).token.tuuid,
 		);
 		this.authService.cookie.create(res, { access_token });
 		this.authService.cookie.create(res, { refresh_token });

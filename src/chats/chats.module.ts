@@ -21,13 +21,13 @@ import { UsersInfos } from '../users/entities/users.entity';
 			ChatsChannels,
 			ChatsMessages,
 			ChatsChannelsBlacklist,
-			UsersInfos
+			UsersInfos,
 		]),
 		WsModule,
-		forwardRef(() => UsersModule)
+		forwardRef(() => UsersModule),
 	],
 	controllers: [ChatsController],
 	providers: [ChannelsService, ChannelsBlacklistService, MessagesService],
-	exports: [ChannelsService]
+	exports: [ChannelsService],
 })
 export class ChatsModule {}

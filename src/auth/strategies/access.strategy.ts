@@ -13,20 +13,20 @@ import { Jwt, JwtData } from '../types';
 export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 	constructor(
 		private readonly configService: ConfigService,
-		private readonly tokenService: TokensService
+		private readonly tokenService: TokensService,
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				(req: Request) => {
 					return req.cookies['access_token'];
-				}
+				},
 			]),
 			ignoreExpiration: false,
 			secretOrKey: readFileSync(configService.get<string>('JWT_PUBLIC'), {
-				encoding: 'utf8'
+				encoding: 'utf8',
 			}),
 			algorithms: ['RS256'],
-			passReqToCallback: true
+			passReqToCallback: true,
 		});
 	}
 
@@ -36,7 +36,7 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 			payload.tuuid,
 			{ access_token: req.cookies['access_token'] },
 			req.headers['user-agent'],
-			req.clientIp
+			req.clientIp,
 		);
 		if (!user) {
 			// Debug
@@ -45,7 +45,7 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 		}
 		return {
 			token: payload,
-			infos: user
+			infos: user,
 		};
 	}
 }

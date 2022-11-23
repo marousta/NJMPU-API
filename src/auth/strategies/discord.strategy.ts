@@ -16,7 +16,7 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
 				'://' +
 				configService.get<string>('DOMAIN') +
 				'/api/auth/oauth2/discord/callback',
-			scope: ['identify', 'email']
+			scope: ['identify', 'email'],
 		});
 	}
 

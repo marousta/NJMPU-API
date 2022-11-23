@@ -44,23 +44,23 @@ const modules: Array<any> = methods[2];
 			useFactory: async (configService: ConfigService) => {
 				const options: JwtModuleOptions = {
 					privateKey: readFileSync(configService.get<string>('JWT_PRIVATE'), {
-						encoding: 'utf8'
+						encoding: 'utf8',
 					}),
 					publicKey: readFileSync(configService.get<string>('JWT_PUBLIC'), {
-						encoding: 'utf8'
+						encoding: 'utf8',
 					}),
 					signOptions: {
-						algorithm: 'RS256'
-					}
+						algorithm: 'RS256',
+					},
 				};
 				return options;
 			},
-			inject: [ConfigService]
+			inject: [ConfigService],
 		}),
 		TypeOrmModule.forFeature([UsersInfos, UsersTokens]),
 		TokensModule,
 		forwardRef(() => UsersModule),
-		forwardRef(() => WsModule)
+		forwardRef(() => WsModule),
 	],
 	providers: [
 		AuthService,
@@ -69,9 +69,9 @@ const modules: Array<any> = methods[2];
 		RefreshStrategy,
 		TwoFactorStrategy,
 		SessionsService,
-		...providers
+		...providers,
 	],
 	controllers: [AuthController, TwoFactorController, SessionsController, ...controllers],
-	exports: [AccessStrategy]
+	exports: [AccessStrategy],
 })
 export class AuthModule {}

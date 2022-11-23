@@ -10,5 +10,5 @@ export const PicturesInterceptor = FileInterceptor('avatar', {
 		} catch (e) {
 			callback(e, false);
 		}
-	}
+	},
 });

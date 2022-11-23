@@ -6,7 +6,7 @@ import {
 	UseGuards,
 	BadRequestException,
 	Delete,
-	Body
+	Body,
 } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';

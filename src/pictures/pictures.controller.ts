@@ -8,7 +8,7 @@ import {
 	Request,
 	Param,
 	HttpCode,
-	BadRequestException
+	BadRequestException,
 } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
@@ -45,7 +45,7 @@ export class PicturesChatsController {
 	async channelAvatar(
 		@Request() req: Req,
 		@Param('uuid') channel_uuid: string,
-		@UploadedFile() file: Express.Multer.File
+		@UploadedFile() file: Express.Multer.File,
 	) {
 		if (!isUUID(channel_uuid, 4)) {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);

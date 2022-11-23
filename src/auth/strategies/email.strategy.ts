@@ -13,7 +13,7 @@ export class EmailStrategy extends PassportStrategy(Strategy, 'email') {
 
 	constructor(private readonly authService: AuthService) {
 		super({
-			usernameField: 'email'
+			usernameField: 'email',
 		});
 	}
 
