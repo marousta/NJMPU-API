@@ -1,0 +1,4 @@
+[submodule "src/games/logic"]
+	path = src/games/logic
+	url = git@github.com:jorundev/NJMPU-PONG.git
+	branch = master
