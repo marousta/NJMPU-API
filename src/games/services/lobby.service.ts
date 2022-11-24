@@ -28,8 +28,9 @@ import {
 } from '../../users/types';
 import { ApiResponseError, GameDictionary, LobbyPlayerReadyState } from '../types';
 import { JwtData } from '../../auth/types';
-import { GameAction, WebSocketUser, WsNamespace } from '../../websockets/types';
+import { GameAction, WebSocketUser, WsNamespace, WsPongMove } from '../../websockets/types';
 import { PongServer } from '../logic/PongServer';
+import { PlayerRole } from '../logic/Pong';
 
 @Injectable()
 export class GamesLobbyService {
@@ -133,11 +134,40 @@ export class GamesLobbyService {
 				throw new InternalServerErrorException(); //FIXME
 			}
 
+			let now = 0;
+			let last = 0;
+
+			lobby.player1_ws.onmessage = (e) => {
+				const that = lobby.player1_ws;
+
+				let move: WsPongMove = null;
+				try {
+					move = JSON.parse(e.data.toString());
+				} catch (e) {
+					return;
+				}
+				this.games[that.lobby.uuid].pong.movePlayer(PlayerRole.PLAYER1, move);
+			};
+
+			lobby.player2_ws.onmessage = (e) => {
+				const that = lobby.player2_ws;
+
+				let move: WsPongMove = null;
+				try {
+					move = JSON.parse(e.data.toString());
+				} catch (e) {
+					return;
+				}
+				this.games[that.lobby.uuid].pong.movePlayer(PlayerRole.PLAYER2, move);
+			};
+
 			this.games[lobby.uuid] = {
 				pong: new PongServer(lobby.player1_ws, lobby.player2_ws, lobby.spectators_ws),
 				interval: setInterval(() => {
-					this.games[lobby.uuid].pong.update(1 / 8);
-				}, 1000 / 8),
+					now = process.hrtime()[0] + process.hrtime()[1] / 1000000000;
+					this.games[lobby.uuid].pong.update(now - last);
+					last = now;
+				}, 1000 / 60),
 			};
 		},
 		end: (lobby_uuid: string) => {
@@ -145,19 +175,21 @@ export class GamesLobbyService {
 				throw new InternalServerErrorException(); //FIXME
 			}
 
-			delete this.games[lobby_uuid].pong;
 			clearInterval(this.games[lobby_uuid].interval);
+			this.lobbies[lobby_uuid].player1_ws.onmessage = undefined;
+			this.lobbies[lobby_uuid].player2_ws.onmessage = undefined;
+			delete this.games[lobby_uuid].pong;
 			delete this.games[lobby_uuid];
 		},
 	};
 
 	public readonly lobby = {
-		get: (uuid: string): GamesLobbyGetResponse => {
+		getFormat: (uuid: string): GamesLobbyGetResponse => {
 			const lobby = this.findWithRelations(uuid);
 
 			return this.formatResponse(lobby);
 		},
-		getAll: (): GamesLobbyGetResponse[] | {} => {
+		getAllFormat: (): GamesLobbyGetResponse[] | {} => {
 			const lobbies = this.findAllWithRelations();
 
 			if (!lobbies) {

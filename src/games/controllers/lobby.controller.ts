@@ -52,7 +52,7 @@ export class GamesLobbyController {
 	@Get('all')
 	@HttpCode(200)
 	getAll() {
-		return this.lobbyService.lobby.getAll();
+		return this.lobbyService.lobby.getAllFormat();
 	}
 
 	/**
@@ -70,7 +70,7 @@ export class GamesLobbyController {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 
-		return this.lobbyService.lobby.get(uuid);
+		return this.lobbyService.lobby.getFormat(uuid);
 	}
 	//#endregion
 

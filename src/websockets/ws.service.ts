@@ -663,7 +663,7 @@ export class WsService {
 
 				if (ret === null) {
 					continue;
-				} else if (ret === 0) {
+				} else if (ret === 0 && !ignore_list) {
 					this.logger.warn(
 						'Websocket tried to send data on empty user, this should not happen',
 					);

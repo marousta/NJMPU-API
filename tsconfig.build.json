@@ -1,4 +1,4 @@
 {
 	"extends": "./tsconfig.json",
-	"exclude": ["node_modules", "test", "dist", "**/*spec.ts", "vite-project"]
+	"exclude": ["node_modules", "test", "src/games/logic/PongClient.ts", "dist", "**/*spec.ts", "vite-project"]
 }

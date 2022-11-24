@@ -4,6 +4,7 @@ import { GamesLobbyGetResponse } from '../games/properties/lobby.get.property';
 
 import { NotifcationType, UserStatus } from '../users/types';
 import { JwtData } from '../auth/types';
+import { PlayerRole } from 'src/games/logic/Pong';
 
 export interface WebSocketUser extends WebSocket {
 	uuid: string;
@@ -345,6 +346,7 @@ export interface WsMeta {
 
 export enum PongAction {
 	Bounce = 'BOUNCE',
+	Move = 'MOVE',
 	Reset = 'RESET',
 }
 
@@ -356,6 +358,15 @@ export interface WsPong {
 export interface WsPongBounce extends WsPong {
 	action: PongAction.Bounce;
 	data: any;
+}
+
+export interface WsPongMove extends WsPong {
+	action: PongAction.Move;
+	player: PlayerRole;
+	data: {
+		tick: number;
+		moveTarget: number;
+	};
 }
 
 export interface WsPongReset extends WsPong {

@@ -6,7 +6,6 @@ import {
 	OnGatewayDisconnect,
 	OnGatewayInit,
 	ConnectedSocket,
-	SubscribeMessage,
 } from '@nestjs/websockets';
 import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
 import { Server } from 'ws';
@@ -15,14 +14,16 @@ import * as getHeaders from 'get-headers';
 import * as cookie from 'cookie';
 import { getClientIp } from 'request-ip';
 import { randomUUID } from 'crypto';
+import { isUUID } from 'class-validator';
 
 import { WsService } from './ws.service';
 import { TokensService } from '../auth/tokens/tokens.service';
 import { UsersService } from '../users/services/users.service';
+import { GamesLobbyService } from '../games/services/lobby.service';
 
 import { UserAction, WebSocketUser, WsNamespace } from './types';
 import { Jwt } from '../auth/types';
-import { isUUID } from 'class-validator';
+import { WsPongMove } from './types';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -35,6 +36,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		private readonly tokensService: TokensService,
 		private readonly usersService: UsersService,
 		private readonly wsService: WsService,
+		private readonly lobbyService: GamesLobbyService,
 	) {}
 
 	@WebSocketServer()
@@ -98,15 +100,6 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 	//#endregion
 
 	async handleConnection(@ConnectedSocket() client: WebSocketUser, @Request() req: Req) {
-		client.onmessage = (e) => {
-			const that = client;
-			const uuid = that.uuid;
-
-			if (!isUUID(uuid, 4)) {
-				return;
-			}
-		};
-
 		// Validation
 		const headers = getHeaders.array(req.rawHeaders);
 		const ip = getClientIp(req);
