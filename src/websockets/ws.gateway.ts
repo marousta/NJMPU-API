@@ -14,7 +14,6 @@ import * as getHeaders from 'get-headers';
 import * as cookie from 'cookie';
 import { getClientIp } from 'request-ip';
 import { randomUUID } from 'crypto';
-import { isUUID } from 'class-validator';
 
 import { WsService } from './ws.service';
 import { TokensService } from '../auth/tokens/tokens.service';
@@ -23,11 +22,12 @@ import { GamesLobbyService } from '../games/services/lobby.service';
 
 import { UserAction, WebSocketUser, WsNamespace } from './types';
 import { Jwt } from '../auth/types';
-import { WsPongMove } from './types';
 
 @WebSocketGateway({
 	path: '/api/streaming',
 	cors: true,
+	maxHttpBufferSize: 128,
+	httpCompression: false,
 })
 export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
 	private readonly logger = new Logger(WsGateway.name);

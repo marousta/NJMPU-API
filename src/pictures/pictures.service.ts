@@ -20,6 +20,7 @@ import { UsersService } from '../users/services/users.service';
 import { UsersInfos } from '../users/entities/users.entity';
 
 import { MulterFileLike } from './types';
+import { ApiResponseError } from './types';
 
 @Injectable()
 export class PicturesService {
@@ -167,8 +168,9 @@ export class PicturesService {
 			file = await this.resize(file);
 			filename = this.stripExif(file);
 		} catch (e) {
-			this.logger.error('Unable to create image file', e);
-			throw new InternalServerErrorException();
+			this.logger.error('Unable to create image file: ' + e?.message.split('\n')[0]);
+			fs.rmSync(this.folder + '/' + file.filename, { force: true });
+			throw new BadRequestException(ApiResponseError.UnsupportedFile);
 		}
 		return filename;
 	}

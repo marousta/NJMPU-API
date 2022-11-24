@@ -494,7 +494,9 @@ export class GamesLobbyService {
 			) {
 				//TODO: Game end
 				//TODO: Game history
-				this.game.end(lobby.uuid);
+				if (lobby.in_game) {
+					this.game.end(lobby.uuid);
+				}
 
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,

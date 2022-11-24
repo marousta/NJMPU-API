@@ -12,4 +12,5 @@ export interface MulterFileLike {
 
 export enum ApiResponseError {
 	ImgTooLarge = 'Image too large',
+	UnsupportedFile = 'Unsupported file type',
 }
