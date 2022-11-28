@@ -11,6 +11,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { GamesHistoryService } from './history.service';
 import { NotifcationsService } from '../../users/services/notifications.service';
 import { WsService } from '../../websockets/ws.service';
 
@@ -29,8 +30,11 @@ import {
 import { ApiResponseError, GameDictionary, LobbyPlayerReadyState } from '../types';
 import { JwtData } from '../../auth/types';
 import { GameAction, WebSocketUser, WsNamespace, WsPongMove } from '../../websockets/types';
+
 import { PongServer } from '../logic/PongServer';
 import { PlayerRole } from '../logic/Pong';
+import { GamesLobbyFinished } from '../entities/lobby';
+import { GamesHistoryGetResponse } from '../properties/history.get.property';
 
 @Injectable()
 export class GamesLobbyService {
@@ -38,6 +42,7 @@ export class GamesLobbyService {
 	private readonly lobbies: { [uuid: string]: GamesLobby } = {};
 	private readonly games: GameDictionary = {};
 	constructor(
+		private readonly historyService: GamesHistoryService,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
 		@Inject(forwardRef(() => NotifcationsService))
@@ -164,21 +169,39 @@ export class GamesLobbyService {
 			this.games[lobby.uuid] = {
 				pong: new PongServer(lobby.player1_ws, lobby.player2_ws, lobby.spectators_ws),
 				interval: setInterval(() => {
-					now = process.hrtime()[0] + process.hrtime()[1] / 1000000000;
-					this.games[lobby.uuid].pong.update(now - last);
+					const pong = this.games[lobby.uuid].pong;
+					if (pong.player1_score === 11 || pong.player2_score === 11) {
+						this.game.end(lobby.uuid);
+						return;
+					}
+
+					const hrtime = process.hrtime();
+					now = hrtime[0] + hrtime[1] / 1000000000;
+					pong.update(now - last);
 					last = now;
 				}, 1000 / 60),
 			};
 		},
-		end: (lobby_uuid: string) => {
-			if (!this.games[lobby_uuid]) {
-				throw new InternalServerErrorException(); //FIXME
+		end: async (lobby_uuid: string) => {
+			if (!this.games[lobby_uuid] || !this.lobbies[lobby_uuid]) {
+				return;
 			}
 
-			clearInterval(this.games[lobby_uuid].interval);
-			this.lobbies[lobby_uuid].player1_ws.onmessage = undefined;
-			this.lobbies[lobby_uuid].player2_ws.onmessage = undefined;
-			delete this.games[lobby_uuid].pong;
+			const lobby = this.lobbies[lobby_uuid];
+			const game = this.games[lobby_uuid];
+
+			let finish = new GamesLobbyFinished({
+				...lobby,
+				uuid: undefined,
+				player1_score: game.pong.player1_score,
+				player2_score: game.pong.player2_score,
+			});
+			await this.historyService.create(finish);
+
+			clearInterval(game.interval);
+			lobby.player1_ws.onmessage = undefined;
+			lobby.player2_ws.onmessage = undefined;
+			delete game.pong;
 			delete this.games[lobby_uuid];
 		},
 	};
@@ -495,7 +518,7 @@ export class GamesLobbyService {
 				//TODO: Game end
 				//TODO: Game history
 				if (lobby.in_game) {
-					this.game.end(lobby.uuid);
+					await this.game.end(lobby.uuid);
 				}
 
 				this.wsService.dispatch.lobby(lobby, {

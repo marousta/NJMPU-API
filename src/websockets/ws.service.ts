@@ -60,6 +60,7 @@ import {
 	WsGameDecline,
 	WsGameWait,
 	WsGameMatch,
+	WsGameEnd,
 	WsMeta,
 } from './types';
 import { colors } from '../types';
@@ -653,7 +654,8 @@ export class WsService {
 				| WsGameReady
 				| WsGameStart
 				| WsGameLeave
-				| WsGameDisband,
+				| WsGameDisband
+				| WsGameEnd,
 			ignore_list?: Array<string>,
 		) => {
 			let i: number | null = 0;
@@ -754,6 +756,12 @@ export class WsService {
 				case GameAction.Disband:
 					return this.logger.verbose(
 						`Lobby ${lobby.uuid} DISBAND broadcasted to ${i} subscribed ${PeerOrPeers(
+							i,
+						)}`,
+					);
+				case GameAction.End:
+					return this.logger.verbose(
+						`Game ${lobby.uuid} has ENDED broadcasted to ${i} subscribed ${PeerOrPeers(
 							i,
 						)}`,
 					);

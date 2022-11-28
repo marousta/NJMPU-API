@@ -1,10 +1,12 @@
 import { WebSocket } from 'ws';
 
 import { GamesLobbyGetResponse } from '../games/properties/lobby.get.property';
+import { GamesHistoryGetResponse } from '../games/properties/history.get.property';
 
 import { NotifcationType, UserStatus } from '../users/types';
 import { JwtData } from '../auth/types';
-import { PlayerRole } from 'src/games/logic/Pong';
+
+import { PlayerRole } from '../games/logic/Pong';
 
 export interface WebSocketUser extends WebSocket {
 	uuid: string;
@@ -270,6 +272,7 @@ export enum GameAction {
 	Wait = 'WAIT',
 	Match = 'MATCH',
 	Disband = 'DISBAND',
+	End = 'END',
 }
 
 export interface WsGame {
@@ -329,6 +332,12 @@ export interface WsGameMatch {
 	namespace: WsNamespace.Game;
 	action: GameAction.Match;
 	lobby: GamesLobbyGetResponse;
+}
+
+export interface WsGameEnd {
+	namespace: WsNamespace.Game;
+	action: GameAction.End;
+	history: GamesHistoryGetResponse;
 }
 
 /**

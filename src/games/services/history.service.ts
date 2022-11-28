@@ -3,12 +3,12 @@ import {
 	Logger,
 	NotFoundException,
 	InternalServerErrorException,
-	BadRequestException,
+	Inject,
+	forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { NotifcationsService } from '../../users/services/notifications.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { GamesHistory } from '../entities/history.entity';
@@ -19,6 +19,7 @@ import { GamesHistoryGetResponse } from '../properties/history.get.property';
 
 import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
 import { LobbyWinner } from '../types';
+import { GameAction, WsNamespace } from '../../websockets/types';
 
 @Injectable()
 export class GamesHistoryService {
@@ -28,7 +29,7 @@ export class GamesHistoryService {
 		private readonly historyRepository: Repository<GamesHistory>,
 		@InjectRepository(UsersInfos)
 		private readonly usersRepository: Repository<UsersInfos>,
-		private readonly notifcationsService: NotifcationsService,
+		@Inject(forwardRef(() => WsService))
 		private readonly wsService: WsService,
 	) {}
 
@@ -88,30 +89,25 @@ export class GamesHistoryService {
 			winner = LobbyWinner.Player1;
 		} else if (lobby.player1_score < lobby.player2_score) {
 			winner = LobbyWinner.Player2;
-		} else {
-			// This cancels lobby removal if an unexpected error happens,
-			// data is still in database to allow a manual fix
-			this.logger.warn('Unable to determine winner of lobby ' + lobby.uuid);
-			return null;
 		}
 
-		const history = this.historyRepository.create({
-			winner,
-			player1: lobby.player1,
-			player2: lobby.player2,
-			player1_score: lobby.player1_score,
-			player2_score: lobby.player2_score,
+		lobby.winner = winner;
+
+		await this.historyRepository.save(lobby).catch((e) => {
+			this.logger.error('Unable to create game history for lobby ' + lobby.uuid, e);
+			throw new InternalServerErrorException();
 		});
 
-		return await this.historyRepository
-			.save(history)
-			.then((r) => {
-				return true;
-			})
-			.catch((e) => {
-				this.logger.error('Unable to create game history for lobby ' + lobby.uuid, e);
-				return null;
-			});
+		this.wsService.dispatch.lobby(lobby, {
+			namespace: WsNamespace.Game,
+			action: GameAction.End,
+			history: {
+				uuid: lobby.uuid,
+				players: [lobby.player1.uuid, lobby.player2.uuid],
+				players_scores: [lobby.player1_score, lobby.player2_score],
+				winner,
+			} as GamesHistoryGetResponse,
+		});
 	}
 
 	//#endregion

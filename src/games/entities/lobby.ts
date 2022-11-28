@@ -58,8 +58,30 @@ export class GamesLobby {
 	}
 }
 
-export interface GamesLobbyFinished extends GamesLobby {
-	winner: number;
+export class GamesLobbyFinished extends GamesLobby {
+	constructor(arg: {
+		uuid?: string;
+		in_game?: boolean;
+		matchmaking?: boolean;
+		player1: UsersInfos;
+		player2?: UsersInfos;
+		player1_status: LobbyPlayerReadyState;
+		player2_status: LobbyPlayerReadyState;
+		player1_ws?: WebSocketUser;
+		player2_ws?: WebSocketUser;
+		spectators?: Array<UsersInfos>;
+		spectators_ws?: Array<WebSocketUser>;
+		winner?: number;
+		player1_score: number;
+		player2_score: number;
+	}) {
+		super(arg);
+		this.winner = arg.winner;
+		this.player1_score = arg.player1_score;
+		this.player2_score = arg.player2_score;
+	}
+
+	winner?: number;
 	player1_score: number;
 	player2_score: number;
 }
