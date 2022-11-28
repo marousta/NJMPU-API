@@ -26,6 +26,11 @@ export class GamesHistory {
 	})
 	player2_score: number;
 
+	@Column({
+		nullable: false,
+	})
+	creation_date: Date;
+
 	/**
 	 * Relation Game player1 -> User
 	 */

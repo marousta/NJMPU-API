@@ -45,11 +45,22 @@ export class GamesHistoryService {
 			.orWhere({ player2: { uuid } })
 			.leftJoinAndSelect('history.player1', 'player1')
 			.leftJoinAndSelect('history.player2', 'player2')
+			.orderBy('creation_date', 'DESC')
 			.getMany()
 			.catch((e) => {
 				this.logger.error('Unable to find games history for ' + uuid, e);
 				throw new InternalServerErrorException();
 			});
+	}
+
+	chooseWinner(lobby: GamesLobbyFinished): LobbyWinner {
+		if (lobby.player1_score > lobby.player2_score) {
+			return LobbyWinner.Player1;
+		} else if (lobby.player1_score < lobby.player2_score) {
+			return LobbyWinner.Player2;
+		} else {
+			return LobbyWinner.Tie;
+		}
 	}
 
 	//#endregion
@@ -81,14 +92,20 @@ export class GamesHistoryService {
 		});
 	}
 
-	async create(lobby: GamesLobbyFinished) {
-		let winner: LobbyWinner;
-		if (lobby.player1_score === lobby.player2_score) {
-			winner = LobbyWinner.Tie;
-		} else if (lobby.player1_score > lobby.player2_score) {
-			winner = LobbyWinner.Player1;
-		} else if (lobby.player1_score < lobby.player2_score) {
-			winner = LobbyWinner.Player2;
+	// Awful hack
+	async create(lobby: GamesLobbyFinished, left_user_uuid?: string) {
+		let winner: LobbyWinner = null;
+
+		if (left_user_uuid) {
+			if (lobby.player1.uuid === left_user_uuid) {
+				winner = LobbyWinner.Player2;
+			} else if (lobby.player2.uuid === left_user_uuid) {
+				winner = LobbyWinner.Player1;
+			}
+		}
+
+		if (winner === null) {
+			winner = this.chooseWinner(lobby);
 		}
 
 		lobby.winner = winner;

@@ -188,7 +188,7 @@ export class GamesLobbyService {
 				}, 1000 / 60),
 			};
 		},
-		end: async (lobby_uuid: string) => {
+		end: async (lobby_uuid: string, user_uuid?: string) => {
 			if (!this.games[lobby_uuid] || !this.lobbies[lobby_uuid]) {
 				return;
 			}
@@ -196,13 +196,14 @@ export class GamesLobbyService {
 			const lobby = this.lobbies[lobby_uuid];
 			const game = this.games[lobby_uuid];
 
+			// Awful hack
 			let finish = new GamesLobbyFinished({
 				...lobby,
 				uuid: undefined,
 				player1_score: game.pong.player1_score,
 				player2_score: game.pong.player2_score,
 			});
-			await this.historyService.create(finish);
+			await this.historyService.create(finish, user_uuid);
 
 			clearInterval(game.interval);
 			lobby.player1_ws.onmessage = undefined;
@@ -529,7 +530,7 @@ export class GamesLobbyService {
 				(lobby.player1.uuid === current_user.uuid || lobby.in_game || lobby.matchmaking)
 			) {
 				if (lobby.in_game) {
-					await this.game.end(lobby.uuid);
+					await this.game.end(lobby.uuid, current_user.uuid);
 				}
 
 				this.wsService.dispatch.lobby(lobby, {
