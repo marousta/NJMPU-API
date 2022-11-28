@@ -34,7 +34,6 @@ import { GameAction, WebSocketUser, WsNamespace, WsPongMove } from '../../websoc
 import { PongServer } from '../logic/PongServer';
 import { PlayerRole } from '../logic/Pong';
 import { GamesLobbyFinished } from '../entities/lobby';
-import { GamesHistoryGetResponse } from '../properties/history.get.property';
 
 @Injectable()
 export class GamesLobbyService {
@@ -98,14 +97,21 @@ export class GamesLobbyService {
 	}
 
 	private unsetSpectator(jwt: JwtData, lobby: GamesLobby) {
-		return lobby.spectators_ws
+		const current_user_uuid = jwt.infos.uuid;
+
+		const spectators_ws = lobby.spectators_ws
 			.map((client) => {
-				if (client.jwt.infos.uuid !== jwt.infos.uuid) {
+				if (client.jwt.infos.uuid !== current_user_uuid) {
 					this.wsService.unsetLobby(jwt, client.uuid);
 				}
 				return client;
 			})
-			.filter((client) => client.jwt.infos.uuid !== jwt.infos.uuid);
+			.filter((client) => client.jwt.infos.uuid !== current_user_uuid);
+		if (lobby.in_game) {
+			this.game.updateSpectators(lobby.uuid, spectators_ws);
+		}
+		lobby.spectators = lobby.spectators.filter((u) => u.uuid !== current_user_uuid);
+		lobby.spectators_ws = spectators_ws;
 	}
 
 	removeFromLobbies(jwt: JwtData) {
@@ -203,6 +209,13 @@ export class GamesLobbyService {
 			lobby.player2_ws.onmessage = undefined;
 			delete game.pong;
 			delete this.games[lobby_uuid];
+		},
+		updateSpectators: (lobby_uuid: string, spectators_ws: Array<WebSocketUser>) => {
+			if (!this.games[lobby_uuid] || !this.lobbies[lobby_uuid]) {
+				return;
+			}
+
+			this.games[lobby_uuid].pong.updateSpectators(spectators_ws);
 		},
 	};
 
@@ -515,8 +528,6 @@ export class GamesLobbyService {
 				!was_spectator &&
 				(lobby.player1.uuid === current_user.uuid || lobby.in_game || lobby.matchmaking)
 			) {
-				//TODO: Game end
-				//TODO: Game history
 				if (lobby.in_game) {
 					await this.game.end(lobby.uuid);
 				}
@@ -554,7 +565,7 @@ export class GamesLobbyService {
 				user_uuid: current_user.uuid,
 			});
 			if (was_spectator) {
-				lobby.spectators_ws = this.unsetSpectator(jwt, lobby);
+				this.unsetSpectator(jwt, lobby);
 			} else {
 				this.wsService.unsetLobby(jwt, lobby.player2_ws.uuid);
 			}
@@ -602,8 +613,7 @@ export class GamesLobbyService {
 
 				await this.wsService.updateUserStatus(current_user, UserStatus.Online);
 			} else if (was_spectator) {
-				lobby.spectators = lobby.spectators.filter((u) => u.uuid !== current_user.uuid);
-				lobby.spectators_ws = this.unsetSpectator(jwt, lobby);
+				this.unsetSpectator(jwt, lobby);
 			} else {
 				throw new ForbiddenException(ApiResponseError.NotInLobby);
 			}

@@ -18,7 +18,7 @@ import { AccessAuthGuard } from '../../auth/guards/access.guard';
 import { GamesHistoryGetResponse } from '../properties/history.get.property';
 
 import { ApiResponseError as ApiResponseErrorGlobal } from '../../types';
-import { ApiResponseError } from '../types';
+import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
 import { JwtData } from '../../auth/types';
 
 @UseGuards(AccessAuthGuard)
@@ -39,9 +39,10 @@ export class GamesHistoryController {
 		status: 200,
 		description: 'Games history of given user',
 		type: GamesHistoryGetResponse,
+		isArray: true,
 	})
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
-	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
+	@ApiResponse({ status: 404, description: ApiResponseErrorUser.NotFound })
 	@Get(':uuid')
 	@HttpCode(200)
 	async get(@Request() req: Req, @Param('uuid') uuid: string) {
