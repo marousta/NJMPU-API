@@ -38,6 +38,9 @@ export class UsersInfos {
 	})
 	is_online: UserStatus;
 
+	@Column({ nullable: false })
+	xp: number;
+
 	/**
 	 * Relation Channel moderators -> Users
 	 */

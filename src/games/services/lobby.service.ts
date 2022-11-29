@@ -73,18 +73,16 @@ export class GamesLobbyService {
 	}
 
 	private findInLobby(user_uuid: string): GamesLobby[] {
-		const lobbies = Object.values(this.lobbies)
-			.map((lobby) => lobby)
-			.filter(
-				(lobby) => lobby.player1.uuid === user_uuid || lobby.player2?.uuid === user_uuid,
-			);
+		const lobbies = Object.values(this.lobbies).filter(
+			(lobby) => lobby.player1.uuid === user_uuid || lobby.player2?.uuid === user_uuid,
+		);
 		return lobbies.length !== 0 ? lobbies : null;
 	}
 
 	private formatResponse(lobby: GamesLobby): GamesLobbyGetResponse {
 		return {
 			uuid: lobby.uuid,
-			in_game: lobby.in_game,
+			in_game: lobby.game_started,
 			players: [lobby.player1.uuid, lobby.player2 ? lobby.player2.uuid : null],
 			players_status: [lobby.player1_status, lobby.player2_status],
 			spectators: lobby.spectators?.map((u) => u.uuid),
@@ -107,7 +105,7 @@ export class GamesLobbyService {
 				return client;
 			})
 			.filter((client) => client.jwt.infos.uuid !== current_user_uuid);
-		if (lobby.in_game) {
+		if (lobby.game_started) {
 			this.game.updateSpectators(lobby.uuid, spectators_ws);
 		}
 		lobby.spectators = lobby.spectators.filter((u) => u.uuid !== current_user_uuid);
@@ -118,6 +116,7 @@ export class GamesLobbyService {
 		const current_user = jwt.infos;
 
 		const old_lobby = this.findInLobby(current_user.uuid);
+		console.log('old_lobby: ', old_lobby);
 		if (!old_lobby) {
 			return;
 		}
@@ -142,7 +141,11 @@ export class GamesLobbyService {
 	public readonly game = {
 		start: (lobby: GamesLobby) => {
 			if (this.games[lobby.uuid]) {
-				throw new InternalServerErrorException(); //FIXME
+				this.logger.error('Trying to start an ongoing game, this should not happen');
+				this.logger.error(lobby.uuid);
+				this.logger.error(JSON.stringify(this.lobbies[lobby.uuid]));
+				this.logger.error(JSON.stringify(this.games[lobby.uuid]));
+				throw new InternalServerErrorException();
 			}
 
 			let now = 0;
@@ -176,7 +179,11 @@ export class GamesLobbyService {
 				pong: new PongServer(lobby.player1_ws, lobby.player2_ws, lobby.spectators_ws),
 				interval: setInterval(() => {
 					const pong = this.games[lobby.uuid].pong;
-					if (pong.player1_score === 11 || pong.player2_score === 11) {
+					if (
+						(pong.player1_score === 11 || pong.player2_score === 11) &&
+						!this.lobbies[lobby.uuid].game_ended
+					) {
+						this.lobbies[lobby.uuid].game_ended = true;
 						this.game.end(lobby.uuid);
 						return;
 					}
@@ -190,6 +197,7 @@ export class GamesLobbyService {
 		},
 		end: async (lobby_uuid: string, user_uuid?: string) => {
 			if (!this.games[lobby_uuid] || !this.lobbies[lobby_uuid]) {
+				this.logger.debug('game end fail safe');
 				return;
 			}
 
@@ -243,7 +251,7 @@ export class GamesLobbyService {
 			this.removeFromLobbies(jwt);
 
 			const lobby = new GamesLobby({
-				in_game: false,
+				game_started: false,
 				player1: current_user,
 				player1_status: LobbyPlayerReadyState.Joined,
 				player2: remote_user,
@@ -278,7 +286,7 @@ export class GamesLobbyService {
 			this.removeFromLobbies(remote_jwt);
 
 			const lobby = new GamesLobby({
-				in_game: false,
+				game_started: false,
 				matchmaking: true,
 				player1: current_user,
 				player1_status: LobbyPlayerReadyState.Joined,
@@ -480,6 +488,23 @@ export class GamesLobbyService {
 
 			return this.formatResponse(lobby);
 		},
+		color: (jwt: JwtData, uuid: string, color: string) => {
+			const user = jwt.infos;
+			const lobby = this.findWithRelations(uuid);
+
+			switch (user.uuid) {
+				case lobby.player1.uuid:
+					lobby.player1_color = color;
+					break;
+				case lobby.player2.uuid:
+					lobby.player2_color = color;
+					break;
+				default:
+					throw new ForbiddenException(ApiResponseError.NotInLobby);
+			}
+
+			this.lobbies[uuid] = lobby;
+		},
 		start: (jwt: JwtData, uuid: string) => {
 			const user = jwt.infos;
 			const lobby = this.findWithRelations(uuid);
@@ -499,16 +524,17 @@ export class GamesLobbyService {
 				lobby.player1_status === LobbyPlayerReadyState.Ready &&
 				lobby.player2_status === LobbyPlayerReadyState.Ready
 			) {
-				lobby.in_game = true;
+				lobby.game_started = true;
 			}
 
 			this.lobbies[lobby.uuid] = lobby;
 
-			if (lobby.in_game) {
+			if (lobby.game_started) {
 				this.wsService.dispatch.lobby(lobby, {
 					namespace: WsNamespace.Game,
 					action: GameAction.Start,
 					lobby_uuid: lobby.uuid,
+					colors: [lobby.player1_color, lobby.player2_color],
 				});
 
 				this.game.start(lobby);
@@ -527,9 +553,11 @@ export class GamesLobbyService {
 			const was_spectator = this.isSpectator(lobby, current_user);
 			if (
 				!was_spectator &&
-				(lobby.player1.uuid === current_user.uuid || lobby.in_game || lobby.matchmaking)
+				(lobby.player1.uuid === current_user.uuid ||
+					lobby.game_started ||
+					lobby.matchmaking)
 			) {
-				if (lobby.in_game) {
+				if (lobby.game_started) {
 					await this.game.end(lobby.uuid, current_user.uuid);
 				}
 

@@ -14,4 +14,7 @@ export class GamesHistoryGetResponse {
 
 	@ApiProperty({ isArray: true, type: Number })
 	players_scores: [number, number];
+
+	@ApiProperty({ isArray: true, type: Number })
+	players_xp: [number, number];
 }

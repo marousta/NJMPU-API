@@ -25,7 +25,7 @@ import { SignupProperty } from 'src/auth/properties/signup.property';
 
 import { hash_password_config } from '../../auth/config';
 
-import { genIdentifier } from '../../utils';
+import { genIdentifier, parseUnsignedNull } from '../../utils';
 import { hash, hash_verify } from '../../auth/utils';
 
 import { BlockDirection, UserAction, WsNamespace } from '../../websockets/types';
@@ -200,6 +200,24 @@ export class UsersService {
 		});
 	}
 
+	async updateXP(user: UsersInfos, xp: number) {
+		if (parseUnsignedNull(xp) === null) {
+			this.logger.error('XP cannot be negative ' + xp + ', this should not happen');
+			throw new InternalServerErrorException();
+		}
+
+		await this.usersRepository
+			.createQueryBuilder()
+			.update()
+			.where({ uuid: user.uuid })
+			.set({ xp: () => 'xp + ' + xp })
+			.execute()
+			.catch((e) => {
+				this.logger.error('Unable to update xp for user ' + user.uuid, e);
+				throw new InternalServerErrorException();
+			});
+	}
+
 	async create(params: SignupProperty) {
 		const requests = await Promise.all([
 			this.getIdentfier(params.username),
@@ -212,6 +230,7 @@ export class UsersService {
 			email: params.email,
 			password: requests[1],
 			twofactor: params.twofactor,
+			xp: 0,
 			is_online: UserStatus.Offline,
 		});
 
@@ -252,6 +271,7 @@ export class UsersService {
 			email: user.email,
 			twofactor: user.twofactor !== null,
 			avatar: user.avatar,
+			xp: user.xp,
 			adam: user.adam ? true : undefined,
 		};
 	}
@@ -265,6 +285,7 @@ export class UsersService {
 				username: remote_user.username,
 				avatar: remote_user.avatar,
 				is_online: state.status,
+				xp: remote_user.xp,
 				lobby: state.status === UserStatus.InGame ? state.lobby : undefined,
 				friendship: this.usersAreFriends(current_user, remote_user),
 				is_blocked: this.isCurrentlyBlocked(current_user, remote_user),

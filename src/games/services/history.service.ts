@@ -9,26 +9,28 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { UsersService } from '../../users/services/users.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { GamesHistory } from '../entities/history.entity';
-import { UsersInfos } from '../../users/entities/users.entity';
 import { GamesLobbyFinished } from '../entities/lobby';
 
 import { GamesHistoryGetResponse } from '../properties/history.get.property';
 
-import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
 import { LobbyWinner } from '../types';
 import { GameAction, WsNamespace } from '../../websockets/types';
+
+import { PongRanking } from '../logic/ranking';
 
 @Injectable()
 export class GamesHistoryService {
 	private readonly logger = new Logger(GamesHistoryService.name);
+	private readonly ranking = new PongRanking();
 	constructor(
 		@InjectRepository(GamesHistory)
 		private readonly historyRepository: Repository<GamesHistory>,
-		@InjectRepository(UsersInfos)
-		private readonly usersRepository: Repository<UsersInfos>,
+		@Inject(forwardRef(() => UsersService))
+		private readonly usersService: UsersService,
 		@Inject(forwardRef(() => WsService))
 		private readonly wsService: WsService,
 	) {}
@@ -72,10 +74,10 @@ export class GamesHistoryService {
 
 	async get(uuid: string, current_user: boolean): Promise<GamesHistoryGetResponse[]> {
 		if (!current_user) {
-			await this.usersRepository.findOneByOrFail({ uuid }).catch((e) => {
-				this.logger.verbose('Unable to find remote user ' + uuid, e);
-				throw new NotFoundException(ApiResponseErrorUser.NotFound);
-			});
+			await this.usersService.findWithRelations(
+				{ uuid },
+				'Unable to find remote user ' + uuid,
+			);
 		}
 
 		const history = await this.findAllByUser(uuid);
@@ -88,11 +90,43 @@ export class GamesHistoryService {
 				winner: h.winner,
 				players_scores: [h.player1_score, h.player2_score],
 				players: [h.player1.uuid, h.player2.uuid],
+				players_xp: [h.player1_xp, h.player2_xp],
 			};
 		});
 	}
 
-	// Awful hack
+	async updateXP(lobby: GamesLobbyFinished, winner: LobbyWinner): Promise<[number, number]> {
+		let xp: [number, number] = [0, 0];
+		switch (winner) {
+			case LobbyWinner.Player1:
+				xp = [
+					this.ranking.getXP(lobby.player1_score, true, lobby.matchmaking),
+					this.ranking.getXP(lobby.player2_score, false, lobby.matchmaking),
+				];
+				break;
+			case LobbyWinner.Player2:
+				xp = [
+					this.ranking.getXP(lobby.player1_score, false, lobby.matchmaking),
+					this.ranking.getXP(lobby.player2_score, true, lobby.matchmaking),
+				];
+				break;
+			default:
+				xp = [
+					this.ranking.getXP(lobby.player1_score, false, lobby.matchmaking),
+					this.ranking.getXP(lobby.player2_score, false, lobby.matchmaking),
+				];
+		}
+
+		if (xp[0]) {
+			await this.usersService.updateXP(lobby.player1, xp[0]);
+		}
+		if (xp[1]) {
+			await this.usersService.updateXP(lobby.player2, xp[1]);
+		}
+
+		return xp;
+	}
+
 	async create(lobby: GamesLobbyFinished, left_user_uuid?: string) {
 		let winner: LobbyWinner = null;
 
@@ -110,6 +144,13 @@ export class GamesHistoryService {
 
 		lobby.winner = winner;
 
+		const xp = await this.updateXP(lobby, winner);
+		lobby.player1_xp = xp[0];
+		lobby.player2_xp = xp[1];
+
+		console.log(xp);
+
+		// Awful hack
 		await this.historyRepository.save(lobby).catch((e) => {
 			this.logger.error('Unable to create game history for lobby ' + lobby.uuid, e);
 			throw new InternalServerErrorException();
@@ -122,6 +163,7 @@ export class GamesHistoryService {
 				uuid: lobby.uuid,
 				players: [lobby.player1.uuid, lobby.player2.uuid],
 				players_scores: [lobby.player1_score, lobby.player2_score],
+				players_xp: xp,
 				winner,
 			} as GamesHistoryGetResponse,
 		});

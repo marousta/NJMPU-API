@@ -10,10 +10,12 @@ import {
 	Body,
 	Delete,
 	Put,
+	Patch,
 } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as Req } from 'express';
 import { isUUID } from 'class-validator';
+import validateColor from 'validate-color';
 
 import { GamesLobbyService } from '../services/lobby.service';
 
@@ -27,6 +29,7 @@ import { ApiResponseError as ApiResponseErrorGlobal } from '../../types';
 import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
 import { JwtData } from '../../auth/types';
 import { ApiResponseError } from '../types';
+import { GamesLobbyColorProperty } from '../properties/lobby.color.property';
 
 @UseGuards(AccessAuthGuard)
 @Controller('games/lobby')
@@ -162,6 +165,29 @@ export class GamesLobbyController {
 	//#region
 
 	/**
+	 * Change player color
+	 */
+	@ApiTags('games · lobby')
+	@ApiBody({ type: GamesLobbyColorProperty })
+	@ApiResponse({ status: 200, description: 'Color set' })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
+	@Patch(':uuid')
+	@HttpCode(200)
+	changeColor(
+		@Request() req: Req,
+		@Param('uuid') uuid: string,
+		@Body() body: GamesLobbyColorProperty,
+	) {
+		if (!isUUID(uuid, 4) || !validateColor(body.color)) {
+			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
+		}
+
+		const jwt = req.user as JwtData;
+		this.lobbyService.lobby.color(jwt, uuid, body.color);
+	}
+
+	/**
 	 * Cancel lobby
 	 * Kick user
 	 */
@@ -180,8 +206,7 @@ export class GamesLobbyController {
 		},
 	})
 	@ApiResponse({ status: 200, description: 'Left' })
-	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
-	@ApiResponse({ status: 400.2, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Delete(':uuid')
 	@HttpCode(200)

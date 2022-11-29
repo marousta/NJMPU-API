@@ -312,6 +312,7 @@ export interface WsGameReady extends WsGame {
 
 export interface WsGameStart extends WsGame {
 	action: GameAction.Start;
+	colors: [string, string];
 }
 
 export interface WsGameLeave extends WsGame {

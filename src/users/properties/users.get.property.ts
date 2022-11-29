@@ -21,6 +21,9 @@ export class UsersMeResponse {
 	@ApiProperty()
 	avatar: string;
 
+	@ApiProperty()
+	xp: number;
+
 	@ApiPropertyOptional()
 	adam: boolean;
 }
@@ -40,6 +43,9 @@ export class UsersGetResponse {
 
 	@ApiProperty()
 	is_online: UserStatus;
+
+	@ApiProperty()
+	xp: number;
 
 	@ApiProperty()
 	friendship: UsersFriendship;

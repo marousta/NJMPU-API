@@ -76,7 +76,6 @@ export class WsService {
 		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService,
 		private readonly lobbyService: GamesLobbyService,
-		private readonly matchmakingService: GamesMatchmakingService,
 	) {}
 
 	/**
@@ -832,12 +831,11 @@ export class WsService {
 	async disconnected(client: WebSocketUser) {
 		const user_uuid = client.jwt.infos.uuid;
 
-		this.matchmakingService.queue.remove(client.jwt);
-
-		const offline = await this.updateUserStatus(client.jwt.infos, UserStatus.Offline);
-		if (offline) {
-			this.lobbyService.removeFromLobbies(client.jwt);
+		if (client.lobby.uuid !== null) {
+			this.lobbyService.lobby.leave(client.jwt, client.lobby.uuid);
 		}
+
+		await this.updateUserStatus(client.jwt.infos, UserStatus.Offline);
 
 		// Check if user is subscribed
 		if (user_uuid && this.subscribed && this.subscribed[user_uuid]) {

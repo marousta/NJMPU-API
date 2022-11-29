@@ -62,7 +62,8 @@
 		"swagger-ui-express": "^4.5.0",
 		"typeorm": "^0.3.7",
 		"typeorm-naming-strategies": "^4.1.0",
-		"ua-parser-js": "^1.0.2"
+		"ua-parser-js": "^1.0.2",
+		"validate-color": "^2.2.1"
 	},
 	"devDependencies": {
 		"@nestjs/cli": "^9.0.0",

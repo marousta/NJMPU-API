@@ -1,6 +1,7 @@
 import { BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
+import validateColor from 'validate-color';
 
 import {
 	DiscordUser,
@@ -52,7 +53,7 @@ export function getPartialUser(user: Intra42User | DiscordUser | TwitterUser): P
 }
 
 export function isEmpty(str: string): boolean {
-	return !str || !str.trim().length;
+	return !str || !str.trim().length || str === 'undefined' || str === 'string';
 }
 
 function randomEntry(array: number[]): number {

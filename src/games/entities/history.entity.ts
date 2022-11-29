@@ -29,7 +29,22 @@ export class GamesHistory {
 	@Column({
 		nullable: false,
 	})
+	player1_xp: number;
+
+	@Column({
+		nullable: false,
+	})
+	player2_xp: number;
+
+	@Column({
+		nullable: false,
+	})
 	creation_date: Date;
+
+	@Column({
+		nullable: false,
+	})
+	matchmaking: boolean;
 
 	/**
 	 * Relation Game player1 -> User

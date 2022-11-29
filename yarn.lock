@@ -5575,6 +5575,11 @@ v8-to-istanbul@^9.0.1:
     "@types/istanbul-lib-coverage" "^2.0.1"
     convert-source-map "^1.6.0"
 
+validate-color@^2.2.1:
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/validate-color/-/validate-color-2.2.1.tgz#f97214883304f87eaa9dc1eb8e9d8cd8b606a5d1"
+  integrity sha512-1eDb1zqP6W6bbfKKl6dRXObelNoQpW7aF3BUTh2AivWuhcD0pa3ejwURWqrVsyKJMLBMlHLFcM3sj5J+dSFhbg==
+
 validator@^13.7.0:
   version "13.7.0"
   resolved "https://registry.yarnpkg.com/validator/-/validator-13.7.0.tgz#4f9658ba13ba8f3d82ee881d3516489ea85c0857"
