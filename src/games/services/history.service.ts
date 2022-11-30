@@ -95,7 +95,11 @@ export class GamesHistoryService {
 		});
 	}
 
-	async updateXP(lobby: GamesLobbyFinished, winner: LobbyWinner): Promise<[number, number]> {
+	async updateXP(
+		lobby: GamesLobbyFinished,
+		winner: LobbyWinner,
+		left: boolean,
+	): Promise<[number, number]> {
 		let xp: [number, number] = [0, 0];
 		switch (winner) {
 			case LobbyWinner.Player1:
@@ -115,6 +119,17 @@ export class GamesHistoryService {
 					this.ranking.getXP(lobby.player1_score, false, lobby.matchmaking),
 					this.ranking.getXP(lobby.player2_score, false, lobby.matchmaking),
 				];
+		}
+
+		if (left) {
+			switch (winner) {
+				case LobbyWinner.Player1:
+					xp[1] = 0;
+					break;
+				case LobbyWinner.Player2:
+					xp[0] = 0;
+					break;
+			}
 		}
 
 		if (xp[0]) {
@@ -144,11 +159,9 @@ export class GamesHistoryService {
 
 		lobby.winner = winner;
 
-		const xp = await this.updateXP(lobby, winner);
+		const xp = await this.updateXP(lobby, winner, left_user_uuid ? true : false);
 		lobby.player1_xp = xp[0];
 		lobby.player2_xp = xp[1];
-
-		console.log(xp);
 
 		// Awful hack
 		await this.historyRepository.save(lobby).catch((e) => {
