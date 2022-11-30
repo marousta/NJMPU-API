@@ -36,4 +36,7 @@ export enum ApiResponseError {
 	AlreadyInQueue = 'Already in queue',
 	NotInQueue = 'Not in queue',
 	NoConnection = 'non-existent connection',
+	NotLobbyLeader = "You're not lobby leader",
+	NotFoundPlayer = 'Player not found in this lobby',
+	ForbiddenInMatchmaking = 'Action not allowed in matchmaking',
 }

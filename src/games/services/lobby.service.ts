@@ -546,6 +546,36 @@ export class GamesLobbyService {
 				});
 			}
 		},
+		kick: async (jwt: JwtData, uuid: string, kick_user_uuid: string) => {
+			const current_user = jwt.infos;
+			const lobby = this.findWithRelations(uuid);
+
+			if (lobby.matchmaking) {
+				throw new BadRequestException(ApiResponseError.ForbiddenInMatchmaking);
+			}
+			if (current_user.uuid !== lobby.player1.uuid) {
+				throw new ForbiddenException(ApiResponseError.NotLobbyLeader);
+			}
+			if (!lobby.player2 || lobby.player2.uuid !== kick_user_uuid) {
+				throw new BadRequestException(ApiResponseError.NotFoundPlayer);
+			}
+
+			lobby.player2 = null;
+			lobby.player2_status = LobbyPlayerReadyState.Invited;
+
+			this.wsService.unsetLobby(jwt, lobby.player2_ws.uuid);
+
+			await this.wsService.updateUserStatus(current_user, UserStatus.Online);
+
+			this.lobbies[lobby.uuid] = lobby;
+
+			this.wsService.dispatch.lobby(lobby, {
+				namespace: WsNamespace.Game,
+				action: GameAction.Leave,
+				lobby_uuid: lobby.uuid,
+				user_uuid: current_user.uuid,
+			});
+		},
 		delete: async (jwt: JwtData, lobby: GamesLobby, is_leaving?: boolean) => {
 			const current_user = jwt.infos;
 
