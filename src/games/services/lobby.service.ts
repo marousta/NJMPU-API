@@ -217,6 +217,7 @@ export class GamesLobbyService {
 			lobby.player2_ws.onmessage = undefined;
 			delete game.pong;
 			delete this.games[lobby_uuid];
+			delete this.lobbies[lobby_uuid];
 		},
 		updateSpectators: (lobby_uuid: string, spectators_ws: Array<WebSocketUser>) => {
 			if (!this.games[lobby_uuid] || !this.lobbies[lobby_uuid]) {
