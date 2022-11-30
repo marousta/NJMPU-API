@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import * as argon2 from 'argon2';
 
 import { ChannelsBlacklistService } from './channels.blacklist.service';
@@ -71,7 +72,10 @@ export class ChannelsService {
 	//#region
 
 	readonly findOne = {
-		WithRelationsID: async (where: object, error_msg: string): Promise<ChatsChannelsID> => {
+		WithRelationsID: async (
+			where: QueryDeepPartialEntity<ChatsChannels>,
+			error_msg: string,
+		): Promise<ChatsChannelsID> => {
 			return await this.channelRepository
 				.createQueryBuilder('channels')
 				.where(where)
@@ -86,7 +90,7 @@ export class ChannelsService {
 				});
 		},
 		WithUsersAndRelationsID: async (
-			where: object,
+			where: QueryDeepPartialEntity<ChatsChannels>,
 			error_msg: string,
 		): Promise<ChatsChannelsID> => {
 			return await this.channelRepository
@@ -104,7 +108,7 @@ export class ChannelsService {
 				});
 		},
 		WithAllAndRelationsID: async (
-			where: object,
+			where: QueryDeepPartialEntity<ChatsChannels>,
 			error_msg: string,
 		): Promise<ChatsChannelsID> => {
 			return await this.channelRepository

@@ -48,6 +48,7 @@ export class GamesMatchmakingController {
 			throw new BadRequestException(ApiResponseErrorGlobal.MissingParameters);
 		}
 		const jwt = req.user as JwtData;
+
 		this.matchmakingService.queue.add(jwt, body.websocket_uuid);
 	}
 

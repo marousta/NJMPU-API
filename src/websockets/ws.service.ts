@@ -87,38 +87,6 @@ export class WsService {
 		return exp * 1000 < new Date().valueOf();
 	}
 
-	updateClient(args: { jwt?: Jwt; user?: UsersInfos }) {
-		const jwt = args.jwt;
-		const user = args.user;
-
-		if (!jwt && !user) {
-			this.logger.warn(
-				'updateClient fail safe | ' + jwt?.uuuid
-					? 'jwt defined'
-					: 'jwt undefined' + ' | ' + user?.uuid
-					? 'user defined'
-					: 'user undefined' + ' |',
-			);
-			return;
-		}
-
-		const uuid = jwt?.uuuid || user?.uuid;
-		if (!this.subscribed[uuid]) {
-			return;
-		}
-
-		for (const client of this.subscribed[uuid]) {
-			if (jwt?.tuuid === client.jwt.token.tuuid) {
-				this.logger.set(client.uuid).verbose('Token updated').unset();
-				client.jwt.token = jwt;
-			}
-			if (user?.uuid === client.jwt.infos.uuid) {
-				this.logger.set(client.uuid).verbose('User updated').unset();
-				client.jwt.infos = user;
-			}
-		}
-	}
-
 	private send(client: WebSocketUser, data: any) {
 		if (this.tokenHasExpired(client.jwt.token.exp)) {
 			this.logger.warn(client.jwt.token.exp * 1000, new Date().valueOf());
@@ -207,9 +175,41 @@ export class WsService {
 		});
 	}
 
+	updateClient(args: { jwt?: Jwt; user?: UsersInfos }) {
+		const jwt = args.jwt;
+		const user = args.user;
+
+		if (!jwt && !user) {
+			this.logger.warn(
+				'updateClient fail safe | ' + jwt?.uuuid
+					? 'jwt defined'
+					: 'jwt undefined' + ' | ' + user?.uuid
+					? 'user defined'
+					: 'user undefined' + ' |',
+			);
+			return;
+		}
+
+		const uuid = jwt?.uuuid || user?.uuid;
+		if (!this.subscribed[uuid]) {
+			return;
+		}
+
+		for (const client of this.subscribed[uuid]) {
+			if (jwt?.tuuid === client.jwt.token.tuuid) {
+				this.logger.set(client.uuid).verbose('Token updated').unset();
+				client.jwt.token = jwt;
+			}
+			if (user?.uuid === client.jwt.infos.uuid) {
+				this.logger.set(client.uuid).verbose('User updated').unset();
+				client.jwt.infos = user;
+			}
+		}
+	}
+
 	async updateUserStatus(user: UsersInfos, status: UserStatus, lobby_uuid?: string) {
 		if (status === UserStatus.InGame) {
-			await this.usersService.updateStatus(user, status);
+			await this.usersService.update.status(user.uuid, status);
 
 			this.dispatch.all({
 				namespace: WsNamespace.User,
@@ -224,7 +224,7 @@ export class WsService {
 
 		// Check if user is really online
 		if (status === UserStatus.Online && this.subscribed[user.uuid]) {
-			await this.usersService.updateStatus(user, status);
+			await this.usersService.update.status(user.uuid, status);
 
 			this.dispatch.all({
 				namespace: WsNamespace.User,
@@ -243,7 +243,7 @@ export class WsService {
 				.length === 0;
 
 		if (closed) {
-			await this.usersService.updateStatus(user, status);
+			await this.usersService.update.status(user.uuid, status);
 
 			this.dispatch.all({
 				namespace: WsNamespace.User,

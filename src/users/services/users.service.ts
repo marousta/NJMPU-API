@@ -6,6 +6,7 @@ import {
 	BadRequestException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomUUID } from 'crypto';
 const ProgressBar = require('progress');
@@ -123,7 +124,10 @@ export class UsersService {
 		}
 	}
 
-	async findWithRelationsOrNull(where: object, error_msg: string): Promise<UsersInfos | null> {
+	async findWithRelationsOrNull(
+		where: QueryDeepPartialEntity<UsersInfos>,
+		error_msg: string,
+	): Promise<UsersInfos | null> {
 		return this.usersRepository
 			.createQueryBuilder('user')
 			.where(where)
@@ -137,7 +141,10 @@ export class UsersService {
 			});
 	}
 
-	async findWithRelations(where: object, error_msg: string): Promise<UsersInfos> {
+	async findWithRelations(
+		where: QueryDeepPartialEntity<UsersInfos>,
+		error_msg: string,
+	): Promise<UsersInfos> {
 		const user = await this.findWithRelationsOrNull(where, error_msg);
 		if (!user) {
 			throw new NotFoundException();
@@ -192,31 +199,45 @@ export class UsersService {
 	 */
 	//#region
 
-	async updateStatus(user: UsersInfos, status: UserStatus) {
-		user.is_online = status;
-		await this.usersRepository.save(user).catch((e) => {
-			this.logger.error('Unable to update user status for user ' + user.uuid, e);
-			throw new InternalServerErrorException();
-		});
-	}
-
-	async updateXP(user: UsersInfos, xp: number) {
-		if (parseUnsignedNull(xp) === null) {
-			this.logger.error('XP cannot be negative ' + xp + ', this should not happen');
-			throw new InternalServerErrorException();
-		}
-
-		await this.usersRepository
-			.createQueryBuilder()
-			.update()
-			.where({ uuid: user.uuid })
-			.set({ xp: () => 'xp + ' + xp })
-			.execute()
-			.catch((e) => {
-				this.logger.error('Unable to update xp for user ' + user.uuid, e);
+	public readonly update = {
+		exectute: async (
+			where: QueryDeepPartialEntity<UsersInfos>,
+			set: QueryDeepPartialEntity<UsersInfos>,
+			error_msg: string,
+		) => {
+			return this.usersRepository
+				.createQueryBuilder()
+				.update()
+				.where(where)
+				.set(set)
+				.execute()
+				.catch((e) => {
+					this.logger.error(error_msg, e);
+					this.logger.error('where: ' + JSON.stringify(where));
+					this.logger.error('set: ' + JSON.stringify(set));
+					throw new InternalServerErrorException();
+				});
+		},
+		status: async (user_uuid: string, status: UserStatus) => {
+			return this.update.exectute(
+				{ uuid: user_uuid },
+				{ is_online: status },
+				'Unable to update status for user ' + user_uuid,
+			);
+		},
+		xp: async (user_uuid: string, xp: number) => {
+			if (parseUnsignedNull(xp) === null) {
+				this.logger.error('XP cannot be negative ' + xp + ', this should not happen');
 				throw new InternalServerErrorException();
-			});
-	}
+			}
+
+			return this.update.exectute(
+				{ uuid: user_uuid },
+				{ xp: () => 'xp + ' + xp },
+				'Unable to update xp for user ' + user_uuid,
+			);
+		},
+	};
 
 	async create(params: SignupProperty) {
 		const requests = await Promise.all([
@@ -242,7 +263,7 @@ export class UsersService {
 				throw new InternalServerErrorException();
 			}
 		});
-		// this.logger.debug('User created ' + new_user.uuid);
+		this.logger.debug('User created ' + new_user.uuid);
 
 		if (params.avatar) {
 			const hash = createHash('sha1').update(created_user.uuid).digest('hex');
@@ -321,12 +342,17 @@ export class UsersService {
 		const old_avatar = user.avatar;
 		user.avatar = filename;
 
-		await this.usersRepository.save(user).catch((e) => {
-			this.logger.error('Unable to update avatar for user ' + user.uuid, e);
-			throw new InternalServerErrorException();
-		});
+		await this.usersRepository
+			.createQueryBuilder()
+			.update()
+			.where({ uuid: user.uuid })
+			.set({ avatar: filename })
+			.execute()
+			.catch((e) => {
+				this.logger.error('Unable to update avatar for user ' + user.uuid, e);
+				throw new InternalServerErrorException();
+			});
 
-		this.wsService.updateClient({ user });
 		this.wsService.dispatch.all({
 			namespace: WsNamespace.User,
 			action: UserAction.Avatar,

@@ -7,6 +7,7 @@ import { ApiResponseError } from '../types';
 import { JwtData } from '../../auth/types';
 import { GameAction, WsNamespace, WebSocketUser } from '../../websockets/types';
 import { GamesLobbyService } from './lobby.service';
+import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
 export class GamesMatchmakingService {
@@ -15,6 +16,7 @@ export class GamesMatchmakingService {
 	private waiting_loop: NodeJS.Timer = null;
 	constructor(
 		private readonly lobbyService: GamesLobbyService,
+		private readonly usersService: UsersService,
 		@Inject(forwardRef(() => WsService))
 		private readonly wsService: WsService,
 	) {}
@@ -101,7 +103,6 @@ export class GamesMatchmakingService {
 		wait: () => {
 			const found = Object.values(this.waiting_queue);
 			if (found.length === 1) {
-				this.logger.debug('Player in queue');
 				return;
 			}
 			if (found.length === 0) {
@@ -109,16 +110,28 @@ export class GamesMatchmakingService {
 				return this.loop.stop();
 			}
 
-			const player1 = found[0];
-			const player2 = found[1];
+			for (const client1 of found) {
+				for (const client2 of found) {
+					if (
+						client1.jwt.infos.uuid === client2.jwt.infos.uuid ||
+						this.usersService.isBlocked(client1.jwt.infos, client2.jwt.infos)
+					) {
+						continue;
+					}
 
-			this.logger.debug(
-				'Match found for ' + player1.jwt.infos.uuid + ' and ' + player2.jwt.infos.uuid,
-			);
+					this.logger.debug(
+						'Match found for ' +
+							client1.jwt.infos.uuid +
+							' and ' +
+							client2.jwt.infos.uuid,
+					);
 
-			this.lobbyService.lobby.createMatch(player1, player2);
-			this.queue.remove(player1.jwt);
-			this.queue.remove(player2.jwt);
+					this.lobbyService.lobby.createMatch(client1, client2);
+					this.queue.remove(client1.jwt);
+					this.queue.remove(client2.jwt);
+					return;
+				}
+			}
 		},
 	};
 

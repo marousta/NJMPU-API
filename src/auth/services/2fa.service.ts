@@ -157,13 +157,17 @@ export class TwoFactorService {
 			throw new ForbiddenException(ApiResponseError.TwoFactorNotSet);
 		}
 
-		current_user.twofactor = null;
-
-		await this.usersRepository.save(current_user).catch((e) => {
-			this.logger.error('Unable to remove 2FA from user account ' + current_user.uuid, e);
-			throw new InternalServerErrorException();
-		});
-		this.wsService.updateClient({ user: current_user });
+		await this.usersRepository
+			.createQueryBuilder()
+			.update()
+			.where({ uuid: current_user.uuid })
+			.set({ twofactor: null })
+			.execute()
+			.catch((e) => {
+				this.logger.error('Unable to remove 2FA from user account ' + current_user.uuid, e);
+				throw new InternalServerErrorException();
+			});
+		// this.wsService.updateClient({ user: current_user });
 
 		this.logger.verbose('Removed 2FA for user ' + current_user.uuid);
 	}
@@ -213,13 +217,19 @@ export class TwoFactorService {
 
 			// 2FA setup
 			if (TwoFactor.verifyToken(request.secret, code, 2) !== null) {
-				user.twofactor = request.secret;
+				// user.twofactor = request.secret;
 
-				await this.usersRepository.save(user).catch((e) => {
-					this.logger.error('Could not update secret token for user ' + user.uuid, e);
-					throw new InternalServerErrorException();
-				});
-				this.wsService.updateClient({ user });
+				await this.usersRepository
+					.createQueryBuilder()
+					.update()
+					.where({ uuid: user.uuid })
+					.set({ twofactor: request.secret })
+					.execute()
+					.catch((e) => {
+						this.logger.error('Could not update secret token for user ' + user.uuid, e);
+						throw new InternalServerErrorException();
+					});
+				// this.wsService.updateClient({ user });
 
 				this.logger.debug('2FA set for user ' + user.uuid);
 

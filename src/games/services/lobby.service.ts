@@ -116,7 +116,6 @@ export class GamesLobbyService {
 		const current_user = jwt.infos;
 
 		const old_lobby = this.findInLobby(current_user.uuid);
-		console.log('old_lobby: ', old_lobby);
 		if (!old_lobby) {
 			return;
 		}

@@ -133,10 +133,10 @@ export class GamesHistoryService {
 		}
 
 		if (xp[0]) {
-			await this.usersService.updateXP(lobby.player1, xp[0]);
+			await this.usersService.update.xp(lobby.player1.uuid, xp[0]);
 		}
 		if (xp[1]) {
-			await this.usersService.updateXP(lobby.player2, xp[1]);
+			await this.usersService.update.xp(lobby.player2.uuid, xp[1]);
 		}
 
 		return xp;
