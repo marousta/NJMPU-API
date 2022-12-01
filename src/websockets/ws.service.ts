@@ -832,7 +832,7 @@ export class WsService {
 		const user_uuid = client.jwt.infos.uuid;
 
 		if (client.lobby.uuid !== null) {
-			this.lobbyService.lobby.leave(client.jwt, client.lobby.uuid);
+			this.lobbyService.lobby.leave(client.jwt, client.lobby.uuid, true);
 		}
 
 		await this.updateUserStatus(client.jwt.infos, UserStatus.Offline);

@@ -83,6 +83,7 @@ export class GamesLobbyService {
 		return {
 			uuid: lobby.uuid,
 			in_game: lobby.game_started,
+			is_matchmaking: lobby.matchmaking,
 			players: [lobby.player1.uuid, lobby.player2 ? lobby.player2.uuid : null],
 			players_status: [lobby.player1_status, lobby.player2_status],
 			spectators: lobby.spectators?.map((u) => u.uuid),
@@ -195,13 +196,13 @@ export class GamesLobbyService {
 			};
 		},
 		end: async (lobby_uuid: string, user_uuid?: string) => {
-			if (!this.games[lobby_uuid] || !this.lobbies[lobby_uuid]) {
+			const lobby = this.lobbies[lobby_uuid];
+			const game = this.games[lobby_uuid];
+
+			if (!game || !lobby) {
 				this.logger.debug('game end fail safe');
 				return;
 			}
-
-			const lobby = this.lobbies[lobby_uuid];
-			const game = this.games[lobby_uuid];
 
 			// Awful hack
 			let finish = new GamesLobbyFinished({
@@ -213,6 +214,12 @@ export class GamesLobbyService {
 			await this.historyService.create(finish, user_uuid);
 
 			clearInterval(game.interval);
+
+			this.wsService.unsetAllLobby(lobby);
+
+			await this.wsService.updateUserStatus(lobby.player1, UserStatus.Online);
+			await this.wsService.updateUserStatus(lobby.player2, UserStatus.Online);
+
 			lobby.player1_ws.onmessage = undefined;
 			lobby.player2_ws.onmessage = undefined;
 			delete game.pong;
@@ -236,7 +243,6 @@ export class GamesLobbyService {
 		},
 		getAllFormat: (): GamesLobbyGetResponse[] | {} => {
 			const lobbies = this.findAllWithRelations();
-
 			if (!lobbies) {
 				return {};
 			}
@@ -381,7 +387,9 @@ export class GamesLobbyService {
 			let lobby: GamesLobby = null;
 			if (existing_lobbies?.length > 1) {
 				// User is in several lobbies
-				this.logger.error('User ' + remote_user.uuid + ' is in several lobbies');
+				this.logger.error(
+					'User ' + remote_user.uuid + ' is in several lobbies, this should not happen',
+				);
 				throw new InternalServerErrorException();
 			} else if (existing_lobbies?.length === 1) {
 				// Add user to existing lobby (it was in spectator)
@@ -496,11 +504,11 @@ export class GamesLobbyService {
 				case lobby.player1.uuid:
 					lobby.player1_color = color;
 					break;
-				case lobby.player2.uuid:
+				case lobby.player2?.uuid:
 					lobby.player2_color = color;
 					break;
 				default:
-					throw new ForbiddenException(ApiResponseError.NotInLobby);
+					throw new BadRequestException(ApiResponseError.NotFoundPlayer);
 			}
 
 			this.lobbies[uuid] = lobby;
@@ -508,6 +516,10 @@ export class GamesLobbyService {
 		start: (jwt: JwtData, uuid: string) => {
 			const user = jwt.infos;
 			const lobby = this.findWithRelations(uuid);
+
+			if (!lobby.player2) {
+				throw new BadRequestException(ApiResponseError.NotEnoughPlayer);
+			}
 
 			switch (user.uuid) {
 				case lobby.player1.uuid:
@@ -550,6 +562,8 @@ export class GamesLobbyService {
 		kick: async (jwt: JwtData, uuid: string, kick_user_uuid: string) => {
 			const current_user = jwt.infos;
 			const lobby = this.findWithRelations(uuid);
+			const player2 = lobby.player2;
+			const player2_status = lobby.player2_status;
 
 			if (lobby.matchmaking) {
 				throw new BadRequestException(ApiResponseError.ForbiddenInMatchmaking);
@@ -557,25 +571,41 @@ export class GamesLobbyService {
 			if (current_user.uuid !== lobby.player1.uuid) {
 				throw new ForbiddenException(ApiResponseError.NotLobbyLeader);
 			}
-			if (!lobby.player2 || lobby.player2.uuid !== kick_user_uuid) {
+			if (!player2 || player2.uuid !== kick_user_uuid) {
 				throw new BadRequestException(ApiResponseError.NotFoundPlayer);
 			}
 
+			switch (player2_status) {
+				case LobbyPlayerReadyState.Invited:
+					await this.notifcationsService.read.ByRelation(
+						lobby.player1.uuid,
+						lobby.player2.uuid,
+					);
+					this.wsService.dispatch.lobby(lobby, {
+						namespace: WsNamespace.Game,
+						action: GameAction.Decline,
+						lobby_uuid: lobby.uuid,
+						user_uuid: player2.uuid,
+					});
+					break;
+				case LobbyPlayerReadyState.Joined:
+					lobby.player2_status = LobbyPlayerReadyState.Invited;
+					this.wsService.unsetLobby(jwt, lobby.player2_ws.uuid);
+
+					await this.wsService.updateUserStatus(player2, UserStatus.Online);
+
+					this.wsService.dispatch.lobby(lobby, {
+						namespace: WsNamespace.Game,
+						action: GameAction.Leave,
+						lobby_uuid: lobby.uuid,
+						user_uuid: player2.uuid,
+					});
+					break;
+			}
+
 			lobby.player2 = null;
-			lobby.player2_status = LobbyPlayerReadyState.Invited;
-
-			this.wsService.unsetLobby(jwt, lobby.player2_ws.uuid);
-
-			await this.wsService.updateUserStatus(current_user, UserStatus.Online);
 
 			this.lobbies[lobby.uuid] = lobby;
-
-			this.wsService.dispatch.lobby(lobby, {
-				namespace: WsNamespace.Game,
-				action: GameAction.Leave,
-				lobby_uuid: lobby.uuid,
-				user_uuid: current_user.uuid,
-			});
 		},
 		delete: async (jwt: JwtData, lobby: GamesLobby, is_leaving?: boolean) => {
 			const current_user = jwt.infos;
@@ -654,7 +684,7 @@ export class GamesLobbyService {
 			lobby.player2 = null;
 			this.lobbies[lobby.uuid] = lobby;
 		},
-		leave: async (jwt: JwtData, uuid: string) => {
+		leave: async (jwt: JwtData, uuid: string, disconnect?: boolean) => {
 			const current_user = jwt.infos;
 			const lobby = this.findWithRelations(uuid);
 
@@ -673,6 +703,9 @@ export class GamesLobbyService {
 				await this.wsService.updateUserStatus(current_user, UserStatus.Online);
 			} else if (was_spectator) {
 				this.unsetSpectator(jwt, lobby);
+			} else if (disconnect) {
+				console.log(lobby);
+				return;
 			} else {
 				throw new ForbiddenException(ApiResponseError.NotInLobby);
 			}

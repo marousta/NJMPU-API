@@ -20,7 +20,7 @@ import { GamesHistoryGetResponse } from '../properties/history.get.property';
 import { LobbyWinner } from '../types';
 import { GameAction, WsNamespace } from '../../websockets/types';
 
-import { PongRanking } from '../logic/ranking';
+import { PongRanking } from '../logic/Ranking';
 
 @Injectable()
 export class GamesHistoryService {

@@ -63,8 +63,7 @@ export class GamesLobbyController {
 	 */
 	@ApiTags('games · lobby')
 	@ApiResponse({ status: 200, description: 'Lobby infos', type: GamesLobbyGetResponse })
-	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
-	@ApiResponse({ status: 400.2, description: ApiResponseErrorGlobal.BadRequest })
+	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Get(':uuid')
 	@HttpCode(200)
@@ -85,6 +84,7 @@ export class GamesLobbyController {
 	@ApiTags('games · lobby')
 	@ApiBody({ type: GamesJoinProperty })
 	@ApiResponse({ status: 200, description: 'Created lobby', type: GamesLobbyGetResponse })
+	@ApiResponse({ status: 400, description: ApiResponseError.NoConnection })
 	@Post()
 	@HttpCode(200)
 	create(@Request() req: Req, @Body() body: GamesJoinProperty) {
@@ -102,7 +102,10 @@ export class GamesLobbyController {
 	@ApiTags('games · lobby')
 	@ApiBody({ type: GamesJoinProperty })
 	@ApiResponse({ status: 200, description: 'Lobby joined', type: GamesLobbyGetResponse })
-	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyIn })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.GameFull })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.NoConnection })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Post('join/:uuid')
 	@HttpCode(200)
@@ -145,7 +148,8 @@ export class GamesLobbyController {
 		description: 'Create lobby if not exist and invite user',
 		type: GamesLobbyGetResponse,
 	})
-	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseErrorUser.InteractYourself })
 	@ApiResponse({ status: 404, description: ApiResponseErrorUser.NotFound })
 	@Post('invite')
 	@HttpCode(200)
@@ -206,7 +210,11 @@ export class GamesLobbyController {
 		},
 	})
 	@ApiResponse({ status: 200, description: 'Left' })
-	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.ForbiddenInMatchmaking })
+	@ApiResponse({ status: 403.1, description: ApiResponseError.NotInLobby })
+	@ApiResponse({ status: 403.2, description: ApiResponseError.NotLobbyLeader })
+	@ApiResponse({ status: 403.3, description: ApiResponseError.NotFoundPlayer })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Delete(':uuid')
 	@HttpCode(200)
@@ -233,7 +241,9 @@ export class GamesLobbyController {
 	 */
 	@ApiTags('games · lobby')
 	@ApiResponse({ status: 200, description: 'User ready' })
-	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.NotEnoughPlayer })
+	@ApiResponse({ status: 403, description: ApiResponseError.NotInLobby })
 	@ApiResponse({ status: 404, description: ApiResponseError.LobbyNotFound })
 	@Put(':uuid')
 	@HttpCode(200)

@@ -9,6 +9,9 @@ export class GamesLobbyGetResponse {
 	@ApiProperty()
 	in_game: boolean;
 
+	@ApiProperty()
+	is_matchmaking: boolean;
+
 	@ApiProperty({ isArray: true, type: String })
 	players: [string, string];
 

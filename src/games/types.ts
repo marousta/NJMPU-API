@@ -39,4 +39,5 @@ export enum ApiResponseError {
 	NotLobbyLeader = "You're not lobby leader",
 	NotFoundPlayer = 'Player not found in this lobby',
 	ForbiddenInMatchmaking = 'Action not allowed in matchmaking',
+	NotEnoughPlayer = "Can't update lobby ready state, not enough player in lobby",
 }
