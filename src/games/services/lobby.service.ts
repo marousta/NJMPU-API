@@ -20,8 +20,6 @@ import { UsersInfos } from '../../users/entities/users.entity';
 
 import { GamesLobbyGetResponse } from '../properties/lobby.get.property';
 
-import { max_spectators } from '../config';
-
 import {
 	ApiResponseError as ApiResponseErrorUser,
 	NotifcationType,
@@ -30,6 +28,8 @@ import {
 import { ApiResponseError, GameDictionary, LobbyPlayerReadyState } from '../types';
 import { JwtData } from '../../auth/types';
 import { GameAction, WebSocketUser, WsNamespace, WsPongMove } from '../../websockets/types';
+
+import { max_spectators } from '../config';
 
 import { PongServer } from '../logic/PongServer';
 import { PlayerRole } from '../logic/Pong';

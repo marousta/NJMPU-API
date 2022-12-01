@@ -1,5 +1,7 @@
-import { UsersInfos } from '../../users/entities/users.entity';
 import { randomUUID } from 'crypto';
+
+import { UsersInfos } from '../../users/entities/users.entity';
+
 import { token_time } from '../config';
 
 export class UsersTwofactorReq {

@@ -3,7 +3,6 @@ import {
 	InternalServerErrorException,
 	Logger,
 	NotFoundException,
-	UnauthorizedException,
 	ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -15,16 +14,16 @@ import * as TwoFactor from 'node-2fa';
 import * as QRCode from 'qrcode';
 
 import { UsersService } from '../../users/services/users.service';
+import { WsService } from '../../websockets/ws.service';
 
 import { UsersTwofactorReq } from '../entities/2fa';
 import { UsersInfos } from '../../users/entities/users.entity';
 
-import { hash_token_config } from '../config';
-
 import { hash, hash_verify } from '../utils';
 
 import { ApiResponseError, TwoFactorRequest, TwoFactorSetupRequest } from '../types';
-import { WsService } from '../../websockets/ws.service';
+
+import { hash_token_config } from '../config';
 
 @Injectable()
 export class TwoFactorService {

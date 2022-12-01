@@ -23,6 +23,7 @@ import { TwoFactorAuthGuard } from '../guards/2fa.guard';
 import { TwoFactorProperty } from '../properties/2fa.property';
 
 import { getFingerprint, isEmpty } from '../../utils';
+
 import { ApiResponseError, JwtData } from '../types';
 
 @ApiTags('auth · 2FA')

@@ -21,6 +21,7 @@ import { SessionsGetResponse } from '../properties/sessions.property';
 import { GlobalQueryProperty } from '../../app/properties/global.property';
 
 import { parseUnsigned } from '../../utils';
+
 import { ApiResponseError, JwtData } from '../types';
 
 @UseGuards(AccessAuthGuard)

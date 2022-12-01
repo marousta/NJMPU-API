@@ -17,6 +17,7 @@ import { max_spectators } from './games/config';
 import { parseUnsignedNull, isEmpty } from './utils';
 
 import { colors } from './types';
+
 import { oauth_error } from './auth/config';
 
 async function bootstrap() {

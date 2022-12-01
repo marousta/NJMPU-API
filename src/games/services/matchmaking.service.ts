@@ -1,13 +1,13 @@
 import { Injectable, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 
+import { GamesLobbyService } from './lobby.service';
+import { UsersService } from '../../users/services/users.service';
 import { WsService } from '../../websockets/ws.service';
 
 import { UserStatus } from '../../users/types';
 import { ApiResponseError } from '../types';
 import { JwtData } from '../../auth/types';
 import { GameAction, WsNamespace, WebSocketUser } from '../../websockets/types';
-import { GamesLobbyService } from './lobby.service';
-import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
 export class GamesMatchmakingService {

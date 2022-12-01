@@ -292,4 +292,5 @@ export enum ApiResponseError {
 	PasswordWrongFormatNumeric = 'Password should contain numbers',
 	PasswordWrongFormatSpecial = 'Password should contain special characters -> ' +
 		`"'/|!@#$%^&*()[]{}<>`,
+	EmailInvalid = 'Email address is incorrect',
 }

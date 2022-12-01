@@ -5,7 +5,6 @@ import { Server } from 'ws';
 
 import { GamesLobbyService } from '../games/services/lobby.service';
 import { UsersService } from '../users/services/users.service';
-import { GamesMatchmakingService } from '../games/services/matchmaking.service';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
 import { GamesLobby } from '../games/entities/lobby';

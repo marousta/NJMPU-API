@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Request, Response } from 'express';
+import * as EmailValidator from 'email-validator';
 
 import { UsersService } from '../../users/services/users.service';
 import { TokensService } from '../tokens/tokens.service';
@@ -13,7 +14,7 @@ import { SignupProperty } from '../properties/signup.property';
 
 import { UsersInfos } from '../../users/entities/users.entity';
 
-import { getPartialUser, isEmpty, getFingerprint, checkPassword, checkUsername } from '../../utils';
+import { getPartialUser, getFingerprint, checkPassword, checkUsername } from '../../utils';
 import { hash_verify } from '../utils';
 
 import {
@@ -27,6 +28,7 @@ import {
 } from '../types';
 import { UserAction, WsNamespace } from '../../websockets/types';
 import { JwtData, TwitterUser } from '../types';
+
 import { token_time } from '../config';
 
 @Injectable()
@@ -145,6 +147,10 @@ export class AuthService {
 
 	public readonly user = {
 		create: async (params: SignupProperty) => {
+			if (!EmailValidator.validate(params.email)) {
+				throw new BadRequestException(ApiResponseError.EmailInvalid);
+			}
+
 			const checks = [...checkUsername(params.username), ...checkPassword(params.password)];
 			if (checks.length !== 0) {
 				throw new BadRequestException(checks);

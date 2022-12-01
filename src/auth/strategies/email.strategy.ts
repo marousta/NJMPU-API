@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-local';
+import * as EmailValidator from 'email-validator';
 
 import { AuthService } from '../services/auth.service';
 
@@ -18,7 +19,7 @@ export class EmailStrategy extends PassportStrategy(Strategy, 'email') {
 	}
 
 	async validate(email: string, password: string): Promise<UsersInfos> {
-		if (isEmpty(email) || isEmpty(password)) {
+		if (isEmpty(email) || isEmpty(password) || !EmailValidator.validate(email)) {
 			this.logger.verbose('Missing credentials');
 			throw new BadRequestException('Missing credentials');
 		}
