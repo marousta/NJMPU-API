@@ -1,7 +1,6 @@
 import { BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
-import validateColor from 'validate-color';
 
 import {
 	DiscordUser,
@@ -9,7 +8,9 @@ import {
 	PartialUsersInfos,
 	UserFingerprint,
 	TwitterUser,
+	ApiResponseError as ApiResponseErrorAuth,
 } from './auth/types';
+import { ApiResponseError as ApiResponseErrorChat } from './chats/types';
 
 export function getPlatform(headers: Headers): string {
 	const ua = new UAParser(headers['user-agent']);
@@ -107,4 +108,70 @@ export function peerOrPeers(i: number) {
 
 export function dateFromOffset(offset: number) {
 	return new Date(new Date().valueOf() + offset * 1000);
+}
+
+export function checkUsername(username: string) {
+	let errors: Array<string> = [];
+
+	if (username.length > 16) {
+		errors.push(ApiResponseErrorAuth.UsernameTooLong);
+	}
+
+	const validCharacters: Array<string> = [
+		...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789',
+	];
+
+	if ([...username].filter((c) => !validCharacters.includes(c)).length > 0) {
+		errors.push(ApiResponseErrorAuth.UsernameWrongFormat);
+	}
+
+	return errors;
+}
+
+export function checkChannelName(name: string) {
+	let errors: Array<string> = [];
+
+	if (name.length > 26) {
+		errors.push(ApiResponseErrorChat.NameTooLong);
+	}
+
+	const validCharacters: Array<string> = [
+		...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789',
+	];
+
+	if ([...name].filter((c) => !validCharacters.includes(c)).length > 0) {
+		errors.push(ApiResponseErrorChat.NameWrongFormat);
+	}
+
+	return errors;
+}
+
+export function checkPassword(password: string) {
+	let errors: Array<string> = [];
+
+	if (password.length === 0) {
+		errors.push(ApiResponseErrorAuth.PasswordEmpty);
+	}
+
+	if (password.length < 8) {
+		errors.push(ApiResponseErrorAuth.PasswordTooShort);
+	}
+
+	if (password.toLowerCase() === password || password.toUpperCase() === password) {
+		errors.push(ApiResponseErrorAuth.PasswordWrongFormatCase);
+	}
+
+	const numbers: Array<string> = [...'0123456789'];
+
+	if ([...password].filter((c) => numbers.includes(c)).length === 0) {
+		errors.push(ApiResponseErrorAuth.PasswordWrongFormatNumeric);
+	}
+
+	const specialChars: Array<string> = [...`"'/|!@#$%^&*()[]{}<>`];
+
+	if ([...password].filter((c) => specialChars.includes(c)).length === 0) {
+		errors.push(ApiResponseErrorAuth.PasswordWrongFormatSpecial);
+	}
+
+	return errors;
 }

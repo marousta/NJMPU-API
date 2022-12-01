@@ -39,7 +39,7 @@ import { BlacklistGetProperty } from '../properties/channels.blacklist.get.prope
 import { ChannelPrivateProperty } from '../properties/channels.get.property';
 
 import { hash_verify } from '../../auth/utils';
-import { isEmpty, genIdentifier, dateFromOffset } from '../../utils';
+import { isEmpty, genIdentifier, dateFromOffset, checkChannelName } from '../../utils';
 
 import {
 	ChannelType,
@@ -481,6 +481,11 @@ export class ChannelsService {
 	private readonly create = {
 		channel: async (params: ChatsGroupPublic | ChatsGroupPrivate) => {
 			const user = params.current_user;
+
+			const checks = checkChannelName(params.name);
+			if (checks.length !== 0) {
+				throw new BadRequestException(checks);
+			}
 
 			// Hash password
 			let password = null;

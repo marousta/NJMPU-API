@@ -199,12 +199,14 @@ export class ChatsController {
 	})
 	@ApiResponse({ status: 200, description: 'Joined' })
 	@ApiResponse({ status: 201, description: 'Created' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.WrongPassword })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.AlreadyInChannel })
-	@ApiResponse({ status: 400.3, description: ApiResponseError.ChannelNotFound })
-	@ApiResponse({ status: 400.4, description: ApiResponseError.DirectYourseft })
-	@ApiResponse({ status: 400.5, description: ApiResponseError.RemoteUserNotFound })
-	@ApiResponse({ status: 400.6, description: ApiResponseError.AlreadyDirect })
+	@ApiResponse({ status: 400.1, description: ApiResponseError.NameTooLong })
+	@ApiResponse({ status: 400.2, description: ApiResponseError.NameWrongFormat })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.WrongPassword })
+	@ApiResponse({ status: 400.4, description: ApiResponseError.AlreadyInChannel })
+	@ApiResponse({ status: 400.5, description: ApiResponseError.ChannelNotFound })
+	@ApiResponse({ status: 400.6, description: ApiResponseError.DirectYourseft })
+	@ApiResponse({ status: 400.7, description: ApiResponseError.RemoteUserNotFound })
+	@ApiResponse({ status: 400.8, description: ApiResponseError.AlreadyDirect })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(200)
 	@Post()
@@ -659,6 +661,7 @@ export class ChatsController {
 	@ApiResponse({ status: 201, description: 'Created and brodcasted' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
 	@ApiResponse({ status: 400.2, description: ApiResponseError.EmptyMessage })
+	@ApiResponse({ status: 400.3, description: ApiResponseError.MessageTooLong })
 	@ApiResponse({ status: 403, description: ApiResponseError.NotAllowed })
 	@ApiResponse({ status: 404, description: ApiResponseError.ChannelNotFound })
 	@HttpCode(201)
@@ -674,6 +677,10 @@ export class ChatsController {
 
 		if (isEmpty(body.message)) {
 			throw new BadRequestException(ApiResponseError.EmptyMessage);
+		}
+
+		if (body.message.length > 500) {
+			throw new BadRequestException(ApiResponseError.MessageTooLong);
 		}
 
 		const user = (req.user as JwtData).infos;

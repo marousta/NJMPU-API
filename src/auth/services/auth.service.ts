@@ -13,7 +13,7 @@ import { SignupProperty } from '../properties/signup.property';
 
 import { UsersInfos } from '../../users/entities/users.entity';
 
-import { getPartialUser, isEmpty, getFingerprint } from '../../utils';
+import { getPartialUser, isEmpty, getFingerprint, checkPassword, checkUsername } from '../../utils';
 import { hash_verify } from '../utils';
 
 import {
@@ -145,17 +145,9 @@ export class AuthService {
 
 	public readonly user = {
 		create: async (params: SignupProperty) => {
-			if (
-				isEmpty(params.username) ||
-				isEmpty(params.password) ||
-				isEmpty(params.confirm) ||
-				isEmpty(params.email)
-			) {
-				throw new BadRequestException(ApiResponseError.EmptyFields);
-			}
-
-			if (params.password !== params.confirm) {
-				throw new BadRequestException(ApiResponseError.PasswordMismatch);
+			const checks = [...checkUsername(params.username), ...checkPassword(params.password)];
+			if (checks.length !== 0) {
+				throw new BadRequestException(checks);
 			}
 
 			await this.usersService.create(params);

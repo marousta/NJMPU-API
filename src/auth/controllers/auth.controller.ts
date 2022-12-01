@@ -25,7 +25,7 @@ import { getMethods } from '../authMethods';
 import { isEmpty } from '../../utils';
 
 import { JwtData, ApiResponseError } from '../types';
-import { ApiResponseError as ApiUsersResponseError } from '../../users/types';
+import { ApiResponseError as ApiResponseErrorUser } from '../../users/types';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -56,9 +56,16 @@ export class AuthController {
 	 */
 	@ApiBody({ type: SignupProperty })
 	@ApiResponse({ status: 201, description: 'User created' })
-	@ApiResponse({ status: 400.1, description: ApiResponseError.EmptyFields })
-	@ApiResponse({ status: 400.2, description: ApiResponseError.PasswordMismatch })
-	@ApiResponse({ status: 400.3, description: ApiUsersResponseError.EmailTaken })
+	@ApiResponse({ status: 400.01, description: ApiResponseError.EmptyFields })
+	@ApiResponse({ status: 400.02, description: ApiResponseError.PasswordMismatch })
+	@ApiResponse({ status: 400.03, description: ApiResponseError.UsernameTooLong })
+	@ApiResponse({ status: 400.04, description: ApiResponseError.UsernameWrongFormat })
+	@ApiResponse({ status: 400.05, description: ApiResponseError.PasswordEmpty })
+	@ApiResponse({ status: 400.06, description: ApiResponseError.PasswordTooShort })
+	@ApiResponse({ status: 400.07, description: ApiResponseError.PasswordWrongFormatCase })
+	@ApiResponse({ status: 400.08, description: ApiResponseError.PasswordWrongFormatNumeric })
+	@ApiResponse({ status: 400.09, description: ApiResponseError.PasswordWrongFormatSpecial })
+	@ApiResponse({ status: 400.1, description: ApiResponseErrorUser.EmailTaken })
 	@HttpCode(201)
 	@Post('signup')
 	async registerLocal(@Body() params: SignupProperty) {
@@ -69,6 +76,10 @@ export class AuthController {
 			isEmpty(params.confirm)
 		) {
 			throw new BadRequestException(ApiResponseError.EmptyFields);
+		}
+
+		if (params.password !== params.confirm) {
+			throw new BadRequestException(ApiResponseError.PasswordMismatch);
 		}
 
 		await this.authService.user.create(params);

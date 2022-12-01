@@ -284,4 +284,12 @@ export enum ApiResponseError {
 	TwoFactorNotSet = '2FA not set',
 	MissingSession = 'Missing session uuid',
 	InvalidSession = 'Invalid session uuid',
+	UsernameTooLong = 'Usernames are limited to 16 characters',
+	UsernameWrongFormat = 'Usernames are limited to alphanumerical characters and underscores',
+	PasswordEmpty = 'Password cannot be empty',
+	PasswordTooShort = 'Password should be at least 8 characters long',
+	PasswordWrongFormatCase = 'Password should contain uppercase AND lowercase letters',
+	PasswordWrongFormatNumeric = 'Password should contain numbers',
+	PasswordWrongFormatSpecial = 'Password should contain special characters -> ' +
+		`"'/|!@#$%^&*()[]{}<>`,
 }

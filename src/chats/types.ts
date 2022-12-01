@@ -55,4 +55,7 @@ export enum ApiResponseError {
 	EmptyMessage = 'Empty message',
 	EmptyBody = 'Empty body',
 	isAdministrator = 'User is channel administrator',
+	MessageTooLong = 'Message too long',
+	NameTooLong = 'Channels names are limited to 26 characters',
+	NameWrongFormat = 'Channels names are limited to alphanumerical characters and underscores',
 }
