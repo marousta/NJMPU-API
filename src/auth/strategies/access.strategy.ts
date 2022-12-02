@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
@@ -39,9 +39,12 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 			req.clientIp,
 		);
 		if (!user) {
-			// Debug
-			console.log(user);
-			throw new Error();
+			throw new InternalServerErrorException(
+				'User is valid but validation process returned falsy, this should not happen',
+			);
+		}
+		if (!(req.method === 'PATCH' && req.url === '/api/users')) {
+			user.password = user.twofactor = '[REMOVED]';
 		}
 		return {
 			token: payload,

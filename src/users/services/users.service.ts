@@ -117,7 +117,6 @@ export class UsersService {
 			const id = genIdentifier(exclude);
 			if (id === null) {
 				username += Math.floor(Math.random() * 10);
-				console.log('retrying with a extended username');
 				continue;
 			}
 			return { id, username };
@@ -384,10 +383,16 @@ export class UsersService {
 
 		user.password = await hash(new_password, hash_password_config);
 
-		await this.usersRepository.save(user).catch((e) => {
-			this.logger.error('Unable to update password for user ' + user.uuid, e);
-			throw new BadRequestException();
-		});
+		await this.usersRepository
+			.createQueryBuilder()
+			.update()
+			.where({ uuid: user.uuid })
+			.set({ password: user.password })
+			.execute()
+			.catch((e) => {
+				this.logger.error('Unable to update password for user ' + user.uuid, e);
+				throw new BadRequestException();
+			});
 	}
 
 	public readonly relations = {

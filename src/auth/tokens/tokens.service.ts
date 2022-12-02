@@ -76,9 +76,7 @@ export class TokensService {
 			.loadAllRelationIds()
 			.getOneOrFail()
 			.catch((e) => {
-				// Debug
-				console.log(uuid);
-				this.logger.error('Failed to fetch token', e);
+				this.logger.error('Failed to fetch token' + uuid, e);
 				throw new UnauthorizedException();
 			});
 		const user = await this.usersService.findWithRelationsOrNull(

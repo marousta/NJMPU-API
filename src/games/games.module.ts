@@ -23,6 +23,6 @@ import { UsersInfos } from '../users/entities/users.entity';
 	],
 	controllers: [GamesLobbyController, GamesMatchmakingController, GamesHistoryController],
 	providers: [GamesLobbyService, GamesHistoryService, GamesMatchmakingService],
-	exports: [GamesLobbyService],
+	exports: [GamesLobbyService, GamesMatchmakingService],
 })
 export class GamesModule {}

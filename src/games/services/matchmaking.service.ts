@@ -16,6 +16,7 @@ export class GamesMatchmakingService {
 	private waiting_loop: NodeJS.Timer = null;
 	constructor(
 		private readonly lobbyService: GamesLobbyService,
+		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService,
 		@Inject(forwardRef(() => WsService))
 		private readonly wsService: WsService,
@@ -74,6 +75,8 @@ export class GamesMatchmakingService {
 					}
 			}
 
+			// console.log('QUEUE ADD CLIENT: ', current_client?.uuid ?? null);
+
 			if (this.waiting_queue[user.uuid]) {
 				throw new BadRequestException(ApiResponseError.AlreadyInQueue);
 			}
@@ -125,6 +128,10 @@ export class GamesMatchmakingService {
 							' and ' +
 							client2.jwt.infos.uuid,
 					);
+
+					// console.log('##################');
+					// console.log('QUEUE WAIT CLIENT1: ', client1?.uuid ?? null);
+					// console.log('QUEUE WAIT CLIENT2: ', client2?.uuid ?? null);
 
 					this.lobbyService.lobby.createMatch(client1, client2);
 					this.queue.remove(client1.jwt);

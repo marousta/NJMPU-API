@@ -113,6 +113,13 @@ export class UsersController {
 
 	/**
 	 * Change password
+	 *
+	 * /!\
+	 * if you change this route
+	 * you will have to update auth/strategies/access.strategy.ts:46
+	 * in order to have access to the password of the user
+	 * /!\
+	 *
 	 */
 	@ApiTags('users · account')
 	@ApiResponse({ status: 200, description: 'Password changed' })
@@ -133,7 +140,6 @@ export class UsersController {
 		);
 	}
 
-	//TODO
 	// @ApiResponse({ status: 200, description: 'Not yet implemented' })
 	// @Delete()
 	// @HttpCode(200)

@@ -3,8 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server } from 'ws';
 
-import { GamesLobbyService } from '../games/services/lobby.service';
 import { UsersService } from '../users/services/users.service';
+import { GamesLobbyService } from '../games/services/lobby.service';
+import { GamesMatchmakingService } from '../games/services/matchmaking.service';
 
 import { ChatsChannels } from '../chats/entities/channels.entity';
 import { GamesLobby } from '../games/entities/lobby';
@@ -75,6 +76,7 @@ export class WsService {
 		@Inject(forwardRef(() => UsersService))
 		private readonly usersService: UsersService,
 		private readonly lobbyService: GamesLobbyService,
+		private readonly matchmakingService: GamesMatchmakingService,
 	) {}
 
 	/**
@@ -829,6 +831,8 @@ export class WsService {
 
 	async disconnected(client: WebSocketUser) {
 		const user_uuid = client.jwt.infos.uuid;
+
+		this.matchmakingService.queue.remove(client.jwt);
 
 		if (client.lobby.uuid !== null) {
 			this.lobbyService.lobby.leave(client.jwt, client.lobby.uuid, true);

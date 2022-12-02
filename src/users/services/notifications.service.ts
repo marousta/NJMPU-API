@@ -260,62 +260,6 @@ export class NotifcationsService {
 			}
 			await Promise.all(promises);
 		},
-		//
-		//  Legacy code
-		//
-		// 	ByLobby: async (lobby_uuid: string, notified_user_uuid?: string) => {
-		// 		console.log(
-		// 			await this.notifcationsRepository
-		// 				.createQueryBuilder('notifs')
-		// 				.where({ lobby: lobby_uuid, read: false, notified_user: notified_user_uuid })
-		// 				.loadAllRelationIds()
-		// 				.getMany()
-		// 		);
-		// 		const notifs: Array<UsersNotifications> | null = await this.notifcationsRepository
-		// 			.createQueryBuilder('notifs')
-		// 			.where({
-		// 				lobby: lobby_uuid,
-		// 				read: false,
-		// 				notified_user: notified_user_uuid
-		// 			})
-		// 			.loadAllRelationIds()
-		// 			.getMany()
-		// 			.then((r) => (r.length ? r : null))
-		// 			.catch((e) => {
-		// 				this.logger.error('Unable to get notifications for lobby ' + lobby_uuid, e);
-		// 				return null;
-		// 			});
-
-		// 		if (!notifs) {
-		// 			return;
-		// 		}
-		// 		console.log(lobby_uuid, notified_user_uuid);
-
-		// 		let promises = [];
-		// 		for (const notif of notifs) {
-		// 			notif.read = true;
-
-		// 			promises.push(
-		// 				this.notifcationsRepository
-		// 					.save(notif)
-		// 					.then(() => {
-		// 						this.logger.debug('Read notification ' + notif.uuid);
-		// 						this.wsService.dispatch.user(notif.notified_user, {
-		// 							namespace: WsNamespace.User,
-		// 							action: UserAction.Read,
-		// 							uuid: notif.uuid
-		// 						});
-		// 					})
-		// 					.catch((e) => {
-		// 						this.logger.error(
-		// 							'Unable to read notifications for ' + notif.notified_user,
-		// 							e
-		// 						);
-		// 					})
-		// 			);
-		// 		}
-		// 		await Promise.all(promises);
-		// 	}
 	};
 
 	//#endregion

@@ -100,7 +100,7 @@ export class GamesLobbyService {
 
 		const spectators_ws = lobby.spectators_ws
 			.map((client) => {
-				if (client.jwt.infos.uuid !== current_user_uuid) {
+				if (client.jwt.infos.uuid === current_user_uuid) {
 					this.wsService.unsetLobby(jwt, client.uuid);
 				}
 				return client;
@@ -110,7 +110,19 @@ export class GamesLobbyService {
 			this.game.updateSpectators(lobby.uuid, spectators_ws);
 		}
 		lobby.spectators = lobby.spectators.filter((u) => u.uuid !== current_user_uuid);
+
 		lobby.spectators_ws = spectators_ws;
+	}
+
+	private async unsetPlayer(jwt: JwtData, lobby: GamesLobby) {
+		lobby.player2 = null;
+		lobby.player2_status = LobbyPlayerReadyState.Invited;
+
+		this.wsService.unsetLobby(jwt, lobby.player2_ws.uuid);
+
+		await this.wsService.updateUserStatus(jwt.infos, UserStatus.Online);
+
+		this.lobbies[lobby.uuid] = lobby;
 	}
 
 	removeFromLobbies(jwt: JwtData) {
@@ -361,11 +373,13 @@ export class GamesLobbyService {
 		},
 		createFormat: async (jwt: JwtData, websocket_uuid: string, remote_user?: UsersInfos) => {
 			const lobby = await this.lobby.create(jwt, websocket_uuid, remote_user);
+
 			return this.formatResponse(lobby);
 		},
 		addPlayer: (lobby: GamesLobby, user: UsersInfos) => {
 			lobby.player2 = user;
 			this.lobbies[lobby.uuid] = lobby;
+
 			return lobby;
 		},
 		invite: async (jwt: JwtData, websocket_uuid: string, remote_user_uuid: string) => {
@@ -686,7 +700,14 @@ export class GamesLobbyService {
 		},
 		leave: async (jwt: JwtData, uuid: string, disconnect?: boolean) => {
 			const current_user = jwt.infos;
-			const lobby = this.findWithRelations(uuid);
+			const lobby = this.findWithRelationsOrNull(uuid);
+			if (!lobby && !disconnect) {
+				throw new NotFoundException(ApiResponseError.LobbyNotFound);
+			}
+			if (!lobby && disconnect) {
+				this.logger.error('leave: ' + uuid + ', should not be here');
+				return;
+			}
 
 			const deleted = await this.lobby.delete(jwt, lobby, true);
 			if (deleted) {
@@ -695,15 +716,11 @@ export class GamesLobbyService {
 
 			const was_spectator = this.isSpectator(lobby, current_user);
 			if (!was_spectator && lobby.player2?.uuid === current_user.uuid) {
-				lobby.player2 = null;
-				lobby.player2_status = LobbyPlayerReadyState.Invited;
-
-				this.wsService.unsetLobby(jwt, lobby.player2_ws.uuid);
-
-				await this.wsService.updateUserStatus(current_user, UserStatus.Online);
+				await this.unsetPlayer(jwt, lobby);
 			} else if (was_spectator) {
 				this.unsetSpectator(jwt, lobby);
 			} else if (disconnect) {
+				// FIXME: still weird here
 				console.log(lobby);
 				return;
 			} else {
