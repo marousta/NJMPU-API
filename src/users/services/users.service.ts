@@ -273,7 +273,9 @@ export class UsersService {
 					return null;
 				});
 
-			created_user = await this.usersRepository.save({ ...new_user, avatar }).catch((e) => {
+			new_user.avatar = avatar;
+
+			created_user = await this.usersRepository.save(new_user).catch((e) => {
 				this.logger.error('Failed to update user profile picture', e);
 				throw new InternalServerErrorException();
 			});
@@ -493,13 +495,19 @@ export class UsersService {
 				}
 
 				current_user.addFriends(remote_user);
-				await this.usersRepository.save(current_user).catch((e) => {
-					this.logger.error(
-						'Unable to update friendship status of user ' + current_user.uuid,
-						e,
-					);
-					throw new InternalServerErrorException();
-				});
+				await this.usersRepository
+					.createQueryBuilder()
+					.update()
+					.relation('friends')
+					.of(current_user)
+					.add(remote_user)
+					.catch((e) => {
+						this.logger.error(
+							'Unable to update friendship status of user ' + current_user.uuid,
+							e,
+						);
+						throw new InternalServerErrorException();
+					});
 
 				friendship_status = this.usersAreFriends(current_user, remote_user);
 				switch (friendship_status) {
@@ -535,16 +543,34 @@ export class UsersService {
 					(user) => user.uuid !== remote_user.uuid,
 				);
 
-				await this.usersRepository.save([current_user, remote_user]).catch((e) => {
-					this.logger.error(
-						'Unable to remove friendship status of users ' +
-							current_user.uuid +
-							' and ' +
-							remote_user.uuid,
-						e,
-					);
-					throw new InternalServerErrorException();
-				});
+				await Promise.all([
+					this.usersRepository
+						.createQueryBuilder()
+						.update()
+						.relation('friends')
+						.of(current_user)
+						.remove(remote_user)
+						.catch((e) => {
+							this.logger.error(
+								'Unable to remove friendship status of user ' + current_user.uuid,
+								e,
+							);
+							throw new InternalServerErrorException();
+						}),
+					this.usersRepository
+						.createQueryBuilder()
+						.update()
+						.relation('friends')
+						.of(remote_user)
+						.remove(current_user)
+						.catch((e) => {
+							this.logger.error(
+								'Unable to remove friendship status of user ' + remote_user.uuid,
+								e,
+							);
+							throw new InternalServerErrorException();
+						}),
+				]);
 
 				this.wsService.dispatch.user(current_user.uuid, {
 					namespace: WsNamespace.User,
@@ -568,10 +594,19 @@ export class UsersService {
 				await this.relations.friends.remove(current_user, remote_user);
 
 				current_user.addBlocklist(remote_user);
-				await this.usersRepository.save(current_user).catch((e) => {
-					this.logger.error('Unable to update blocklist of user ' + current_user.uuid, e);
-					throw new InternalServerErrorException();
-				});
+				await this.usersRepository
+					.createQueryBuilder()
+					.update()
+					.relation('blocklist')
+					.of(current_user)
+					.add(remote_user)
+					.catch((e) => {
+						this.logger.error(
+							'Unable to update blocklist of user ' + current_user.uuid,
+							e,
+						);
+						throw new InternalServerErrorException();
+					});
 
 				this.wsService.dispatch.user(current_user.uuid, {
 					namespace: WsNamespace.User,
@@ -596,16 +631,22 @@ export class UsersService {
 					(user) => user.uuid !== remote_user.uuid,
 				);
 
-				await this.usersRepository.save(current_user).catch((e) => {
-					this.logger.error(
-						'Unable to remove block of users ' +
-							remote_user.uuid +
-							' for ' +
-							current_user.uuid,
-						e,
-					);
-					throw new InternalServerErrorException();
-				});
+				await this.usersRepository
+					.createQueryBuilder()
+					.update()
+					.relation('blocklist')
+					.of(current_user)
+					.remove(remote_user)
+					.catch((e) => {
+						this.logger.error(
+							'Unable to remove block of users ' +
+								remote_user.uuid +
+								' for ' +
+								current_user.uuid,
+							e,
+						);
+						throw new InternalServerErrorException();
+					});
 
 				this.wsService.dispatch.user(current_user.uuid, {
 					namespace: WsNamespace.User,

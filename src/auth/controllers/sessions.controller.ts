@@ -20,7 +20,7 @@ import { AccessAuthGuard } from '../guards/access.guard';
 import { SessionsGetResponse } from '../properties/sessions.property';
 import { GlobalQueryProperty } from '../../app/properties/global.property';
 
-import { parseUnsigned } from '../../utils';
+import { parseUnsignedOptional } from '../../utils';
 
 import { ApiResponseError, JwtData } from '../types';
 
@@ -51,9 +51,9 @@ export class SessionsController {
 		const tuuid = jwt.token.tuuid;
 		const uuuid = jwt.infos.uuid;
 
-		page = parseUnsigned({ page });
-		limit = parseUnsigned({ limit });
-		offset = parseUnsigned({ offset });
+		page = parseUnsignedOptional({ page });
+		limit = parseUnsignedOptional({ limit });
+		offset = parseUnsignedOptional({ offset });
 
 		return await this.sessionsService.get(tuuid, uuuid, page, limit, offset);
 	}

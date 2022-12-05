@@ -25,6 +25,7 @@ import { TwoFactorProperty } from '../properties/2fa.property';
 import { getFingerprint, isEmpty } from '../../utils';
 
 import { ApiResponseError, JwtData } from '../types';
+import { AccessPrivateAuthGuard } from '../guards/access.private.guard';
 
 @ApiTags('auth · 2FA')
 @Controller('auth/2fa')
@@ -37,7 +38,7 @@ export class TwoFactorController {
 	/**
 	 * QRcode
 	 */
-	@UseGuards(AccessAuthGuard)
+	@UseGuards(AccessPrivateAuthGuard)
 	@ApiResponse({
 		status: 202,
 		description: 'Create a 2FA request and return QRCode image in base64',
@@ -97,16 +98,12 @@ export class TwoFactorController {
 	/**
 	 * Remove 2FA
 	 */
-	@UseGuards(AccessAuthGuard)
+	@UseGuards(AccessPrivateAuthGuard)
 	@ApiResponse({ status: 200, description: '2FA removed' })
 	@ApiResponse({ status: 403, description: ApiResponseError.TwoFactorNotSet })
 	@HttpCode(200)
 	@Delete()
-	async twoFactorRemove(
-		@Request() req: Req,
-		@Headers() headers: Headers,
-		@Response({ passthrough: true }) res: Res,
-	) {
+	async twoFactorRemove(@Request() req: Req) {
 		const user = (req.user as JwtData).infos;
 
 		await this.twoFactorService.remove(user);

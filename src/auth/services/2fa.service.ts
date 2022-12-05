@@ -216,8 +216,6 @@ export class TwoFactorService {
 
 			// 2FA setup
 			if (TwoFactor.verifyToken(request.secret, code, 2) !== null) {
-				// user.twofactor = request.secret;
-
 				await this.usersRepository
 					.createQueryBuilder()
 					.update()

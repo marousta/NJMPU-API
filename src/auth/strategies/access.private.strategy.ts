@@ -10,7 +10,7 @@ import { TokensService } from '../tokens/tokens.service';
 import { Jwt, JwtData } from '../types';
 
 @Injectable()
-export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
+export class AccessPrivateStrategy extends PassportStrategy(Strategy, 'private') {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly tokenService: TokensService,
@@ -43,9 +43,6 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 				'User is valid but validation process returned falsy, this should not happen',
 			);
 		}
-
-		user.password = user.twofactor = '[REMOVED]';
-
 		return {
 			token: payload,
 			infos: user,

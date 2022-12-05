@@ -20,6 +20,7 @@ import { UsersService } from './services/users.service';
 import { NotifcationsService } from './services/notifications.service';
 
 import { AccessAuthGuard } from '../auth/guards/access.guard';
+import { AccessPrivateAuthGuard } from 'src/auth/guards/access.private.guard';
 
 import { UsersGetResponse, UsersMeResponse } from './properties/users.get.property';
 import {
@@ -30,7 +31,7 @@ import { NotificationsGetResponse } from './properties/notifications.get.propert
 import { GlobalQueryProperty } from '../app/properties/global.property';
 import { UsersPatchProperty } from './properties/users.patch.property';
 
-import { parseUnsigned, isEmpty } from '../utils';
+import { parseUnsigned, parseUnsignedOptional, isEmpty } from '../utils';
 
 import { ApiResponseError as ApiResponseErrorGlobal } from '../types';
 import { ApiResponseError, RelationType, RelationDispatch } from './types';
@@ -52,6 +53,7 @@ export class UsersController {
 	/**
 	 * Whoami
 	 */
+	@UseGuards(AccessPrivateAuthGuard)
 	@ApiTags('users · infos')
 	@ApiResponse({ status: 200, description: 'User infos', type: UsersMeResponse })
 	@HttpCode(200)
@@ -113,14 +115,8 @@ export class UsersController {
 
 	/**
 	 * Change password
-	 *
-	 * /!\
-	 * if you change this route
-	 * you will have to update auth/strategies/access.strategy.ts:46
-	 * in order to have access to the password of the user
-	 * /!\
-	 *
 	 */
+	@UseGuards(AccessPrivateAuthGuard)
 	@ApiTags('users · account')
 	@ApiResponse({ status: 200, description: 'Password changed' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -300,9 +296,9 @@ export class UsersController {
 	) {
 		const user = (req.user as JwtData).infos;
 
-		page = parseUnsigned({ page });
-		limit = parseUnsigned({ limit });
-		offset = parseUnsigned({ offset });
+		page = parseUnsignedOptional({ page });
+		limit = parseUnsignedOptional({ limit });
+		offset = parseUnsignedOptional({ offset });
 
 		return await this.notifcationsService.get(user, page, limit, offset);
 	}

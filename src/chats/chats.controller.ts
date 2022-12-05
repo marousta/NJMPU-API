@@ -39,7 +39,7 @@ import { ChannelLeaveProperty, LeaveAction } from './properties/channels.delete.
 import { ChannelModerationProperty } from './properties/channels.update.property';
 import { BlacklistGetResponse } from './properties/channels.blacklist.get.property';
 
-import { isEmpty, parseUnsigned } from '../utils';
+import { isEmpty, parseUnsignedOptional } from '../utils';
 
 import { ChannelType, ApiResponseError } from './types';
 import { ChatAction } from '../websockets/types';
@@ -73,9 +73,9 @@ export class ChatsController {
 		@Query('limit') limit: any,
 		@Query('offset') offset: any,
 	) {
-		page = parseUnsigned({ page });
-		limit = parseUnsigned({ limit });
-		offset = parseUnsigned({ offset });
+		page = parseUnsignedOptional({ page });
+		limit = parseUnsignedOptional({ limit });
+		offset = parseUnsignedOptional({ offset });
 
 		return await this.channelsService.getAll(page, limit, offset);
 	}
@@ -101,9 +101,9 @@ export class ChatsController {
 	) {
 		const uuid = (req.user as JwtData).infos.uuid;
 
-		page = parseUnsigned({ page });
-		limit = parseUnsigned({ limit });
-		offset = parseUnsigned({ offset });
+		page = parseUnsignedOptional({ page });
+		limit = parseUnsignedOptional({ limit });
+		offset = parseUnsignedOptional({ offset });
 
 		return await this.channelsService.getAllin(uuid, page, limit, offset);
 	}
@@ -647,9 +647,9 @@ export class ChatsController {
 
 		const user = (req.user as JwtData).infos;
 
-		page = parseUnsigned({ page });
-		limit = parseUnsigned({ limit });
-		offset = parseUnsigned({ offset });
+		page = parseUnsignedOptional({ page });
+		limit = parseUnsignedOptional({ limit });
+		offset = parseUnsignedOptional({ offset });
 
 		return await this.messagesService.get(channel_uuid, user, page, limit, offset);
 	}

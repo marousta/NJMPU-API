@@ -20,6 +20,7 @@ import { TwoFactorService } from './services/2fa.service';
 import { SessionsService } from './services/sessions.service';
 
 import { AccessStrategy } from './strategies/access.strategy';
+import { AccessPrivateStrategy } from './strategies/access.private.strategy';
 import { RefreshStrategy } from './strategies/refresh.strategy';
 import { TwoFactorStrategy } from './strategies/2fa.strategy';
 
@@ -66,6 +67,7 @@ const modules: Array<any> = methods[2];
 		AuthService,
 		TwoFactorService,
 		AccessStrategy,
+		AccessPrivateStrategy,
 		RefreshStrategy,
 		TwoFactorStrategy,
 		SessionsService,
