@@ -82,10 +82,7 @@ export function parseUnsigned(raw: object) {
 	const name = Object.keys(raw)[0];
 
 	const value = parseInt(Object.values(raw)[0]);
-	if (isNaN(value)) {
-		return 0;
-	}
-	if (value < 0) {
+	if (isNaN(value) || value < 0) {
 		throw new BadRequestException('Invalid ' + name + ' number');
 	}
 	return value;
@@ -93,10 +90,7 @@ export function parseUnsigned(raw: object) {
 
 export function parseUnsignedNull(raw: any) {
 	const value = parseInt(raw);
-	if (isNaN(value)) {
-		return 0;
-	}
-	if (value < 0) {
+	if (isNaN(value) || value < 0) {
 		return null;
 	}
 	return value;
@@ -151,6 +145,10 @@ export function checkPassword(password: string) {
 
 	if (password.length === 0) {
 		errors.push(ApiResponseErrorAuth.PasswordEmpty);
+	}
+
+	if (password.length > 100) {
+		errors.push(ApiResponseErrorAuth.PasswordTooLong)
 	}
 
 	if (password.length < 8) {

@@ -288,6 +288,7 @@ export enum ApiResponseError {
 	UsernameWrongFormat = 'Usernames are limited to alphanumerical characters and underscores',
 	PasswordEmpty = 'Password cannot be empty',
 	PasswordTooShort = 'Password should be at least 8 characters long',
+	PasswordTooLong = 'Password are limited to 100 characters',
 	PasswordWrongFormatCase = 'Password should contain uppercase AND lowercase letters',
 	PasswordWrongFormatNumeric = 'Password should contain numbers',
 	PasswordWrongFormatSpecial = 'Password should contain special characters -> ' +

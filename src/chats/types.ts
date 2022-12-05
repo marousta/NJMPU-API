@@ -50,6 +50,7 @@ export enum ApiResponseError {
 	BlacklistEntryNotFound = 'User is not blacklisted',
 	Banned = 'Banned',
 	WrongPassword = 'Wrong password',
+	PasswordTooLong = "Password are limited to 100 characters",
 	InvalidQuery = 'Invalid number in query',
 	DirectYourseft = "You can't DM yourself",
 	EmptyMessage = 'Empty message',

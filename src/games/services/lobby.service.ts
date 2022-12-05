@@ -431,8 +431,9 @@ export class GamesLobbyService {
 		join: async (jwt: JwtData, uuid: string, websocket_uuid: string) => {
 			const remote_user = jwt.infos;
 			const lobby = this.findWithRelations(uuid);
+			const players = this.getUsers(lobby);
 
-			if (lobby.player1.uuid === remote_user.uuid) {
+			if (lobby.player1.uuid === remote_user.uuid || players.includes(remote_user.uuid)) {
 				throw new BadRequestException(ApiResponseError.AlreadyIn);
 			}
 

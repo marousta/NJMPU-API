@@ -490,6 +490,10 @@ export class ChannelsService {
 			// Hash password
 			let password = null;
 			if (!isEmpty(params.password)) {
+				if (params.password.length > 100) {
+					throw new BadRequestException(ApiResponseError.PasswordTooLong);
+				}
+
 				password = await argon2.hash(params.password, {
 					timeCost: 11,
 					saltLength: 128,
