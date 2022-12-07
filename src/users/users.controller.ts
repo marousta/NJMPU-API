@@ -37,7 +37,6 @@ import { ApiResponseError as ApiResponseErrorGlobal } from '../types';
 import { ApiResponseError, RelationType, RelationDispatch } from './types';
 import { JwtData } from '../auth/types';
 
-@UseGuards(AccessAuthGuard)
 @Controller('users')
 export class UsersController {
 	constructor(
@@ -67,6 +66,7 @@ export class UsersController {
 	/**
 	 * Get one by uuid
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · infos')
 	@ApiResponse({ status: 200, description: 'User details', type: UsersGetResponse })
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
@@ -86,6 +86,7 @@ export class UsersController {
 	/**
 	 * Get one by name and identifier
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · infos')
 	@ApiResponse({ status: 200, description: 'User details', type: UsersGetResponse })
 	@ApiResponse({ status: 400, description: ApiResponseErrorGlobal.MissingParameters })
@@ -150,6 +151,7 @@ export class UsersController {
 	/**
 	 * Get relation
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · relations')
 	@ApiResponse({
 		status: 200,
@@ -167,6 +169,7 @@ export class UsersController {
 	/**
 	 * Add friend
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Friendship status', type: UsersFriendshipResponse })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -194,6 +197,7 @@ export class UsersController {
 	/**
 	 * Remove friend
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Friendship removed' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -221,6 +225,7 @@ export class UsersController {
 	/**
 	 * Block
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Blocked user' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -247,6 +252,7 @@ export class UsersController {
 	/**
 	 * Unblock
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · relations')
 	@ApiResponse({ status: 200, description: 'Unblocked user' })
 	@ApiResponse({ status: 400.1, description: ApiResponseErrorGlobal.MissingParameters })
@@ -279,6 +285,7 @@ export class UsersController {
 	/**
 	 * Get
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · notifications')
 	@ApiQuery({ type: GlobalQueryProperty })
 	@ApiResponse({
@@ -306,6 +313,7 @@ export class UsersController {
 	/**
 	 * Read
 	 */
+	@UseGuards(AccessAuthGuard)
 	@ApiTags('users · notifications')
 	@ApiResponse({
 		status: 200,

@@ -2,7 +2,7 @@ import {
 	Injectable,
 	UnauthorizedException,
 	BadRequestException,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -84,7 +84,7 @@ export class TokensService {
 			'Failed to find related user ' + token.user_uuid + ' for token ' + uuid,
 		);
 		if (!user) {
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		}
 		return user;
 	}
@@ -161,7 +161,7 @@ export class TokensService {
 			// fallback
 			new_tokens.uuid = randomUUID();
 			return await this.tokensRepository.save(new_tokens).catch((e) => {
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 		});
 

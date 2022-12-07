@@ -2,7 +2,7 @@ import {
 	Injectable,
 	Logger,
 	BadRequestException,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	NotFoundException,
 	Inject,
 	forwardRef,
@@ -106,7 +106,7 @@ export class ChannelsBlacklistService {
 	async remove(uuid: string, error_msg: string) {
 		await this.blacklistRepository.delete(uuid).catch((e) => {
 			this.logger.error(error_msg, e);
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		});
 	}
 	//#endregion
@@ -156,7 +156,7 @@ export class ChannelsBlacklistService {
 					channel.uuid,
 				e,
 			);
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		});
 
 		return channel;
@@ -199,7 +199,7 @@ export class ChannelsBlacklistService {
 					'Unable to find entry in blacklist for channel ' + channel_uuid,
 					e,
 				);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 
 		let filtered: BlacklistGetResponse = {
@@ -221,7 +221,7 @@ export class ChannelsBlacklistService {
 					});
 					break;
 				default:
-					throw new InternalServerErrorException();
+					throw new UnprocessableEntityException();
 			}
 		});
 		return filtered;

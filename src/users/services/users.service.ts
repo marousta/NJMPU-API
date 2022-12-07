@@ -2,7 +2,7 @@ import {
 	Injectable,
 	Logger,
 	NotFoundException,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	BadRequestException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
@@ -214,7 +214,7 @@ export class UsersService {
 					this.logger.error(error_msg, e);
 					this.logger.error('where: ' + JSON.stringify(where));
 					this.logger.error('set: ' + JSON.stringify(set));
-					throw new InternalServerErrorException();
+					throw new UnprocessableEntityException();
 				});
 		},
 		status: async (user_uuid: string, status: UserStatus) => {
@@ -227,7 +227,7 @@ export class UsersService {
 		xp: async (user_uuid: string, xp: number) => {
 			if (parseUnsignedNull(xp) === null) {
 				this.logger.error('XP cannot be negative ' + xp + ', this should not happen');
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			}
 
 			return this.update.exectute(
@@ -259,7 +259,7 @@ export class UsersService {
 				throw new BadRequestException(ApiResponseError.EmailTaken);
 			} else {
 				this.logger.error('Failed to insert user', e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			}
 		});
 		this.logger.debug('User created ' + new_user.uuid);
@@ -277,7 +277,7 @@ export class UsersService {
 
 			created_user = await this.usersRepository.save(new_user).catch((e) => {
 				this.logger.error('Failed to update user profile picture', e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 			this.logger.debug('User profile picture set for ' + new_user.uuid);
 		}
@@ -351,7 +351,7 @@ export class UsersService {
 			.execute()
 			.catch((e) => {
 				this.logger.error('Unable to update avatar for user ' + user.uuid, e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 
 		this.wsService.dispatch.all({
@@ -506,7 +506,7 @@ export class UsersService {
 							'Unable to update friendship status of user ' + current_user.uuid,
 							e,
 						);
-						throw new InternalServerErrorException();
+						throw new UnprocessableEntityException();
 					});
 
 				friendship_status = this.usersAreFriends(current_user, remote_user);
@@ -555,7 +555,7 @@ export class UsersService {
 								'Unable to remove friendship status of user ' + current_user.uuid,
 								e,
 							);
-							throw new InternalServerErrorException();
+							throw new UnprocessableEntityException();
 						}),
 					this.usersRepository
 						.createQueryBuilder()
@@ -568,7 +568,7 @@ export class UsersService {
 								'Unable to remove friendship status of user ' + remote_user.uuid,
 								e,
 							);
-							throw new InternalServerErrorException();
+							throw new UnprocessableEntityException();
 						}),
 				]);
 
@@ -605,7 +605,7 @@ export class UsersService {
 							'Unable to update blocklist of user ' + current_user.uuid,
 							e,
 						);
-						throw new InternalServerErrorException();
+						throw new UnprocessableEntityException();
 					});
 
 				this.wsService.dispatch.user(current_user.uuid, {
@@ -645,7 +645,7 @@ export class UsersService {
 								current_user.uuid,
 							e,
 						);
-						throw new InternalServerErrorException();
+						throw new UnprocessableEntityException();
 					});
 
 				this.wsService.dispatch.user(current_user.uuid, {

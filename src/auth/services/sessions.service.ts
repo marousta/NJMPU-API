@@ -2,7 +2,7 @@ import {
 	Injectable,
 	Logger,
 	NotFoundException,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -100,7 +100,7 @@ export class SessionsService {
 
 		await this.tokenRepository.save(session).catch((e) => {
 			this.logger.debug('Unable to destroy session ' + tuuid, e);
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		});
 
 		this.wsService.dispatch.user(uuuid, {

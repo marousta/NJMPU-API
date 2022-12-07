@@ -1,7 +1,7 @@
 import {
 	Injectable,
 	Logger,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -71,7 +71,7 @@ export class NotifcationsService {
 					e,
 				);
 			}
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		});
 
 		if (request.type === NotifcationType.GameInvite) {
@@ -150,7 +150,7 @@ export class NotifcationsService {
 
 			await this.notifcationsRepository.save(notif).catch((e) => {
 				this.logger.error('Unable to read notification for uuid ' + notif.uuid);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 
 			this.wsService.dispatch.user(user.uuid, {

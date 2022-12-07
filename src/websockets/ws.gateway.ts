@@ -1,4 +1,4 @@
-import { Logger, Request, InternalServerErrorException, Body } from '@nestjs/common';
+import { Logger, Request, UnprocessableEntityException, Body } from '@nestjs/common';
 import {
 	WebSocketGateway,
 	WebSocketServer,
@@ -120,14 +120,14 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		const uuid = jwt[0].uuuid;
 		if (!uuid) {
 			this.logger.error('Cannot get user uuid, this should not happen');
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		}
 		const user = await this.usersService.findWithRelationsOrNull(
 			{ uuid },
 			'Cannot get user, this should not happen',
 		);
 		if (!user) {
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		}
 		client.uuid = randomUUID();
 		client.jwt = {

@@ -1,6 +1,6 @@
 import {
 	Injectable,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	Logger,
 	NotFoundException,
 	ForbiddenException,
@@ -75,7 +75,7 @@ export class TwoFactorService {
 	getUserFromRequest(request_uuid: string): UsersInfos {
 		const request = this.getRequest(request_uuid);
 		if (!request.user) {
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		}
 
 		return request.user;
@@ -164,7 +164,7 @@ export class TwoFactorService {
 			.execute()
 			.catch((e) => {
 				this.logger.error('Unable to remove 2FA from user account ' + current_user.uuid, e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 		// this.wsService.updateClient({ user: current_user });
 
@@ -200,7 +200,7 @@ export class TwoFactorService {
 			const user = request.user;
 
 			if (user.uuid !== current_user.uuid) {
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			}
 
 			// 2FA set
@@ -224,7 +224,7 @@ export class TwoFactorService {
 					.execute()
 					.catch((e) => {
 						this.logger.error('Could not update secret token for user ' + user.uuid, e);
-						throw new InternalServerErrorException();
+						throw new UnprocessableEntityException();
 					});
 				// this.wsService.updateClient({ user });
 

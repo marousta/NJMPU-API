@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
@@ -39,7 +39,7 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
 			req.clientIp,
 		);
 		if (!user) {
-			throw new InternalServerErrorException(
+			throw new UnprocessableEntityException(
 				'User is valid but validation process returned falsy, this should not happen',
 			);
 		}

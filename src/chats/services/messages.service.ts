@@ -1,7 +1,7 @@
 import {
 	Injectable,
 	Logger,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	NotFoundException,
 	ForbiddenException,
 	Inject,
@@ -139,7 +139,7 @@ export class MessagesService {
 
 		const new_message = await this.messageRepository.save(request).catch((e) => {
 			this.logger.error('Unable to save message', e);
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		});
 
 		this.wsService.dispatch.channel(channel.usersID, {

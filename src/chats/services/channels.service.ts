@@ -1,7 +1,7 @@
 import {
 	Injectable,
 	Logger,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	BadRequestException,
 	NotFoundException,
 	ForbiddenException,
@@ -129,7 +129,7 @@ export class ChannelsService {
 		By: async (uuid: string) => {
 			return await this.channelRepository.findOneByOrFail({ uuid }).catch((e) => {
 				this.logger.error('Channel not found ' + uuid, e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 		},
 	};
@@ -137,7 +137,7 @@ export class ChannelsService {
 	private async save(channel: ChatsChannels, error_msg: string) {
 		return await this.channelRepository.save(channel).catch((e) => {
 			this.logger.error(error_msg, e);
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		});
 	}
 
@@ -145,7 +145,7 @@ export class ChannelsService {
 		if (typeof user === 'string') {
 			user = await this.usersRepository.findOneByOrFail({ uuid: user }).catch((e) => {
 				this.logger.error('Unable to find user ' + user);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 		}
 
@@ -245,7 +245,7 @@ export class ChannelsService {
 		find500: async (user_uuid: string) => {
 			return await this.usersRepository.findOneByOrFail({ uuid: user_uuid }).catch((e) => {
 				this.logger.error('Unable to get user ' + user_uuid, e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 		},
 		inChannelFind: async (channel_uuid: string, user_uuid: string): Promise<boolean> => {
@@ -460,7 +460,7 @@ export class ChannelsService {
 	async findPriv(params: ChannelPrivateProperty): Promise<ChannelPrivateGetResponse> {
 		const channel: ChatsChannelsID = await this.channelRepository
 			.createQueryBuilder('channels')
-			.where({ name: params.name, identifier: params.identifier })
+			.where({ name: params.name, identifier: params.identifier, type: ChannelType.Private })
 			.getOneOrFail()
 			.catch((e) => {
 				this.logger.verbose(
@@ -888,6 +888,10 @@ export class ChannelsService {
 		if (isEmpty(params.password)) {
 			password = null;
 		} else {
+			if (params.password.length > 100) {
+				throw new BadRequestException(ApiResponseError.PasswordTooLong);
+			}
+
 			channel.password = await argon2.hash(params.password, {
 				timeCost: 11,
 				saltLength: 128,
@@ -970,7 +974,7 @@ export class ChannelsService {
 		if ((!channel.users.length && !channel.default) || params.action === LeaveAction.Remove) {
 			await this.channelRepository.delete(channel.uuid).catch((e) => {
 				this.logger.error('Unable to delete channel ' + channel.uuid, e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 
 			switch (channel.type) {

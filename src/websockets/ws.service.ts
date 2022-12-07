@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server } from 'ws';
@@ -798,7 +798,7 @@ export class WsService {
 					.then((r) => (r.length ? r : null))
 					.catch((e) => {
 						this.logger.error('Cannot get channels', e);
-						throw new InternalServerErrorException();
+						throw new UnprocessableEntityException();
 					});
 			}
 

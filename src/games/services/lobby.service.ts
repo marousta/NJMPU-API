@@ -2,7 +2,7 @@ import {
 	Injectable,
 	Logger,
 	NotFoundException,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	BadRequestException,
 	ForbiddenException,
 	Inject,
@@ -157,7 +157,7 @@ export class GamesLobbyService {
 				this.logger.error(lobby.uuid);
 				this.logger.error(JSON.stringify(this.lobbies[lobby.uuid]));
 				this.logger.error(JSON.stringify(this.games[lobby.uuid]));
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			}
 
 			let now = 0;
@@ -404,7 +404,7 @@ export class GamesLobbyService {
 				this.logger.error(
 					'User ' + remote_user.uuid + ' is in several lobbies, this should not happen',
 				);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			} else if (existing_lobbies?.length === 1) {
 				// Add user to existing lobby (it was in spectator)
 				lobby = this.lobby.addPlayer(existing_lobbies[0], remote_user);
@@ -433,7 +433,12 @@ export class GamesLobbyService {
 			const lobby = this.findWithRelations(uuid);
 			const players = this.getUsers(lobby);
 
-			if (lobby.player1.uuid === remote_user.uuid || players.includes(remote_user.uuid)) {
+			if (
+				lobby.player1.uuid === remote_user.uuid ||
+				(lobby.player2.uuid === remote_user.uuid &&
+					lobby.player2_status !== LobbyPlayerReadyState.Invited &&
+					players.includes(remote_user.uuid))
+			) {
 				throw new BadRequestException(ApiResponseError.AlreadyIn);
 			}
 

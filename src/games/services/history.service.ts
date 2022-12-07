@@ -1,7 +1,7 @@
 import {
 	Injectable,
 	Logger,
-	InternalServerErrorException,
+	UnprocessableEntityException,
 	Inject,
 	forwardRef,
 } from '@nestjs/common';
@@ -50,7 +50,7 @@ export class GamesHistoryService {
 			.getMany()
 			.catch((e) => {
 				this.logger.error('Unable to find games history for ' + uuid, e);
-				throw new InternalServerErrorException();
+				throw new UnprocessableEntityException();
 			});
 	}
 
@@ -165,7 +165,7 @@ export class GamesHistoryService {
 		// Awful hack
 		await this.historyRepository.save(lobby).catch((e) => {
 			this.logger.error('Unable to create game history for lobby ' + lobby.uuid, e);
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 		});
 
 		this.wsService.dispatch.lobby(lobby, {

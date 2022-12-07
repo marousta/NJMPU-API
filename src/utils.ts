@@ -1,4 +1,4 @@
-import { BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
+import { BadRequestException, Logger, UnprocessableEntityException } from '@nestjs/common';
 import { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
 
@@ -49,7 +49,7 @@ export function getPartialUser(user: Intra42User | DiscordUser | TwitterUser): P
 			};
 		default:
 			new Logger('getPartialUser').error('unknown user type ', user);
-			throw new InternalServerErrorException();
+			throw new UnprocessableEntityException();
 	}
 }
 
