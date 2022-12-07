@@ -435,7 +435,7 @@ export class GamesLobbyService {
 
 			if (
 				lobby.player1.uuid === remote_user.uuid ||
-				(lobby.player2.uuid === remote_user.uuid &&
+				(lobby.player2?.uuid === remote_user.uuid &&
 					lobby.player2_status !== LobbyPlayerReadyState.Invited &&
 					players.includes(remote_user.uuid))
 			) {
@@ -624,6 +624,7 @@ export class GamesLobbyService {
 			}
 
 			lobby.player2 = null;
+			lobby.player2_ws = null;
 
 			this.lobbies[lobby.uuid] = lobby;
 		},
