@@ -181,6 +181,9 @@ export class GamesLobbyService {
 				let move: WsPongMove = null;
 				try {
 					move = JSON.parse(e.data.toString());
+					if (!move || !move.data || !move.data.moveTarget) {
+						return;
+					}
 				} catch (e) {
 					return;
 				}

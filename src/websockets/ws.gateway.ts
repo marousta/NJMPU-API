@@ -18,7 +18,6 @@ import { randomUUID } from 'crypto';
 import { WsService } from './ws.service';
 import { TokensService } from '../auth/tokens/tokens.service';
 import { UsersService } from '../users/services/users.service';
-import { GamesLobbyService } from '../games/services/lobby.service';
 
 import { UserAction, WebSocketUser, WsNamespace } from './types';
 import { Jwt } from '../auth/types';
@@ -36,7 +35,6 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
 		private readonly tokensService: TokensService,
 		private readonly usersService: UsersService,
 		private readonly wsService: WsService,
-		private readonly lobbyService: GamesLobbyService,
 	) {}
 
 	@WebSocketServer()
