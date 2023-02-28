@@ -172,7 +172,7 @@ export class GamesLobbyService {
 				} catch (e) {
 					return;
 				}
-				this.games[that.lobby.uuid].pong.movePlayer(PlayerRole.PLAYER1, move);
+				this.games[that.lobby.uuid]?.pong.movePlayer(PlayerRole.PLAYER1, move);
 			};
 
 			lobby.player2_ws.onmessage = (e) => {
@@ -187,7 +187,7 @@ export class GamesLobbyService {
 				} catch (e) {
 					return;
 				}
-				this.games[that.lobby.uuid].pong.movePlayer(PlayerRole.PLAYER2, move);
+				this.games[that.lobby.uuid]?.pong.movePlayer(PlayerRole.PLAYER2, move);
 			};
 
 			this.games[lobby.uuid] = {
